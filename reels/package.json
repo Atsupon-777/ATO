@@ -11,6 +11,7 @@
     "postinstall": "node scripts/fetch-fonts.mjs"
   },
   "dependencies": {
+    "@google/genai": "^2.28.0",
     "@remotion/bundler": "^4.0.534",
     "@remotion/captions": "^4.0.534",
     "@remotion/cli": "^4.0.534",

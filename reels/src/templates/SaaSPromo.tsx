@@ -1,43 +1,11 @@
 import React from 'react';
-import { z } from 'zod';
-import { zColor } from '@remotion/zod-types';
+import type { SaaSPromoProps } from '../schemas';
 import { AbsoluteFill, Audio, Img, Sequence, interpolate, random, useCurrentFrame, useVideoConfig } from 'remotion';
 import { fonts } from '../lib/fonts';
 import { useFonts } from '../lib/useFonts';
 import { asset } from '../lib/assets';
 import { beatFrames, clamp, easeInOut, easeOutExpo, pop, progress } from '../lib/timing';
 import { BrowserFrame, Cursor, PhoneFrame } from '../components/Devices';
-
-const focus = z.object({ x: z.number().min(0).max(1), y: z.number().min(0).max(1), zoom: z.number().min(1).max(4) });
-
-export const saasPromoSchema = z.object({
-  name: z.string().max(20),
-  logo: z.string().optional(),
-  url: z.string().max(40),
-  /** Three short hook lines; the word in `hookEmphasis` gets the accent swipe. */
-  hook: z.array(z.string().max(12)).length(3),
-  hookEmphasis: z.string().max(10),
-  desktop: z.string(),
-  mobile: z.string().optional(),
-  chips: z.array(z.string().max(14)).max(4),
-  features: z
-    .array(
-      z.object({
-        kicker: z.string().max(16),
-        title: z.string().max(16),
-        device: z.enum(['desktop', 'mobile']),
-        focus,
-      }),
-    )
-    .length(3),
-  stats: z.array(z.object({ value: z.number(), suffix: z.string().max(6), label: z.string().max(14) })).length(3),
-  cta: z.string().max(14),
-  bpm: z.number().min(90).max(160),
-  music: z.string().optional(),
-  palette: z.object({ bg: zColor(), ink: zColor(), accent: zColor(), accent2: zColor(), panel: zColor() }),
-});
-
-export type SaaSPromoProps = z.infer<typeof saasPromoSchema>;
 
 const BEATS = { hook: 8, reveal: 6, feature: 5, stats: 5, cta: 6 };
 export const saasPromoBeats = BEATS.hook + BEATS.reveal + BEATS.feature * 3 + BEATS.stats + BEATS.cta;

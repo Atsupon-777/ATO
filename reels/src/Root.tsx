@@ -1,11 +1,12 @@
 import React from 'react';
 import { Composition } from 'remotion';
 import { FPS, beatFrames } from './lib/timing';
-import { ProductShine, productShineBeats, productShineSchema } from './templates/ProductShine';
+import { ProductShine, productShineBeats } from './templates/ProductShine';
+import { productShineSchema, saasPromoSchema, talkCaptionsSchema, type TalkCaptionsProps } from './schemas';
 import productWatch from '../props/product-watch.json';
-import { SaaSPromo, saasPromoBeats, saasPromoSchema } from './templates/SaaSPromo';
+import { SaaSPromo, saasPromoBeats } from './templates/SaaSPromo';
 import saasAto from '../props/saas-ato.json';
-import { TalkCaptions, talkCaptionsDuration, talkCaptionsSchema, TalkCaptionsProps } from './templates/TalkCaptions';
+import { TalkCaptions, talkCaptionsDuration } from './templates/TalkCaptions';
 import talkAto from '../props/talk-ato.json';
 
 export const RemotionRoot: React.FC = () => (
@@ -18,9 +19,9 @@ export const RemotionRoot: React.FC = () => (
       fps={FPS}
       width={1080}
       height={1920}
-      durationInFrames={Math.round(productShineBeats * beatFrames(productWatch.bpm))}
+      durationInFrames={Math.round(productShineBeats(productWatch) * beatFrames(productWatch.bpm))}
       calculateMetadata={({ props }) => ({
-        durationInFrames: Math.round(productShineBeats * beatFrames(props.bpm)),
+        durationInFrames: Math.round(productShineBeats(props) * beatFrames(props.bpm)),
       })}
     />
     <Composition

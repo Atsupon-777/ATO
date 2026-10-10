@@ -7,9 +7,10 @@
     "strict": true,
     "skipLibCheck": true,
     "resolveJsonModule": true,
+    "allowImportingTsExtensions": true,
     "esModuleInterop": true,
     "noEmit": true,
     "lib": ["DOM", "ES2022"]
   },
-  "include": ["src", "remotion.config.ts"]
+  "include": ["src", "server", "remotion.config.ts"]
 }

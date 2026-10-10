@@ -1,53 +1,11 @@
 import React, { useMemo } from 'react';
-import { z } from 'zod';
-import { zColor } from '@remotion/zod-types';
+import type { TalkCaptionsProps } from '../schemas';
 import { AbsoluteFill, OffthreadVideo, Sequence, useCurrentFrame, useVideoConfig } from 'remotion';
 import { fonts } from '../lib/fonts';
 import { useFonts } from '../lib/useFonts';
 import { asset } from '../lib/assets';
 import { pop, progress } from '../lib/timing';
 import { editDuration, keepSegments, paginate, placeWords } from '../lib/edit';
-
-export const talkCaptionsSchema = z.object({
-  video: z.string(),
-  sourceDuration: z.number().positive(),
-  /** cover: crop to 9:16 around focusX. fit-blur: whole frame over a blurred fill (for 16:9 sources). */
-  layout: z.enum(['cover', 'fit-blur']),
-  focusX: z.number().min(0).max(1),
-  /** Word-level transcript, e.g. from ElevenLabs Scribe (`words` with start/end in seconds). */
-  words: z.array(z.object({ text: z.string(), start: z.number(), end: z.number() })),
-  cutSilence: z.object({ enabled: z.boolean(), minGap: z.number().min(0.1).max(2), pad: z.number().min(0).max(0.5) }),
-  fillers: z.array(z.string()),
-  captions: z.object({
-    x: z.number().min(0).max(1),
-    y: z.number().min(0).max(1),
-    fontSize: z.number().min(40).max(160),
-    maxChars: z.number().min(6).max(40),
-    color: zColor(),
-    highlight: zColor(),
-    stroke: zColor(),
-    box: z.boolean(),
-    uppercase: z.boolean(),
-  }),
-  /** Per-caption edits from the editor: move, rewrite or delete one caption page. */
-  overrides: z
-    .array(
-      z.object({
-        page: z.number().int().min(0),
-        hidden: z.boolean().optional(),
-        text: z.string().optional(),
-        x: z.number().min(0).max(1).optional(),
-        y: z.number().min(0).max(1).optional(),
-      }),
-    )
-    .default([]),
-  emphasis: z.array(z.string()),
-  title: z.string().max(30).optional(),
-  titleY: z.number().min(0).max(1),
-  accent: zColor(),
-});
-
-export type TalkCaptionsProps = z.infer<typeof talkCaptionsSchema>;
 
 export const talkCaptionsDuration = (p: TalkCaptionsProps, fps: number) => {
   const segs = keepSegments(p.words, { ...p.cutSilence, fillers: p.fillers, sourceDuration: p.sourceDuration });

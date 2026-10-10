@@ -1,10 +1,10 @@
 import React from 'react';
-import { z } from 'zod';
-import { zColor } from '@remotion/zod-types';
+import type { ProductShineProps } from '../schemas';
 import {
   AbsoluteFill,
   Audio,
   Img,
+  OffthreadVideo,
   Sequence,
   interpolate,
   useCurrentFrame,
@@ -17,41 +17,10 @@ import { beatFrames, clamp, easeInOut, easeOutExpo, pop, progress } from '../lib
 import { Dust, Grain, LightLeak, Vignette } from '../components/Film';
 import { Glint, Reflection, ShinyProduct } from '../components/Shine';
 
-const point = z.object({ x: z.number().min(0).max(1), y: z.number().min(0).max(1) });
-
-export const productShineSchema = z.object({
-  brand: z.string().max(16),
-  productName: z.string().max(24),
-  tagline: z.string().max(22),
-  /** The original photo, used for macro detail shots. */
-  photo: z.string(),
-  /** Transparent PNG of the product, trimmed to its bounds. */
-  cutout: z.string(),
-  /** Cut-out width / height, so layout does not need to load the image first. */
-  cutoutAspect: z.number().positive(),
-  /** Points on the cut-out (0–1) where metal or glass should catch a glint. */
-  glints: z.array(point).max(4),
-  details: z
-    .array(
-      point.extend({
-        zoom: z.number().min(1).max(4),
-        kicker: z.string().max(24),
-        title: z.string().max(14),
-      }),
-    )
-    .length(3),
-  cta: z.string().max(16),
-  handle: z.string().max(30),
-  bpm: z.number().min(80).max(160),
-  music: z.string().optional(),
-  palette: z.object({ accent: zColor(), glow: zColor(), base: zColor() }),
-});
-
-export type ProductShineProps = z.infer<typeof productShineSchema>;
-
-/** Scene lengths in beats. Total 28 beats = 14 s at 120 BPM. */
-const BEATS = { open: 4, hero: 8, detail: 3, end: 7 };
-export const productShineBeats = BEATS.open + BEATS.hero + BEATS.detail * 3 + BEATS.end;
+/** Scene lengths in beats. Total 28 beats = 14 s at 120 BPM, plus 8 beats when an AI motion clip is given. */
+const BEATS = { open: 4, hero: 8, motion: 8, detail: 3, end: 7 };
+export const productShineBeats = (p: { clip?: string } | object) =>
+  BEATS.open + BEATS.hero + ("clip" in p && p.clip ? BEATS.motion : 0) + BEATS.detail * 3 + BEATS.end;
 
 export const ProductShine: React.FC<ProductShineProps> = (p) => {
   useFonts(p);
@@ -59,7 +28,8 @@ export const ProductShine: React.FC<ProductShineProps> = (p) => {
   const f = (beats: number) => Math.round(beats * b);
   const tOpen = 0;
   const tHero = f(BEATS.open);
-  const tDetail = tHero + f(BEATS.hero);
+  const tMotion = tHero + f(BEATS.hero);
+  const tDetail = tMotion + (p.clip ? f(BEATS.motion) : 0);
   const tEnd = tDetail + f(BEATS.detail * 3);
   const frame = useCurrentFrame();
 
@@ -74,6 +44,11 @@ export const ProductShine: React.FC<ProductShineProps> = (p) => {
       <Sequence from={tHero} durationInFrames={tDetail - tHero}>
         <Hero {...p} />
       </Sequence>
+      {p.clip ? (
+        <Sequence from={tMotion} durationInFrames={tDetail - tMotion}>
+          <Motion {...p} />
+        </Sequence>
+      ) : null}
       {p.details.map((d, i) => (
         <Sequence key={i} from={tDetail + f(BEATS.detail) * i} durationInFrames={f(BEATS.detail)}>
           <Detail {...p} detail={d} index={i} />
@@ -82,7 +57,7 @@ export const ProductShine: React.FC<ProductShineProps> = (p) => {
       <Sequence from={tEnd}>
         <EndCard {...p} />
       </Sequence>
-      <LightLeak t={Math.max(leak(tHero), leak(tEnd))} color={hexToRgb(p.palette.glow)} />
+      <LightLeak t={Math.max(leak(tHero), leak(tEnd), p.clip ? leak(tMotion) : 0)} color={hexToRgb(p.palette.glow)} />
       <Vignette strength={0.6} />
       <Grain opacity={0.07} />
       {p.music ? <Audio src={asset(p.music)} /> : null}
@@ -246,6 +221,41 @@ const Hero: React.FC<ProductShineProps> = (p) => {
         <div style={{ fontFamily: fonts.serif, fontWeight: 500, fontSize: 78, color: '#F6EFE3', marginTop: 18 }}>
           {p.productName}
         </div>
+      </div>
+    </AbsoluteFill>
+  );
+};
+
+/** The AI motion clip, graded to match the rest of the reel, with the tagline over it. */
+const Motion: React.FC<ProductShineProps> = (p) => {
+  const frame = useCurrentFrame();
+  const { durationInFrames } = useVideoConfig();
+  const push = interpolate(frame, [0, durationInFrames], [1.0, 1.08], clamp);
+  const textT = progress(frame, 10, 28);
+  const out = progress(frame, durationInFrames - 10, durationInFrames);
+  return (
+    <AbsoluteFill style={{ background: p.palette.base, overflow: 'hidden' }}>
+      <AbsoluteFill style={{ transform: `scale(${push})`, filter: 'contrast(1.06) saturate(1.05)' }}>
+        <OffthreadVideo src={asset(p.clip!)} muted style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+      </AbsoluteFill>
+      <AbsoluteFill style={{ background: 'linear-gradient(180deg, rgba(0,0,0,0.55) 0%, rgba(0,0,0,0) 30%, rgba(0,0,0,0) 70%, rgba(0,0,0,0.6) 100%)' }} />
+      <div
+        style={{
+          position: 'absolute',
+          top: 200,
+          width: '100%',
+          textAlign: 'center',
+          fontFamily: fonts.minchoJP,
+          fontWeight: 800,
+          fontSize: 76,
+          letterSpacing: '0.12em',
+          color: '#FBF6EC',
+          opacity: textT * (1 - out),
+          transform: `translateY(${(1 - textT) * 24}px)`,
+          textShadow: '0 4px 30px rgba(0,0,0,0.6)',
+        }}
+      >
+        {p.tagline}
       </div>
     </AbsoluteFill>
   );

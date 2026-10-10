@@ -1,0 +1,139 @@
+import { GoogleGenAI } from '@google/genai';
+import { readFile, writeFile } from 'node:fs/promises';
+import path from 'node:path';
+import { models, prices, requireKey, videoFamily } from './config.ts';
+import type { Usage } from './usage.ts';
+
+let client: GoogleGenAI | null = null;
+const ai = () => (client ??= new GoogleGenAI({ apiKey: requireKey() }));
+
+const mimeOf = (file: string) => {
+  const ext = path.extname(file).toLowerCase();
+  return ext === '.png' ? 'image/png' : ext === '.webp' ? 'image/webp' : 'image/jpeg';
+};
+
+const inlineImage = async (file: string) => ({
+  inlineData: { mimeType: mimeOf(file), data: (await readFile(file)).toString('base64') },
+});
+
+/**
+ * Asks the text model a question about one or more images and returns JSON that matches `jsonSchema`.
+ * The caller validates the result with zod; this only asks for the shape.
+ */
+export async function askJson(opts: {
+  images: string[];
+  prompt: string;
+  jsonSchema: unknown;
+  usage: Usage;
+  step: string;
+}): Promise<unknown> {
+  const parts = [...(await Promise.all(opts.images.map(inlineImage))), { text: opts.prompt }];
+  const res = await ai().models.generateContent({
+    model: models.text,
+    contents: [{ role: 'user', parts }],
+    config: { responseMimeType: 'application/json', responseJsonSchema: opts.jsonSchema, temperature: 0.6 },
+  });
+  const u = res.usageMetadata;
+  const inTok = u?.promptTokenCount ?? 0;
+  const outTok = (u?.candidatesTokenCount ?? 0) + (u?.thoughtsTokenCount ?? 0);
+  opts.usage.add({
+    step: opts.step,
+    model: models.text,
+    units: `${inTok} in / ${outTok} out tokens`,
+    usd: (inTok * prices.text.input + outTok * prices.text.output) / 1e6,
+  });
+  const text = res.text;
+  if (!text) throw new Error(`${opts.step}: empty response from ${models.text}`);
+  return JSON.parse(text);
+}
+
+/** Edits a photo with Nano Banana and writes the first returned image to `out`. */
+export async function editImage(opts: {
+  input: string[];
+  prompt: string;
+  out: string;
+  aspectRatio?: string;
+  imageSize?: '1K' | '2K' | '4K';
+  usage: Usage;
+  step: string;
+}): Promise<string> {
+  const size = opts.imageSize ?? '2K';
+  const parts = [...(await Promise.all(opts.input.map(inlineImage))), { text: opts.prompt }];
+  const res = await ai().models.generateContent({
+    model: models.image,
+    contents: [{ role: 'user', parts }],
+    config: {
+      responseModalities: ['IMAGE'],
+      imageConfig: { aspectRatio: opts.aspectRatio ?? '9:16', imageSize: size },
+    },
+  });
+  const img = res.candidates?.[0]?.content?.parts?.find((p) => p.inlineData?.data)?.inlineData;
+  if (!img?.data) {
+    const reason = res.candidates?.[0]?.finishReason ?? res.promptFeedback?.blockReason ?? 'no image returned';
+    throw new Error(`${opts.step}: ${models.image} returned no image (${reason})`);
+  }
+  await writeFile(opts.out, Buffer.from(img.data, 'base64'));
+  opts.usage.add({ step: opts.step, model: models.image, units: `1 image ${size}`, usd: prices.image[size] ?? prices.image['2K'] });
+  return opts.out;
+}
+
+/** Image-to-video with Veo. Polls until done and downloads the MP4 to `out`. */
+export async function imageToVideo(opts: {
+  image: string;
+  prompt: string;
+  out: string;
+  seconds?: 4 | 6 | 8;
+  resolution?: '720p' | '1080p';
+  negativePrompt?: string;
+  usage: Usage;
+  step: string;
+  pollMs?: number;
+}): Promise<string> {
+  const seconds = opts.seconds ?? 8;
+  // Veo only allows 1080p for 8-second clips.
+  const resolution = seconds === 8 ? (opts.resolution ?? '1080p') : '720p';
+  let op = await ai().models.generateVideos({
+    model: models.video,
+    prompt: opts.prompt,
+    image: { imageBytes: (await readFile(opts.image)).toString('base64'), mimeType: mimeOf(opts.image) },
+    config: {
+      aspectRatio: '9:16',
+      durationSeconds: seconds,
+      resolution,
+      generateAudio: false,
+      personGeneration: 'allow_adult',
+      negativePrompt:
+        opts.negativePrompt ??
+        'warped logo, changing text, deformed product, extra parts, morphing, flicker, low quality, watermark',
+    },
+  });
+  const started = Date.now();
+  while (!op.done) {
+    if (Date.now() - started > 10 * 60_000) throw new Error(`${opts.step}: Veo did not finish within 10 minutes`);
+    await new Promise((r) => setTimeout(r, opts.pollMs ?? 10_000));
+    op = await ai().operations.getVideosOperation({ operation: op });
+  }
+  if (op.error) throw new Error(`${opts.step}: Veo failed: ${JSON.stringify(op.error)}`);
+  const video = op.response?.generatedVideos?.[0]?.video;
+  if (!video) {
+    const why = op.response?.raiMediaFilteredReasons?.join('; ') || 'no video returned';
+    throw new Error(`${opts.step}: ${why}`);
+  }
+  await ai().files.download({ file: video, downloadPath: opts.out });
+  const family = videoFamily(models.video);
+  opts.usage.add({
+    step: opts.step,
+    model: models.video,
+    units: `${seconds}s ${resolution}, no audio`,
+    usd: seconds * (prices.video[family]?.[resolution] ?? 0.1),
+  });
+  return opts.out;
+}
+
+/** Lists the models this key can use, to confirm the configured ids exist. */
+export async function listModels() {
+  const names: string[] = [];
+  const pager = await ai().models.list();
+  for await (const m of pager) if (m.name) names.push(m.name.replace(/^models\//, ''));
+  return names;
+}

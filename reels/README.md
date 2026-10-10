@@ -31,10 +31,34 @@ Sample props live in `props/`; sample media in `public/samples/`.
 one caption without touching the transcript. The edit logic (`src/lib/edit.ts`) is pure and can run on the server
 or in the browser to show the same cut list the render will use.
 
-## Pipeline (next steps)
+## Automatic product reels (`server/`)
 
-1. Cut-out: BiRefNet (`rembg -m birefnet-general-lite`) produced `public/samples/watch-cutout.png`.
-2. Product imagery and motion: Gemini image editing and Veo / Kling image-to-video, called from the server.
-   The cut-out is composited on top so logos and text stay exact.
-3. Transcription: ElevenLabs Scribe v2 → `words` for `TalkCaptions`.
-4. Rendering at scale: Remotion Lambda (or a render worker). Companies with 4+ people need a Remotion company license.
+One command turns a product photo into a finished reel:
+
+```bash
+pip install "rembg[cpu]"                 # local BiRefNet cut-out, no API cost
+export GEMINI_API_KEY=...                # Google AI Studio key on a paid tier (needed for Veo; paid-tier data is not used for training)
+node server/cli.ts models                # checks the configured model ids are available to this key
+node server/cli.ts product --photo watch.jpg --brand ATO --name "ÉCLAT DE TEMPS" \
+  --facts "18K rose gold case, sapphire crystal" --style luxury --video
+```
+
+Steps, each recorded with its cost in `public/jobs/<id>/usage.json`:
+
+1. **Cut-out**: BiRefNet runs locally (`server/cutout.py`) and trims the product to its bounds.
+2. **Studio shot**: Nano Banana (`gemini-nano-banana-2.1`) re-lights the original photo in one of four styles
+   (`luxury`, `clean`, `cosmetic`, `natural`) with an instruction to keep the product, logo and text unchanged.
+3. **Plan and copy**: Gemini reads the photo, studio shot and cut-out and returns JSON (tagline, three detail
+   close-ups, glint points, a motion prompt). Copy may only use the facts passed with `--facts`.
+4. **Motion clip** (`--video`): Veo 3.1 Fast animates the studio shot (8 s, 9:16, 1080p, no audio). With `--on-skin`
+   it first generates a model applying the product, for cosmetics.
+5. **Render**: the result is validated against `productShineSchema` and rendered with `ProductShine`.
+
+Models are set in `server/config.ts` and can be overridden with `REELS_TEXT_MODEL`, `REELS_IMAGE_MODEL` and
+`REELS_VIDEO_MODEL`. Inside a sandbox whose outbound traffic goes through a proxy, also set `NODE_USE_ENV_PROXY=1`.
+
+## Still to do
+
+- Transcription in the server (ElevenLabs Scribe v2 → `words` for `TalkCaptions`).
+- A job API and queue so the web app can submit photos and show progress.
+- Rendering at scale: Remotion Lambda (or a render worker). Companies with 4+ people need a Remotion company license.
