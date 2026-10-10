@@ -1,7 +1,7 @@
 // Photo → product reel, end to end:
 // cut-out (local BiRefNet) → studio shot (Nano Banana) → plan and copy (Gemini, JSON) →
 // optional motion clip (Veo) → ProductShine props, validated → render.
-import { copyFile, mkdir, writeFile } from 'node:fs/promises';
+import { access, copyFile, mkdir, readFile, writeFile } from 'node:fs/promises';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { z } from 'zod';
@@ -89,8 +89,11 @@ export async function buildProductReel(brief: ProductBrief) {
   console.log('1/5 cut-out');
   const cut = await cutout(original, path.join(dir, 'cutout.png'), usage);
 
+  // Re-running a job reuses the studio shot, plan and clip already paid for.
+  const exists = (f: string) => access(f).then(() => true, () => false);
   console.log('2/5 studio shot');
-  const studio = await editImage({
+  const studioFile = path.join(dir, 'studio.png');
+  const studio = (await exists(studioFile)) ? studioFile : await editImage({
     input: [original],
     out: path.join(dir, 'studio.png'),
     prompt: [
@@ -104,7 +107,8 @@ export async function buildProductReel(brief: ProductBrief) {
   });
 
   console.log('3/5 plan and copy');
-  const raw = await askJson({
+  const planFile = path.join(dir, 'plan.json');
+  const raw = (await exists(planFile)) ? JSON.parse(await readFile(planFile, 'utf8')) : await askJson({
     images: [original, studio, cut.file],
     jsonSchema: z.toJSONSchema(planSchema),
     usage,
@@ -117,6 +121,7 @@ export async function buildProductReel(brief: ProductBrief) {
     ].join('\n'),
   });
   const plan = planSchema.parse(raw);
+  await writeFile(planFile, JSON.stringify(plan, null, 2));
 
   let clip: string | undefined;
   if (brief.video) {
@@ -137,7 +142,7 @@ export async function buildProductReel(brief: ProductBrief) {
     }
     console.log('4/5 motion clip (Veo)');
     clip = rel('clip.mp4');
-    await imageToVideo({
+    if (!(await exists(path.join(dir, 'clip.mp4')))) await imageToVideo({
       image: source,
       out: path.join(dir, 'clip.mp4'),
       prompt: `${plan.motionPrompt} The product keeps its exact shape, logo and text throughout.`,
