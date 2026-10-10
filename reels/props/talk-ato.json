@@ -1,0 +1,327 @@
+{
+ "video": "samples/talk.mp4",
+ "sourceDuration": 24.37,
+ "layout": "fit-blur",
+ "focusX": 0.5,
+ "words": [
+  {
+   "text": "What",
+   "start": 0.42,
+   "end": 0.52
+  },
+  {
+   "text": "does",
+   "start": 0.56,
+   "end": 0.68
+  },
+  {
+   "text": "ATO",
+   "start": 0.74,
+   "end": 1.02
+  },
+  {
+   "text": "actually",
+   "start": 1.1,
+   "end": 1.36
+  },
+  {
+   "text": "do?",
+   "start": 1.5,
+   "end": 1.74
+  },
+  {
+   "text": "Four",
+   "start": 2.14,
+   "end": 2.3
+  },
+  {
+   "text": "things.",
+   "start": 2.4,
+   "end": 2.74
+  },
+  {
+   "text": "One,",
+   "start": 3.66,
+   "end": 3.9
+  },
+  {
+   "text": "ad",
+   "start": 4.32,
+   "end": 4.46
+  },
+  {
+   "text": "videos.",
+   "start": 4.52,
+   "end": 4.94
+  },
+  {
+   "text": "Story-driven",
+   "start": 5.28,
+   "end": 5.88
+  },
+  {
+   "text": "commercials",
+   "start": 5.96,
+   "end": 6.42
+  },
+  {
+   "text": "that",
+   "start": 6.52,
+   "end": 6.62
+  },
+  {
+   "text": "people",
+   "start": 6.66,
+   "end": 6.96
+  },
+  {
+   "text": "actually",
+   "start": 7.04,
+   "end": 7.32
+  },
+  {
+   "text": "wanna",
+   "start": 7.46,
+   "end": 7.7
+  },
+  {
+   "text": "watch.",
+   "start": 7.74,
+   "end": 7.98
+  },
+  {
+   "text": "Two,",
+   "start": 8.66,
+   "end": 8.92
+  },
+  {
+   "text": "our",
+   "start": 9.28,
+   "end": 9.46
+  },
+  {
+   "text": "app.",
+   "start": 9.56,
+   "end": 9.76
+  },
+  {
+   "text": "One",
+   "start": 10.42,
+   "end": 10.56
+  },
+  {
+   "text": "photo,",
+   "start": 10.66,
+   "end": 11.02
+  },
+  {
+   "text": "three",
+   "start": 11.28,
+   "end": 11.46
+  },
+  {
+   "text": "seconds,",
+   "start": 11.58,
+   "end": 11.96
+  },
+  {
+   "text": "and",
+   "start": 12.38,
+   "end": 12.5
+  },
+  {
+   "text": "you",
+   "start": 12.54,
+   "end": 12.64
+  },
+  {
+   "text": "get",
+   "start": 12.68,
+   "end": 12.88
+  },
+  {
+   "text": "pro-level",
+   "start": 12.92,
+   "end": 13.42
+  },
+  {
+   "text": "short",
+   "start": 13.54,
+   "end": 13.74
+  },
+  {
+   "text": "videos",
+   "start": 13.84,
+   "end": 14.3
+  },
+  {
+   "text": "in",
+   "start": 14.56,
+   "end": 14.72
+  },
+  {
+   "text": "bulk.",
+   "start": 14.82,
+   "end": 15.14
+  },
+  {
+   "text": "Everything",
+   "start": 15.6,
+   "end": 15.92
+  },
+  {
+   "text": "behind",
+   "start": 15.96,
+   "end": 16.28
+  },
+  {
+   "text": "a",
+   "start": 16.34,
+   "end": 16.36
+  },
+  {
+   "text": "hundred",
+   "start": 16.4,
+   "end": 16.66
+  },
+  {
+   "text": "million",
+   "start": 16.74,
+   "end": 16.98
+  },
+  {
+   "text": "views,",
+   "start": 17.1,
+   "end": 17.52
+  },
+  {
+   "text": "three",
+   "start": 17.74,
+   "end": 17.88
+  },
+  {
+   "text": "point",
+   "start": 17.98,
+   "end": 18.2
+  },
+  {
+   "text": "eight",
+   "start": 18.26,
+   "end": 18.4
+  },
+  {
+   "text": "million",
+   "start": 18.48,
+   "end": 18.74
+  },
+  {
+   "text": "followers,",
+   "start": 18.86,
+   "end": 19.32
+  },
+  {
+   "text": "and",
+   "start": 19.6,
+   "end": 19.74
+  },
+  {
+   "text": "thirty",
+   "start": 19.82,
+   "end": 20.0
+  },
+  {
+   "text": "million",
+   "start": 20.1,
+   "end": 20.36
+  },
+  {
+   "text": "monthly",
+   "start": 20.44,
+   "end": 20.76
+  },
+  {
+   "text": "reach",
+   "start": 20.84,
+   "end": 21.16
+  },
+  {
+   "text": "packed",
+   "start": 21.46,
+   "end": 21.66
+  },
+  {
+   "text": "into",
+   "start": 21.72,
+   "end": 21.94
+  },
+  {
+   "text": "one",
+   "start": 22.02,
+   "end": 22.12
+  },
+  {
+   "text": "app",
+   "start": 22.22,
+   "end": 22.42
+  },
+  {
+   "text": "for",
+   "start": 22.86,
+   "end": 22.96
+  },
+  {
+   "text": "a",
+   "start": 23.02,
+   "end": 23.06
+  },
+  {
+   "text": "low",
+   "start": 23.12,
+   "end": 23.32
+  },
+  {
+   "text": "monthly",
+   "start": 23.38,
+   "end": 23.68
+  },
+  {
+   "text": "price",
+   "start": 23.76,
+   "end": 24.08
+  }
+ ],
+ "cutSilence": {
+  "enabled": true,
+  "minGap": 0.3,
+  "pad": 0.08
+ },
+ "fillers": [
+  "um",
+  "uh",
+  "えー",
+  "えっと",
+  "あの",
+  "まあ"
+ ],
+ "captions": {
+  "x": 0.5,
+  "y": 0.72,
+  "fontSize": 92,
+  "maxChars": 18,
+  "color": "#FFFFFF",
+  "highlight": "#FFD23F",
+  "stroke": "#000000",
+  "box": false,
+  "uppercase": true
+ },
+ "emphasis": [
+  "ATO",
+  "hundred million",
+  "three point eight million",
+  "thirty million"
+ ],
+ "title": "ATOって何してる会社？",
+ "titleY": 0.12,
+ "accent": "#FFD23F",
+ "overrides": []
+}
