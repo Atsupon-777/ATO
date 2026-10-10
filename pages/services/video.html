@@ -1,0 +1,35 @@
+{% extends "services/_service.html" %}
+{% import "partials/macros.html" as m with context %}
+{% block meta %}
+{% if lang == 'en' %}
+<title>Video production | ATO Digital Marketing</title>
+<meta name="description" content="Promotional videos for your business. Send us your photos and we turn them into high-quality videos built to earn real engagement. Start with a free consultation.">
+<meta property="og:title" content="Video production | ATO Digital Marketing">
+<meta property="og:description" content="Send photos. Get a high-quality promo video built for engagement.">
+{% else %}
+<title>動画制作｜ATO Digital Marketing</title>
+<meta name="description" content="宣伝用の動画を制作します。写真を送っていただければ、高品質で、エンゲージメントもしっかり取れる動画に仕上げます。まずは無料相談から。">
+<meta property="og:title" content="動画制作｜ATO Digital Marketing">
+<meta property="og:description" content="写真を送るだけで、高品質でエンゲージメントの取れる宣伝動画に。">
+{% endif %}
+{% endblock %}
+{% block ld_name %}{{ 'Video production' if lang == 'en' else '動画制作' }}{% endblock %}
+{% block ld_desc %}{{ 'Promotional videos made from your photos: high quality and built for engagement.' if lang == 'en' else '宣伝用の動画を制作。写真を送っていただければ、高品質でエンゲージメントの取れる動画に仕上げます。' }}{% endblock %}
+{% block ld_type %}Video production{% endblock %}
+{% block svc_hud %}01 VIDEO{% endblock %}
+{% block crumb %}<span class="ja">動画制作</span><span class="en">Video production</span>{% endblock %}
+{% block svc_no %}01{% endblock %}
+{% block svc_kicker %}VIDEO PRODUCTION{% endblock %}
+{% block svc_title %}<span class="ja" data-split>動画制作</span><span class="en" data-split>Video production</span>{% endblock %}
+{% block svc_lede %}<span class="ja">写真を送るだけで、“見られる”宣伝動画に。</span><span class="en">Send photos. Get an ad people actually watch.</span>{% endblock %}
+{% block svc_body %}
+<p class="svc-body ja">宣伝用の動画を制作します。写真を送っていただければ、高品質で、エンゲージメントもしっかり取れる動画に仕上げます。</p>
+<p class="svc-body en">We produce promotional videos for your business. Send us your photos, and we turn them into high-quality videos built to earn real engagement.</p>
+{% endblock %}
+{% block svc_media %}{{ m.vplayer('/static/media/biz-explainer.mp4','/static/media/biz-explainer.jpg','wide',True,'ATOの事業紹介動画','ATO business explainer video','制作事例：ATOの事業紹介動画（ナレーション・字幕つき）','Our work: ATO’s business explainer (narration and Japanese subtitles)','WORK') }}{% endblock %}
+{% block pt_title %}<span class="ja" data-split>写真から、届く動画へ。</span><span class="en" data-split>From your photos to a video that lands.</span>{% endblock %}
+{% block points %}
+<li data-reveal><span class="pt-no">01</span><h3><span class="ja">写真を送るだけ</span><span class="en">Just send photos</span></h3><p class="ja">写真を送っていただければ、そこから宣伝用の動画をつくります。</p><p class="en">Send us your photos and we build the promotional video from them.</p></li>
+<li data-reveal><span class="pt-no">02</span><h3><span class="ja">高品質な仕上がり</span><span class="en">High-quality finish</span></h3><p class="ja">宣伝にそのまま使える、高品質な動画に仕上げます。</p><p class="en">A polished video you can put straight to work in your promotion.</p></li>
+<li data-reveal><span class="pt-no">03</span><h3><span class="ja">エンゲージメントが取れる</span><span class="en">Built for engagement</span></h3><p class="ja">見てもらい、反応が返ってくることを考えた構成でつくります。</p><p class="en">Structured to be watched and to get a response.</p></li>
+{% endblock %}

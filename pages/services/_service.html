@@ -1,0 +1,58 @@
+{% extends "base.html" %}
+{% import 'partials/macros.html' as m with context %}
+{#- Shared layout for the four service pages. Each page fills the blocks below. -#}
+{% block bodyclass %}page-inner page-service svc-{{ slug }}{% endblock %}
+{% block hudfirst %}{% block svc_hud %}SERVICE{% endblock %}{% endblock %}
+{% block jsonld %}
+<script type="application/ld+json">{"@context":"https://schema.org","@graph":[{"@type":"Service","@id":"{{ canonical }}#service","name":"{% block ld_name %}{% endblock %}","description":"{% block ld_desc %}{% endblock %}","serviceType":"{% block ld_type %}{% endblock %}","url":"{{ canonical }}","inLanguage":"{{ 'en' if lang == 'en' else 'ja' }}","areaServed":"Worldwide","availableLanguage":["ja","en"],"provider":{"@type":"Organization","@id":"https://ato-sns.com/#org","name":"ATO Digital Marketing","url":"https://ato-sns.com/","logo":"https://ato-sns.com/static/brand/ato-logo.png"}},{"@type":"BreadcrumbList","itemListElement":[{"@type":"ListItem","position":1,"name":"{{ 'Home' if lang == 'en' else 'ホーム' }}","item":"https://ato-sns.com{{ P or '/' }}"},{"@type":"ListItem","position":2,"name":"{{ 'Services' if lang == 'en' else '4つの事業' }}","item":"https://ato-sns.com{{ P or '' }}/#services"},{"@type":"ListItem","position":3,"name":"{{ self.ld_name() }}","item":"{{ canonical }}"}]}]}</script>
+{% endblock %}
+{% block main %}
+<section class="sub-hero svc-hero" id="top" aria-labelledby="svcH1" data-hud="{{ self.svc_hud() }}">
+  <div class="wrap svc-hero-grid">
+    <div class="svc-hero-copy">
+      <nav class="crumbs mono" aria-label="Breadcrumb"><a href="{{ P or '/' }}"><span class="ja">ホーム</span><span class="en">Home</span></a><i aria-hidden="true">/</i><a href="{{ P or '' }}/#services"><span class="ja">4つの事業</span><span class="en">Services</span></a><i aria-hidden="true">/</i><span aria-current="page">{% block crumb %}{% endblock %}</span></nav>
+      <p class="svc-no" aria-hidden="true">{% block svc_no %}{% endblock %}</p>
+      <p class="kicker">{% block svc_kicker %}{% endblock %}</p>
+      <h1 class="sub-title svc-title" id="svcH1">{% block svc_title %}{% endblock %}</h1>
+      <p class="svc-lede">{% block svc_lede %}{% endblock %}</p>
+      {% block svc_body %}{% endblock %}
+      <div class="ctas">
+        <a class="btn btn-gold" href="https://lin.ee/qmngoTF" target="_blank" rel="noopener"><span class="line-dot" aria-hidden="true"></span><span class="ja">LINEで相談する</span><span class="en">Chat on LINE</span><span class="arr" aria-hidden="true"><i>→</i><i>→</i></span></a>
+        <a class="btn btn-ghost" href="{{ P or '' }}/#contact"><span class="ja">フォームで相談する</span><span class="en">Send us a message</span></a>
+      </div>
+    </div>
+    <div class="svc-hero-media" data-reveal>
+      {% block svc_media %}{% endblock %}
+    </div>
+  </div>
+</section>
+
+<section class="points light" aria-labelledby="ptTitle" data-hud="{% block pt_hud %}WHAT YOU GET{% endblock %}" data-tone="light">
+  <div class="wrap">
+    <div class="sec-head" data-reveal>
+      <p class="kicker"><span class="k-no">02</span>{% block pt_kicker %}WHAT YOU GET{% endblock %}</p>
+      <h2 id="ptTitle">{% block pt_title %}{% endblock %}</h2>
+      {% block pt_intro %}{% endblock %}
+    </div>
+    <ol class="pts{% block pts_class %}{% endblock %}">
+      {% block points %}{% endblock %}
+    </ol>
+    {% block pt_extra %}{% endblock %}
+  </div>
+</section>
+
+{#- then the other three services, so people can keep browsing -#}
+<section class="more wrap" aria-labelledby="moreTitle" data-hud="OTHER SERVICES">
+  <div class="sec-head" data-reveal>
+    <p class="kicker"><span class="k-no">03</span>OTHER SERVICES</p>
+    <h2 id="moreTitle"><span class="ja" data-split>ほかの事業</span><span class="en" data-split>Our other services</span></h2>
+    <p class="d ja">ほかの3つの事業も、あわせてご覧ください。</p>
+    <p class="d en">Take a look at our other three services too.</p>
+  </div>
+  {{ m.tiles(skip=slug) }}
+</section>
+
+{{ m.process('04', 'flow') }}
+
+{{ m.endcard('05') }}
+{% endblock %}

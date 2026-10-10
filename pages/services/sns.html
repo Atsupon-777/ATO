@@ -1,0 +1,75 @@
+{% extends "services/_service.html" %}
+{% import "partials/macros.html" as m with context %}
+{% block meta %}
+{% if lang == 'en' %}
+<title>Social media support | ATO Digital Marketing</title>
+<meta name="description" content="From setting up your account to how to shoot and edit your videos, all the way to analytics: ATO supports every part of your social media. Instagram, TikTok, YouTube Shorts, Threads and X.">
+<meta property="og:title" content="Social media support | ATO Digital Marketing">
+<meta property="og:description" content="From the blueprint to the numbers: account setup, shooting and editing, analytics.">
+{% else %}
+<title>SNS全般サポート｜ATO Digital Marketing</title>
+<meta name="description" content="アカウントの初期設計から、動画の作り方・編集の仕方、そして分析まで。SNSのすべてをまるごとサポートします。Instagram・TikTok・YouTube Shorts・Threads・Xに対応。">
+<meta property="og:title" content="SNS全般サポート｜ATO Digital Marketing">
+<meta property="og:description" content="初期設計から、動画の作り方・編集の仕方、分析まで。">
+{% endif %}
+{% endblock %}
+{% block ld_name %}{{ 'Social media support' if lang == 'en' else 'SNS全般サポート' }}{% endblock %}
+{% block ld_desc %}{{ 'From account setup to how to shoot and edit videos, all the way to analytics.' if lang == 'en' else 'アカウントの初期設計から、動画の作り方・編集の仕方、分析まで。' }}{% endblock %}
+{% block ld_type %}Social media marketing{% endblock %}
+{% block svc_hud %}04 SOCIAL{% endblock %}
+{% block crumb %}<span class="ja">SNS全般サポート</span><span class="en">Social media support</span>{% endblock %}
+{% block svc_no %}04{% endblock %}
+{% block svc_kicker %}FULL SOCIAL SUPPORT{% endblock %}
+{% block svc_title %}<span class="ja" data-split>SNS全般サポート</span><span class="en" data-split>Social media support</span>{% endblock %}
+{% block svc_lede %}<span class="ja">設計図から、数字まで。</span><span class="en">From the blueprint to the numbers.</span>{% endblock %}
+{% block svc_body %}
+<p class="svc-body ja">アカウントの初期設計から、動画の作り方・編集の仕方、そして分析まで。SNSのすべてを、まるごとサポートします。</p>
+<p class="svc-body en">From setting up your account to how to shoot and edit your videos, all the way to analytics. We support every part of your social media.</p>
+{% endblock %}
+{% block svc_media %}
+<figure class="mon mon-sns" data-mon>
+  <div class="mon-screen" aria-hidden="true">
+    <div class="grid-bp"></div><div class="grid-an"></div>
+    <svg class="bp" viewBox="0 0 100 100">
+      <path class="bp-cn" d="M42 30 H58 M26 42 V56 M74 42 V56 M42 68 H58" pathLength="100"/>
+      <rect class="bp-bx b1" x="10" y="18" width="32" height="24" rx="1.5" pathLength="100"/>
+      <rect class="bp-bx b2" x="58" y="18" width="32" height="24" rx="1.5" pathLength="100"/>
+      <rect class="bp-bx b3" x="10" y="56" width="32" height="24" rx="1.5" pathLength="100"/>
+      <rect class="bp-bx b4" x="58" y="56" width="32" height="24" rx="1.5" pathLength="100"/>
+      <g class="bp-tx">
+        <text x="13" y="24">01</text><text x="61" y="24">02</text><text x="13" y="62">03</text><text x="61" y="62">04</text>
+        <text class="big ja" x="13" y="35">初期設計</text><text class="big en" x="13" y="35">SETUP</text>
+        <text class="big ja" x="61" y="35">コンセプト</text><text class="big en" x="61" y="35">CONCEPT</text>
+        <text class="big ja" x="13" y="73">撮り方</text><text class="big en" x="13" y="73">SHOOT</text>
+        <text class="big ja" x="61" y="73">編集</text><text class="big en" x="61" y="73">EDIT</text>
+      </g>
+    </svg>
+    <svg class="an" viewBox="0 0 100 100">
+      <path class="an-ax" d="M10 82 H92"/>
+      <rect class="bar k1" x="14" y="62" width="8" height="20"/>
+      <rect class="bar k2" x="27" y="56" width="8" height="26"/>
+      <rect class="bar k3" x="40" y="58" width="8" height="24"/>
+      <rect class="bar k4" x="53" y="46" width="8" height="36"/>
+      <rect class="bar k5" x="66" y="38" width="8" height="44"/>
+      <rect class="bar k6" x="79" y="26" width="8" height="56"/>
+      <path class="an-ln" d="M18 56 L31 50 L44 52 L57 38 L70 30 L83 16" pathLength="100"/>
+      <circle class="an-hd" cx="83" cy="16" r="1.8"/>
+      <g class="an-tx"><text x="15" y="88">W1</text><text x="28" y="88">W2</text><text x="41" y="88">W3</text><text x="54" y="88">W4</text><text x="67" y="88">W5</text><text x="80" y="88">W6</text></g>
+    </svg>
+    <div class="kpis mono"><span class="kp1">REACH <i>↑</i></span><span class="kp2">SAVES <i>↑</i></span><span class="kp3">FOLLOWERS <i>↑</i></span></div>
+    <ol class="steps"><li class="st1"><span class="ja">設計</span><span class="en">Setup</span></li><li class="st2"><span class="ja">作り方</span><span class="en">Shoot</span></li><li class="st3"><span class="ja">編集</span><span class="en">Edit</span></li><li class="st4"><span class="ja">分析</span><span class="en">Analyze</span></li></ol>
+    <div class="mon-hud mono"><span>CH.04 · SOCIAL</span><span class="hud-rec">REC</span></div>
+  </div>
+  <div class="mon-tl mono" aria-hidden="true"><span class="tl-play"></span><span class="tl-tc">00:00:07:12</span><span class="tl-bar"><i class="k1"></i><i class="k2"></i><i class="k3"></i><i class="ph-head"></i></span></div>
+  <figcaption><span class="ja">アカウントの設計図が、分析のグラフに変わっていくアニメーション（イメージ）。</span><span class="en">Animation (illustrative): an account blueprint turns into an analytics chart.</span></figcaption>
+</figure>
+{% endblock %}
+{% block pt_title %}<span class="ja" data-split>SNSのすべてを、まるごと。</span><span class="en" data-split>Every part of your social media.</span>{% endblock %}
+{% block points %}
+<li data-reveal><span class="pt-no">01</span><h3><span class="ja">初期設計</span><span class="en">Account setup</span></h3><p class="ja">アカウントの初期設計から、一緒につくります。</p><p class="en">We set up your account with you from the very start.</p></li>
+<li data-reveal><span class="pt-no">02</span><h3><span class="ja">動画の作り方・編集の仕方</span><span class="en">Shooting and editing</span></h3><p class="ja">動画の作り方と、編集の仕方をお伝えします。</p><p class="en">We show you how to shoot your videos and how to edit them.</p></li>
+<li data-reveal><span class="pt-no">03</span><h3><span class="ja">分析</span><span class="en">Analytics</span></h3><p class="ja">数字を見て、次の一手につなげます。</p><p class="en">We read the numbers and turn them into the next move.</p></li>
+{% endblock %}
+{% block pt_extra %}
+<div class="platforms" data-reveal><p class="mono"><span class="ja">対応するSNS</span><span class="en">Platforms</span></p><div class="chips"><span>Instagram</span><span>TikTok</span><span>YouTube Shorts</span><span>Threads</span><span>X</span></div></div>
+{% endblock %}

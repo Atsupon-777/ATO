@@ -1,0 +1,278 @@
+{% extends "base.html" %}
+{% import 'partials/macros.html' as m with context %}
+{% block meta %}
+{% if lang == 'en' %}
+<title>ATO Digital Marketing | Bring Japan to the World</title>
+<meta name="description" content="ATO takes Japanese businesses to the world: promo video production, e-commerce growth from optimization to affiliates, ATO Reels (your photo becomes a pro-edited short video in three seconds), and full social media support. 100M+ total views. Start with a free consultation.">
+<meta property="og:title" content="ATO Digital Marketing | Bring Japan to the World">
+<meta property="og:description" content="Take Japan's best to the world. Video production, e-commerce growth, ATO Reels and full social media support. Free consultation.">
+{% else %}
+<title>ATO Digital Marketing｜日本の魅力を世界に届けるデジタルマーケティング</title>
+<meta name="description" content="日本の文化や商品・サービスを世界に届けるデジタルマーケティングのATO。宣伝用の動画制作、ECの最適化からアフィリエイトまでのECサイト強化、写真が3秒で一流の動画になるSNSショート動画自動生成ツール、SNS全般のサポートまで。総再生1億回超の実績。まずは無料相談から。">
+<meta property="og:title" content="ATO Digital Marketing｜日本の魅力を世界に届けるデジタルマーケティング">
+<meta property="og:description" content="日本の魅力を、世界へ。動画制作・ECサイト強化・ショート動画の自動生成ツール・SNS全般のサポートで、海外のお客さまに届く仕組みをつくります。無料相談受付中。">
+{% endif %}
+{% endblock %}
+{% block jsonld %}
+<script type="application/ld+json">{"@context":"https://schema.org","@graph":[{"@type":"WebSite","@id":"https://ato-sns.com/#website","name":"ATO Digital Marketing","alternateName":["ATO","ATO デジタルマーケティング"],"url":"https://ato-sns.com/","inLanguage":["ja","en"]},{"@type":"Organization","@id":"https://ato-sns.com/#org","name":"ATO Digital Marketing","alternateName":"ATO","url":"https://ato-sns.com/","logo":"https://ato-sns.com/static/brand/ato-logo.png","description":"日本の文化や商品・サービスを世界に届けるデジタルマーケティング。動画制作、ECサイト強化、SNSショート動画自動生成ツール（ATO Reels）、SNS全般のサポート。","sameAs":["https://www.instagram.com/atsupon_jp/","https://note.com/atsushi_vision"],"hasOfferCatalog":{"@type":"OfferCatalog","name":"ATO services","itemListElement":[{"@type":"Offer","itemOffered":{"@type":"Service","name":"動画制作","url":"https://ato-sns.com/services/video"}},{"@type":"Offer","itemOffered":{"@type":"Service","name":"ECサイト強化","url":"https://ato-sns.com/services/ec"}},{"@type":"Offer","itemOffered":{"@type":"Service","name":"ATO Reels（SNSショート動画自動生成ツール）","url":"https://ato-sns.com/services/reels"}},{"@type":"Offer","itemOffered":{"@type":"Service","name":"SNS全般サポート","url":"https://ato-sns.com/services/sns"}}]}}]}</script>
+{% endblock %}
+{% block bodyclass %}page-home{% endblock %}
+{% block main %}
+
+<!-- ============ 01 TITLE SEQUENCE ============ -->
+<section class="hero" id="top" aria-labelledby="heroTitle" data-hud="TITLE">
+  <div class="hero-bg" aria-hidden="true"></div>
+  <div class="dial" id="dial" aria-hidden="true">
+    <div class="dial-in">
+      <div class="dial-glow"></div>
+      <canvas class="globe-cv" id="heroGlobe"></canvas>
+      <div class="dial-ring ticks"></div>
+      <div class="dial-ring major"></div>
+      <svg class="dial-sweep" viewBox="0 0 100 100"><circle cx="50" cy="50" r="49.4" pathLength="100"></circle></svg>
+      <div class="dial-pulse"></div>
+      <span class="dial-lab l-n">N 35.68°</span>
+    </div>
+  </div>
+  <div class="hero-in" id="heroIn">
+    <p class="slate mono"><span class="rec" aria-hidden="true"></span><span>REC</span><span class="tc" id="recTc" aria-hidden="true">00:00:00:00</span><span class="sl-sep" aria-hidden="true">/</span><span>ATO —</span><span class="slot" aria-hidden="true"><span class="slot-in"><b>SHOWREEL 2026</b><b>VIDEO</b><b>E-COMMERCE</b><b>ATO REELS</b><b>SOCIAL</b><b>SHOWREEL 2026</b></span></span><span class="sr">SHOWREEL 2026</span></p>
+    <h1 class="hero-title" id="heroTitle">
+      <span class="ja"><span class="ht-1" data-split>日本の魅力を、</span><span class="ht-2" data-split><em>世界</em>へ。</span></span>
+      <span class="en"><span class="ht-1" data-split>Take Japan’s best</span><span class="ht-2" data-split>to the <em>world.</em></span></span>
+    </h1>
+    <p class="lead ja">動画制作、ECサイト強化、ショート動画の自動生成ツール、そしてSNSのすべて。<strong>海外のお客さまに届く仕組みを、一緒につくります。</strong></p>
+    <p class="lead en">Video production, e-commerce growth, an instant short-video tool and full social media support. <strong>Everything it takes to reach customers around the world, built with you.</strong></p>
+    <div class="ctas">
+      <a class="btn btn-gold" href="#contact"><span class="ja">無料で相談する</span><span class="en">Talk to us for free</span><span class="arr" aria-hidden="true"><i>→</i><i>→</i></span></a>
+      <a class="btn btn-ghost" href="#services"><span class="ja">4つの事業を見る</span><span class="en">See our four services</span></a>
+    </div>
+  </div>
+  <div class="hero-foot" id="heroFoot">
+    <dl class="stats">
+      <div class="stat">
+        <dt><span class="ja">総再生回数</span><span class="en">Total views</span></dt>
+        <dd><b class="ja" data-count="10000" data-suf="万回" data-final="1億回超">1億回超</b><b class="en" data-count="100" data-suf="M" data-final="100M+">100M+</b></dd>
+      </div>
+      <div class="stat">
+        <dt><span class="ja">総フォロワー</span><span class="en">Total followers</span></dt>
+        <dd><b class="ja" data-count="380" data-suf="万人" data-final="380万人超">380万人超</b><b class="en" data-count="3.8" data-dec="1" data-suf="M" data-final="3.8M+">3.8M+</b></dd>
+      </div>
+      <div class="stat">
+        <dt><span class="ja">最高月間リーチ</span><span class="en">Peak monthly reach</span></dt>
+        <dd><b class="ja" data-count="3000" data-suf="万人" data-final="3,000万人">3,000万人</b><b class="en" data-count="30" data-suf="M" data-final="30M">30M</b></dd>
+      </div>
+    </dl>
+    <p class="fine"><span class="ja">※ATOが支援・運営してきたアカウントの合計です。</span><span class="en">Totals across the accounts ATO has supported and run.</span></p>
+    <a class="scroll-cue mono" href="#story"><span>SCROLL</span><i aria-hidden="true"></i></a>
+  </div>
+  <div class="letterbox" aria-hidden="true"><i class="lb-t"></i><i class="lb-b"></i><i class="lb-line"></i><span class="lb-cap">ATO — SHOWREEL 2026</span></div>
+</section>
+
+<!-- ============ 02 FROM JAPAN (voice-over) ============ -->
+<section class="statement wrap" id="story" aria-label="From Japan" data-hud="FROM JAPAN">
+  <p class="kicker"><span class="k-no">02</span>FROM JAPAN</p>
+  <p class="fill ja">言葉にしなくても伝わる、おもてなしの心。いまも受け継がれる、侍の美学。世界中が夢中になるアニメ。何百年とつづく職人の技。この国には、世界が憧れる物語があふれています。<br><span class="key">あとは、世界に届けるだけ。</span></p>
+  <p class="fill en">Omotenashi, hospitality that needs no words. The samurai spirit, still alive today. Anime the whole world is hooked on. Craft passed down for centuries. This country is full of stories the world longs for.<br><span class="key">All that’s left is to share them.</span></p>
+</section>
+
+<!-- ============ 03 REACH (the globe plays by itself) ============ -->
+<section class="reach" id="reach" aria-labelledby="beat1" data-hud="REACH">
+  <div class="stage" id="stage">
+    <div class="globe-box" aria-hidden="true"><canvas class="globe-cv" id="reachGlobe"></canvas></div>
+    <div class="st-top">
+      <p class="hudline mono"><span class="hl-no">03</span><span class="live" aria-hidden="true"></span><span id="hudTxt">TOKYO, JAPAN</span><span class="hl-tc" id="reachTc" aria-hidden="true">SC 01/05</span></p>
+      <div class="beats" id="beats" aria-live="off">
+        <div class="beat on" id="beat1">
+          <h2><span class="ja"><span class="nb">日本には、</span><span class="nb">世界がまだ知らない</span><span class="nb">一流がある。</span></span><span class="en">Japan is full of world-class things the world has yet to find.</span></h2>
+        </div>
+        <div class="beat">
+          <h2><span class="ja"><span class="nb">伝え方ひとつで、</span><span class="nb">一本の動画は</span><span class="nb">海をこえる。</span></span><span class="en">Tell it the right way, and one video crosses the ocean.</span></h2>
+        </div>
+        <div class="beat">
+          <h2><span class="ja"><span class="nb">海の向こうで、</span><span class="nb">誰かが手を止める。</span></span><span class="en">Across the ocean, someone stops scrolling.</span></h2>
+          <p><span class="ja">いいね、コメント、シェア、保存。世界中から反応が返ってくる。</span><span class="en">Likes, comments, shares and saves come back from all over the world.</span></p>
+        </div>
+        <div class="beat">
+          <h2><span class="ja"><span class="nb">気に入ったものは、</span><span class="nb">海をこえて届く。</span></span><span class="en">What they love ships across the ocean.</span></h2>
+          <p><span class="ja">多言語のWebサイトと越境ECで、見つけてもらうところから買ってもらうところまでをつなぐ。</span><span class="en">Multilingual websites and cross-border e-commerce connect being found with being bought.</span></p>
+        </div>
+        <div class="beat">
+          <h2><span class="ja"><span class="nb">そして今度は、</span><span class="nb">世界が日本に</span><span class="nb">やってくる。</span></span><span class="en">Then the world comes to Japan.</span></h2>
+          <p><span class="ja">保存した動画を手に、あなたのお店を目指して。</span><span class="en">Saved video in hand, headed for your door.</span></p>
+        </div>
+      </div>
+    </div>
+    <div class="st-foot">
+      <div class="count on" id="count">
+        <span class="lbl mono"><span class="ja">総再生回数</span><span class="en">Total views</span></span>
+        <b class="big"><span class="ja" data-count="10000" data-suf="万回" data-final="1億回超" data-manual>1億回超</span><span class="en" data-count="100" data-suf="M" data-final="100M+" data-manual>100M+</span></b>
+        <span class="count-sub">
+          <span><b><span class="ja">380万人超</span><span class="en">3.8M+</span></b><span class="ja">総フォロワー</span><span class="en">total followers</span></span>
+          <span><b><span class="ja">3,000万人</span><span class="en">30M</span></b><span class="ja">最高月間リーチ</span><span class="en">peak monthly reach</span></span>
+        </span>
+      </div>
+      <div class="beat-nav">
+        <span class="bn-count mono" aria-hidden="true"><b id="bnNow">1</b> / 5</span>
+        <div class="beat-ticks" id="beatTicks">
+          <button type="button" class="on" data-scene="0" aria-label="Scene 1"><i></i></button><button type="button" data-scene="1" aria-label="Scene 2"><i></i></button><button type="button" data-scene="2" aria-label="Scene 3"><i></i></button><button type="button" data-scene="3" aria-label="Scene 4"><i></i></button><button type="button" data-scene="4" aria-label="Scene 5"><i></i></button>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ============ 04 FOUR SERVICES ============ -->
+<section class="svc4 light" id="services" aria-labelledby="svcTitle" data-hud="4 SERVICES" data-tone="light">
+  <div class="wrap">
+    <div class="svc4-head" data-reveal>
+      <p class="kicker"><span class="k-no">04</span>WHAT WE DO</p>
+      <h2 class="svc4-title" id="svcTitle"><span class="ja"><b>4</b>つの事業</span><span class="en"><b>Four</b> services</span></h2>
+      <p class="d ja">動画をつくる。売り場を強くする。写真を3秒で動画にする。SNSをまるごと支える。気になる事業から、くわしく見てください。</p>
+      <p class="d en">We make the video. We strengthen the store. We turn a photo into a reel in three seconds. We back your whole social presence. Pick one to see it in detail.</p>
+    </div>
+    {{ m.tiles() }}
+  </div>
+</section>
+
+<!-- ============ 05 WHY ATO ============ -->
+<section class="why-sec wrap" id="why" aria-labelledby="whyTitle" data-hud="WHY ATO">
+  <div class="sec-head" data-reveal>
+    <p class="kicker"><span class="k-no">05</span>WHY ATO</p>
+    <h2 id="whyTitle"><span class="ja" data-split>伸びるのには、理由がある。</span><span class="en" data-split>Growth has reasons.</span></h2>
+  </div>
+  <div class="why">
+    <article data-reveal>
+      <span class="w-no mono">01</span>
+      <span class="tag mono">EN ⇄ JA</span>
+      <h3><span class="ja">海外で「刺さる」がわかる</span><span class="en">We know what lands overseas</span></h3>
+      <p class="ja">これまでの支援・運営実績から、海外の視聴者が何で手を止め、何を保存するかを知っています。</p>
+      <p class="en">Our client work and the accounts we run have taught us what makes overseas viewers stop, watch and save.</p>
+    </article>
+    <article data-reveal>
+      <span class="w-no mono">02</span>
+      <span class="tag mono">STRUCTURE</span>
+      <h3><span class="ja">バズを「構造」で再現する</span><span class="en">Virality, rebuilt from structure</span></h3>
+      <p class="ja">伸びた動画をフック・展開・オチに分解し、再現できる型にしてから作ります。偶然に頼らないので、数字が安定します。</p>
+      <p class="en">We break winning videos into hook, build and payoff, then turn that into a repeatable format. Less luck, steadier numbers.</p>
+    </article>
+    <article data-reveal>
+      <span class="w-no mono">03</span>
+      <span class="tag mono">ONE-STOP</span>
+      <h3><span class="ja">戦略から運用まで、窓口はひとつ</span><span class="en">One team, start to finish</span></h3>
+      <p class="ja">戦略づくりから、動画・サイト・ECの制作、公開後の分析と改善まで。担当が変わらないので、話が早く、ぶれません。</p>
+      <p class="en">From strategy to video, website and store production, then analysis and improvement after launch. The same team throughout, so things move fast and stay consistent.</p>
+    </article>
+  </div>
+</section>
+
+<!-- ============ 06 PROCESS ============ -->
+{{ m.process('06') }}
+
+<!-- ============ 07 FOUNDER (teaser; the full story lives on /about) ============ -->
+<section class="teaser wrap" id="founder" aria-labelledby="founderTitle" data-hud="DIRECTOR">
+  <a class="teaser-card" href="{{ P }}/about" data-reveal>
+    <span class="teaser-img"><img src="/static/media/atsushi.jpg" alt="" width="900" height="1100" loading="lazy" decoding="async"></span>
+    <span class="teaser-copy">
+      <span class="kicker"><span class="k-no">07</span>DIRECTED BY</span>
+      <h2 id="founderTitle" class="teaser-name"><span class="ja">代表 岩村 篤</span><span class="en">Founder, Atsushi Iwamura</span></h2>
+      <span class="teaser-txt ja">ロンドンと京都で国際関係を学び、国連やJICAで世界と関わってきた視点と、ショート動画で積み上げてきた実績で、あなたの商品やサービスの価値を世界に届けます。</span>
+      <span class="teaser-txt en">International relations in London and Kyoto, experience at the UN and JICA, and a track record in short-form video, all put to work taking your products and services to the world.</span>
+      <span class="t-more mono"><span class="ja">代表紹介を見る</span><span class="en">About the founder</span><i aria-hidden="true">→</i></span>
+    </span>
+  </a>
+</section>
+
+<!-- ============ 08 FAQ ============ -->
+<section class="faq-sec light" id="faq" aria-labelledby="faqTitle" data-hud="FAQ" data-tone="light">
+  <div class="wrap">
+  <div class="sec-head" data-reveal>
+    <p class="kicker"><span class="k-no">08</span>FAQ</p>
+    <h2 id="faqTitle"><span class="ja" data-split>よくある質問</span><span class="en" data-split>Questions</span></h2>
+  </div>
+  <div class="faq">
+    <details>
+      <summary><span><span class="ja">英語が苦手でも大丈夫ですか？</span><span class="en">We don't speak English. Is that OK?</span></span><span class="pm" aria-hidden="true"></span></summary>
+      <div class="a"><p class="ja">大丈夫です。動画の英語台本や字幕から、サイトや商品ページの翻訳まで、こちらで用意します。</p><p class="en">Yes. We handle English scripts and subtitles, and translate your website and product pages too.</p></div>
+    </details>
+    <details>
+      <summary><span><span class="ja">無料相談のあと、契約しないといけませんか？</span><span class="en">Do we have to sign up after the free consultation?</span></span><span class="pm" aria-hidden="true"></span></summary>
+      <div class="a"><p class="ja">いいえ、まったく必要ありません！無料相談は、世界に挑戦しようとしている方を本気で応援したくてやっています。お伝えしたアイデアは、ぜひそのまま持ち帰って試してみてください。結果が出たら、報告してもらえると本当にうれしいです。本格的に進めたくなったら、そのときはいつでも声をかけてください。一緒に、世界に届く仕組みをつくっていきましょう！</p><p class="en">Not at all! We offer free consultations because we want to cheer on everyone taking their work to the world. Take the ideas home and try them right away. If you see results, we would love to hear about it. And whenever you want to go further, we are here. Let's build something the world will see, together!</p></div>
+    </details>
+    <details>
+      <summary><span><span class="ja">SNS以外もお願いできますか？</span><span class="en">Can you help with more than social media?</span></span><span class="pm" aria-hidden="true"></span></summary>
+      <div class="a"><p class="ja">はい、できます。多言語のWebサイト制作や越境ECの立ち上げ、海外展開の戦略づくりもお手伝いします。SNSと組み合わせると、見つけてもらうところから買ってもらうところまでを一本の流れにできます。</p><p class="en">Yes. We also build multilingual websites, launch cross-border online stores and help plan your overseas strategy. Paired with social media, it all becomes one path from being found to being bought.</p></div>
+    </details>
+    <details>
+      <summary><span><span class="ja">東京以外でも対応できますか？</span><span class="en">Do you work outside Tokyo?</span></span><span class="pm" aria-hidden="true"></span></summary>
+      <div class="a"><p class="ja">ご相談や打ち合わせは、オンラインで全国対応しています。撮影は場所と日程をご相談ください。</p><p class="en">Consultations and meetings are online, anywhere in Japan. For shoots, tell us the location and dates.</p></div>
+    </details>
+    <details>
+      <summary><span><span class="ja">どのSNSに対応していますか？</span><span class="en">Which platforms do you cover?</span></span><span class="pm" aria-hidden="true"></span></summary>
+      <div class="a"><div class="chips"><span>Instagram</span><span>TikTok</span><span>YouTube Shorts</span><span>Threads</span><span>X</span></div><p class="ja">ショート動画を軸に、プラットフォームごとの伸び方に合わせて運用します。</p><p class="en">Short-form video at the core, adapted to how each platform grows.</p></div>
+    </details>
+  </div>
+  </div>
+</section>
+
+<!-- ============ 09 END CARD ============ -->
+<section class="final" id="contact" aria-labelledby="finalTitle" data-hud="END CARD">
+  <div class="final-bars" aria-hidden="true"><i></i><i></i></div>
+  <div class="wrap final-in">
+    <div class="final-l" data-reveal>
+      <p class="kicker"><span class="k-no">09</span>END CARD — CONTACT</p>
+      <h2 id="finalTitle"><span class="ja"><span data-split>次は、</span><span data-split>あなたの番です。</span></span><span class="en" data-split>You’re next.</span></h2>
+      <p class="ja">まずは30分の無料相談から。動画・EC・SNS・海外展開のことなら、どんなことでもお気軽にどうぞ。お問い合わせだけでも大歓迎です。公式LINEか、フォームからご連絡ください。</p>
+      <p class="en">Start with a free 30-minute consultation. Video, e-commerce, social media or your plans overseas: ask us anything, even a quick question. Message us on LINE or use the form.</p>
+      <a class="btn btn-gold btn-line" href="https://lin.ee/qmngoTF" target="_blank" rel="noopener"><span class="line-dot" aria-hidden="true"></span><span class="ja">LINEで相談する（友だち追加）</span><span class="en">Chat with us on LINE</span><span class="arr" aria-hidden="true"><i>→</i><i>→</i></span></a>
+    </div>
+
+    <form class="form" id="applyForm" novalidate data-reveal>
+      <h3><span class="ja">フォームで問い合わせる</span><span class="en">Send us a message</span></h3>
+      <p class="sub-t"><span class="ja">内容を確認して、メールでご連絡します。</span><span class="en">We will reply by email.</span></p>
+      <div class="field">
+        <label for="f-name"><span class="ja">お名前</span><span class="en">Name</span><em>*</em></label>
+        <input id="f-name" name="name" type="text" autocomplete="name" required>
+      </div>
+      <div class="field-row">
+        <div class="field">
+          <label for="f-company"><span class="ja">会社名・屋号</span><span class="en">Company or business name</span><em>*</em></label>
+          <input id="f-company" name="company" type="text" autocomplete="organization" required>
+          <span class="hint-t"><span class="ja">個人の方は屋号かお名前でOKです。</span><span class="en">Working solo? Your business name or your name is fine.</span></span>
+        </div>
+        <div class="field">
+          <label for="f-dept"><span class="ja">所属部署</span><span class="en">Department</span><span class="opt ja">(任意)</span><span class="opt en">(optional)</span></label>
+          <input id="f-dept" name="department" type="text" autocomplete="organization-title">
+        </div>
+      </div>
+      <div class="field">
+        <label for="f-email"><span class="ja">メールアドレス</span><span class="en">Email</span><em>*</em></label>
+        <input id="f-email" name="email" type="email" autocomplete="email" required>
+      </div>
+      <div class="field">
+        <label for="f-account"><span class="ja">SNSアカウント・WebサイトのURL</span><span class="en">Your social account or website</span><span class="opt ja">(任意)</span><span class="opt en">(optional)</span></label>
+        <input id="f-account" name="account" type="text" placeholder="@your_account / https://">
+      </div>
+      <fieldset class="field">
+        <legend><span class="ja">ご相談したいこと(複数選べます)</span><span class="en">What can we help with? (choose any)</span><em>*</em></legend>
+        <div class="opts">
+          <label><input type="checkbox" id="f-type-video" name="type" value="動画制作"><span class="chip"><span class="ja">動画制作</span><span class="en">Video production</span></span></label>
+          <label><input type="checkbox" id="f-type-ec" name="type" value="ECサイト強化"><span class="chip"><span class="ja">ECサイト強化</span><span class="en">E-commerce growth</span></span></label>
+          <label><input type="checkbox" id="f-type-reels" name="type" value="ATO Reels（ショート動画自動生成ツール）"><span class="chip"><span class="ja">ATO Reels</span><span class="en">ATO Reels</span></span></label>
+          <label><input type="checkbox" id="f-type-sns" name="type" value="SNS全般サポート"><span class="chip"><span class="ja">SNS全般サポート</span><span class="en">Social media support</span></span></label>
+          <label><input type="checkbox" id="f-type-web" name="type" value="Webサイト制作"><span class="chip"><span class="ja">Webサイト制作</span><span class="en">Website</span></span></label>
+          <label><input type="checkbox" id="f-type-strategy" name="type" value="海外展開の戦略・コンサル"><span class="chip"><span class="ja">海外展開の戦略・コンサル</span><span class="en">Global strategy</span></span></label>
+          <label><input type="checkbox" id="f-type-collab" name="type" value="取材・コラボの相談"><span class="chip"><span class="ja">取材・コラボの相談</span><span class="en">Interview or collab</span></span></label>
+          <label><input type="checkbox" id="f-type-other" name="type" value="その他"><span class="chip"><span class="ja">その他</span><span class="en">Other</span></span></label>
+        </div>
+      </fieldset>
+      <div class="field">
+        <label for="f-msg"><span class="ja">ご相談内容</span><span class="en">What would you like help with?</span><span class="opt ja">(任意)</span><span class="opt en">(optional)</span></label>
+        <textarea id="f-msg" name="message"></textarea>
+      </div>
+      <input class="hp" type="checkbox" id="f-bot" name="botcheck" tabindex="-1" autocomplete="off" aria-hidden="true">
+      <button class="btn btn-gold" type="submit" id="submitBtn"><span class="ja">無料で相談する</span><span class="en">Send my message</span><span class="arr" aria-hidden="true"><i>→</i><i>→</i></span></button>
+      <div class="status" id="formStatus" role="status" hidden></div>
+      <p class="privacy"><span class="ja">いただいた情報は、ご連絡のためだけに使います。</span><span class="en">We only use your details to get back to you.</span></p>
+    </form>
+  </div>
+</section>
+{% endblock %}

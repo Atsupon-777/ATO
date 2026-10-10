@@ -1,0 +1,141 @@
+<!doctype html>
+{%- set EN = (lang == 'en') -%}
+<html lang="{{ 'en' if EN else 'ja' }}" data-lang="{{ 'en' if EN else 'ja' }}" data-page="{{ 'home' if page_path == '/' else 'inner' }}">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+{% block meta %}{% endblock %}
+<link rel="canonical" href="{{ canonical }}">
+<link rel="alternate" hreflang="ja" href="{{ url_ja }}">
+<link rel="alternate" hreflang="en" href="{{ url_en }}">
+<link rel="alternate" hreflang="x-default" href="{{ url_ja }}">
+<meta property="og:url" content="{{ canonical }}">
+<meta property="og:locale" content="{{ 'en_US' if EN else 'ja_JP' }}">
+<meta property="og:type" content="website">
+<meta property="og:site_name" content="ATO Digital Marketing">
+<meta property="og:image" content="https://ato-sns.com/static/media/og.jpg">
+<meta name="twitter:card" content="summary_large_image">
+{% block jsonld %}{% endblock %}
+<link rel="icon" href="/favicon.ico" sizes="any">
+<link rel="icon" type="image/png" sizes="48x48" href="/static/icons/favicon-48.png">
+<link rel="icon" type="image/png" sizes="192x192" href="/static/icons/icon-192.png">
+<link rel="apple-touch-icon" href="/static/icons/apple-touch-icon.png">
+<meta name="theme-color" content="#0D1118">
+<meta name="color-scheme" content="dark">
+
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<!-- fonts load without blocking the first frame; the opening letterbox covers the swap -->
+<link rel="stylesheet" id="gfont" href="https://fonts.googleapis.com/css2?family=Anton&amp;family=IBM+Plex+Mono:wght@500&amp;family=Instrument+Serif:ital@0;1&amp;family=Noto+Sans+JP:wght@500;700;900&amp;family=Plus+Jakarta+Sans:wght@500;600;700&amp;display=swap" media="print" onload="this.media='all'">
+<!-- Shippori Mincho is subset to the characters set in it (statement, scene captions, ledes); add any new ones to text= -->
+<link rel="stylesheet" id="gmincho" href="https://fonts.googleapis.com/css2?family=Shippori+Mincho:wght@600;800&amp;display=swap&amp;text=3%E2%80%99%E2%80%9C%E2%80%9D%E3%80%81%E3%80%82%E3%81%82%E3%81%84%E3%81%86%E3%81%88%E3%81%8A%E3%81%8B%E3%81%8C%E3%81%8F%E3%81%91%E3%81%93%E3%81%97%E3%81%99%E3%81%9D%E3%81%9F%E3%81%A0%E3%81%A3%E3%81%A4%E3%81%A5%E3%81%A6%E3%81%A7%E3%81%A8%E3%81%AA%E3%81%AB%E3%81%AE%E3%81%AF%E3%81%B2%E3%81%B5%E3%81%B8%E3%81%BE%E3%82%81%E3%82%82%E3%82%84%E3%82%89%E3%82%8A%E3%82%8B%E3%82%8C%E3%82%8F%E3%82%92%E3%82%A2%E3%83%8B%E3%83%A1%E4%B8%80%E4%B8%96%E4%B8%AD%E4%BA%BA%E4%BB%8A%E4%BC%9D%E4%BD%95%E4%BE%8D%E5%85%A5%E5%86%99%E5%8B%95%E5%8F%97%E5%90%91%E5%9B%B3%E5%9B%BD%E5%A0%B4%E5%A3%B2%E5%A4%A2%E5%AD%97%E5%AD%A6%E5%AE%A3%E5%B1%8A%E5%B9%B4%E5%BA%A6%E5%BF%83%E6%86%A7%E6%89%8B%E6%8A%80%E6%95%B0%E6%96%B9%E6%97%A5%E6%9C%AC%E6%AD%A2%E6%B0%97%E6%B5%81%E6%B5%B7%E7%89%A9%E7%94%BB%E7%95%8C%E7%99%BE%E7%9C%9F%E7%9F%A5%E7%A7%92%E7%B6%99%E7%BE%8E%E8%81%B7%E8%91%89%E8%A6%8B%E8%A8%80%E8%A8%88%E8%A8%AD%E8%AA%9E%E8%AA%B0%E9%80%81" media="print" onload="this.media='all'">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Noto+Sans+Tamil:wght@600&amp;text=%E0%AE%A4%E0%AE%AE%E0%AE%BF%E0%AE%B4%E0%AF%8D&amp;display=swap" media="print" onload="this.media='all'">
+<noscript><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Anton&amp;family=IBM+Plex+Mono:wght@500&amp;family=Instrument+Serif:ital@0;1&amp;family=Noto+Sans+JP:wght@500;700;900&amp;family=Plus+Jakarta+Sans:wght@500;600;700&amp;display=swap"><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Shippori+Mincho:wght@600;800&amp;display=swap&amp;text=3%E2%80%99%E2%80%9C%E2%80%9D%E3%80%81%E3%80%82%E3%81%82%E3%81%84%E3%81%86%E3%81%88%E3%81%8A%E3%81%8B%E3%81%8C%E3%81%8F%E3%81%91%E3%81%93%E3%81%97%E3%81%99%E3%81%9D%E3%81%9F%E3%81%A0%E3%81%A3%E3%81%A4%E3%81%A5%E3%81%A6%E3%81%A7%E3%81%A8%E3%81%AA%E3%81%AB%E3%81%AE%E3%81%AF%E3%81%B2%E3%81%B5%E3%81%B8%E3%81%BE%E3%82%81%E3%82%82%E3%82%84%E3%82%89%E3%82%8A%E3%82%8B%E3%82%8C%E3%82%8F%E3%82%92%E3%82%A2%E3%83%8B%E3%83%A1%E4%B8%80%E4%B8%96%E4%B8%AD%E4%BA%BA%E4%BB%8A%E4%BC%9D%E4%BD%95%E4%BE%8D%E5%85%A5%E5%86%99%E5%8B%95%E5%8F%97%E5%90%91%E5%9B%B3%E5%9B%BD%E5%A0%B4%E5%A3%B2%E5%A4%A2%E5%AD%97%E5%AD%A6%E5%AE%A3%E5%B1%8A%E5%B9%B4%E5%BA%A6%E5%BF%83%E6%86%A7%E6%89%8B%E6%8A%80%E6%95%B0%E6%96%B9%E6%97%A5%E6%9C%AC%E6%AD%A2%E6%B0%97%E6%B5%81%E6%B5%B7%E7%89%A9%E7%94%BB%E7%95%8C%E7%99%BE%E7%9C%9F%E7%9F%A5%E7%A7%92%E7%B6%99%E7%BE%8E%E8%81%B7%E8%91%89%E8%A6%8B%E8%A8%80%E8%A8%88%E8%A8%AD%E8%AA%9E%E8%AA%B0%E9%80%81"></noscript>
+<script>
+/* before first paint: every page opens at its very top (no restored scroll), unless the link names a section (#contact);
+   motion preference; the opening sequence only plays on the home page when it opens at the top */
+(function(h){
+  try{if('scrollRestoration' in history)history.scrollRestoration='manual';}catch(e){}
+  if(!location.hash)window.scrollTo(0,0);
+  var rm=!!(window.matchMedia&&window.matchMedia('(prefers-reduced-motion: reduce)').matches);
+  h.className+=rm?' js rm':' js anim';
+  if(rm||h.getAttribute('data-page')!=='home'||location.hash)h.className+=' skip-intro';
+  try{if(localStorage.getItem('ato-motion')==='off')h.className+=' paused';}catch(e){}
+})(document.documentElement);
+</script>
+<link rel="stylesheet" href="/static/showreel/site.css?v=20261010v3">
+<script defer src="/static/showreel/world.js?v=20261010v3"></script>
+<script defer src="/static/vendor/lenis.min.js?v=1.3.11"></script>
+<script defer src="/static/showreel/site.js?v=20261010v3"></script>
+</head>
+<body class="{% block bodyclass %}{% endblock %}">
+<a class="skip" href="#main"><span class="ja">本文へスキップ</span><span class="en">Skip to content</span></a>
+
+<!-- ============ NAV ============ -->
+<header class="nav" id="nav">
+  <div class="nav-in">
+    <a class="logo" href="{{ P or '/' }}"><span class="sr">ATO Digital Marketing <span class="ja">ホーム</span><span class="en">home</span></span>{% include 'partials/logo_lockup.svg' %}</a>
+    <nav class="nav-links" aria-label="Main">
+      <a href="{{ P }}/services/video"{% if page_path == '/services/video' %} aria-current="page"{% endif %}><span class="ja">動画制作</span><span class="en">Video</span></a>
+      <a href="{{ P }}/services/ec"{% if page_path == '/services/ec' %} aria-current="page"{% endif %}><span class="ja">ECサイト強化</span><span class="en">E-commerce</span></a>
+      <a href="{{ P }}/services/reels"{% if page_path == '/services/reels' %} aria-current="page"{% endif %}>ATO Reels</a>
+      <a href="{{ P }}/services/sns"{% if page_path == '/services/sns' %} aria-current="page"{% endif %}><span class="ja">SNSサポート</span><span class="en">Social</span></a>
+      <a href="{{ P }}/about"{% if page_path == '/about' %} aria-current="page"{% endif %}><span class="ja">代表紹介</span><span class="en">About</span></a>
+      <a href="{{ P or '' }}/#contact"><span class="ja">お問い合わせ</span><span class="en">Contact</span></a>
+    </nav>
+    <div class="nav-tools">
+      <button type="button" class="motion-btn" data-motion aria-pressed="false"><span class="mb-ic" aria-hidden="true"><i></i><i></i></span><span class="sr"><span class="ja">動きを止める</span><span class="en">Pause motion</span></span></button>
+      <div class="langs" role="group" aria-label="Language">
+        <a href="{{ href_ja }}" hreflang="ja" lang="ja"{% if not EN %} aria-current="true"{% endif %}>JA</a>
+        <a href="{{ href_en }}" hreflang="en" lang="en"{% if EN %} aria-current="true"{% endif %}>EN</a>
+      </div>
+      <a class="nav-line" href="https://lin.ee/qmngoTF" target="_blank" rel="noopener"><span class="line-dot" aria-hidden="true"></span>LINE</a>
+      <button type="button" class="menu-btn" id="menuBtn" aria-expanded="false" aria-controls="menu"><span class="sr"><span class="ja">メニュー</span><span class="en">Menu</span></span><span class="mi" aria-hidden="true"><i></i><i></i></span></button>
+    </div>
+  </div>
+</header>
+
+<!-- ============ MENU (phones and tablets) ============ -->
+<div class="menu" id="menu" hidden>
+  <div class="menu-in">
+    <p class="kicker mono"><span class="k-no">MENU</span><span class="ja">4つの事業</span><span class="en">Four services</span></p>
+    <ol class="menu-list">
+      <li><a href="{{ P }}/services/video"><span class="mono">01</span><b><span class="ja">動画制作</span><span class="en">Video production</span></b></a></li>
+      <li><a href="{{ P }}/services/ec"><span class="mono">02</span><b><span class="ja">ECサイト強化</span><span class="en">E-commerce growth</span></b></a></li>
+      <li><a href="{{ P }}/services/reels"><span class="mono">03</span><b>ATO Reels</b></a></li>
+      <li><a href="{{ P }}/services/sns"><span class="mono">04</span><b><span class="ja">SNS全般サポート</span><span class="en">Social media support</span></b></a></li>
+    </ol>
+    <ul class="menu-sub">
+      <li><a href="{{ P or '/' }}"><span class="ja">ホーム</span><span class="en">Home</span></a></li>
+      <li><a href="{{ P }}/about"><span class="ja">代表紹介</span><span class="en">About the founder</span></a></li>
+      <li><a href="{{ P or '' }}/#contact" data-close><span class="ja">お問い合わせ</span><span class="en">Contact</span></a></li>
+    </ul>
+    <div class="menu-foot">
+      <a class="btn btn-gold" href="https://lin.ee/qmngoTF" target="_blank" rel="noopener"><span class="line-dot" aria-hidden="true"></span><span class="ja">LINEで相談する</span><span class="en">Chat with us on LINE</span><span class="arr" aria-hidden="true"><i>→</i><i>→</i></span></a>
+      <button type="button" class="motion-txt" data-motion aria-pressed="false"><span class="ja">動きを止める</span><span class="en">Pause motion</span></button>
+    </div>
+  </div>
+</div>
+
+<main id="main">
+{% block main %}{% endblock %}
+</main>
+
+<footer class="foot" data-hud="CREDITS">
+  <div class="wrap foot-in">
+    <div class="foot-top">
+      <a class="foot-logo" href="{{ P or '/' }}"><span class="sr">ATO</span>{% include 'partials/logo_stacked.svg' %}</a>
+      <nav class="foot-nav" aria-label="Footer">
+        <p class="mono"><span class="ja">4つの事業</span><span class="en">Services</span></p>
+        <a href="{{ P }}/services/video"><span class="ja">動画制作</span><span class="en">Video production</span></a>
+        <a href="{{ P }}/services/ec"><span class="ja">ECサイト強化</span><span class="en">E-commerce growth</span></a>
+        <a href="{{ P }}/services/reels">ATO Reels</a>
+        <a href="{{ P }}/services/sns"><span class="ja">SNS全般サポート</span><span class="en">Social media support</span></a>
+      </nav>
+      <nav class="foot-nav" aria-label="ATO">
+        <p class="mono">ATO</p>
+        <a href="{{ P or '/' }}"><span class="ja">ホーム</span><span class="en">Home</span></a>
+        <a href="{{ P }}/about"><span class="ja">代表紹介</span><span class="en">About the founder</span></a>
+        <a href="{{ P or '' }}/#contact"><span class="ja">お問い合わせ</span><span class="en">Contact</span></a>
+        <a href="https://lin.ee/qmngoTF" target="_blank" rel="noopener"><span class="ja">公式LINE</span><span class="en">LINE</span></a>
+      </nav>
+    </div>
+    <div class="foot-row">
+      <span>© 2026 ATO — Japan to the World</span>
+      <nav class="foot-links" aria-label="SNS"><a href="https://www.instagram.com/atsupon_jp/" target="_blank" rel="noopener">Instagram</a><a href="https://lin.ee/qmngoTF" target="_blank" rel="noopener">LINE</a><a href="https://note.com/atsushi_vision" target="_blank" rel="noopener">note</a></nav>
+      <span>Tokyo, Japan</span>
+      <a class="to-top mono" href="#main">BACK TO TOP ↑</a>
+    </div>
+  </div>
+</footer>
+
+<!-- ============ HUD frame ============ -->
+<div class="hud-frame" aria-hidden="true">
+  <span class="br tl"></span><span class="br tr"></span><span class="br bl"></span><span class="br brr"></span>
+  <span class="lab l-top"><i class="rec-d"></i><span>TC</span><span id="hudTc">00:00:00:00</span></span>
+  <span class="lab l-sec"><b id="hudNo">01</b><span>/</span><span id="hudName">{% block hudfirst %}TITLE{% endblock %}</span></span>
+  <span class="rail"><i id="hudBar"></i></span>
+  <span class="lab l-tky" id="hudTky"><i></i><span>TOKYO</span><span class="geo">35.68°N 139.69°E</span><span id="hudClock">--:--:--</span><span>JST</span></span>
+</div>
+</body>
+</html>

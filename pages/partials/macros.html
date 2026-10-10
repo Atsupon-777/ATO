@@ -1,0 +1,114 @@
+{#- Shared building blocks. Import with: {% import 'partials/macros.html' as m with context %} -#}
+
+{#- The four services as numbered tiles: a picture on top, then number, name and one line.
+    `skip` leaves one out (each service page lists the other three). -#}
+{% macro tiles(skip=None, hx='h3') -%}
+<ol class="tiles{% if skip %} tiles-3{% endif %}" data-tiles>
+  {%- if skip != 'video' %}
+  <li><a class="tile" href="{{ P }}/services/video">
+    <span class="t-media" aria-hidden="true"><img src="/static/media/biz-explainer.jpg" alt="" width="1280" height="720" loading="lazy" decoding="async"></span>
+    <span class="t-body">
+      <span class="t-head"><span class="t-no">01</span><{{ hx }} class="t-name"><span class="ja">動画制作</span><span class="en">Video production</span></{{ hx }}></span>
+      <span class="t-line"><span class="ja">写真を送るだけで、高品質でエンゲージメントの取れる宣伝動画に。</span><span class="en">Send us photos. Get a high-quality promo video built for engagement.</span></span>
+      <span class="t-more mono"><span class="ja">詳しく見る</span><span class="en">See the service</span><i aria-hidden="true">→</i></span>
+    </span>
+  </a></li>
+  {%- endif %}
+  {%- if skip != 'ec' %}
+  <li><a class="tile" href="{{ P }}/services/ec">
+    <span class="t-media t-art" aria-hidden="true">{{ ec_art() }}</span>
+    <span class="t-body">
+      <span class="t-head"><span class="t-no">02</span><{{ hx }} class="t-name"><span class="ja">ECサイト<wbr>強化</span><span class="en">E-commerce growth</span></{{ hx }}></span>
+      <span class="t-line"><span class="ja">売れる売り場づくりから、越境EC・集客・アフィリエイトまで。</span><span class="en">From a store that sells to cross-border launch, traffic and affiliates.</span></span>
+      <span class="t-more mono"><span class="ja">詳しく見る</span><span class="en">See the service</span><i aria-hidden="true">→</i></span>
+    </span>
+  </a></li>
+  {%- endif %}
+  {%- if skip != 'reels' %}
+  <li><a class="tile" href="{{ P }}/services/reels">
+    <span class="t-media t-watch" aria-hidden="true"><img src="/static/media/reels-watch.jpg" alt="" width="720" height="1280" loading="lazy" decoding="async"></span>
+    <span class="t-body">
+      <span class="t-head"><span class="t-no">03</span><{{ hx }} class="t-name">ATO Reels<small><span class="ja">SNSショート動画 自動生成ツール</span><span class="en">Short-video generator for social</span></small></{{ hx }}></span>
+      <span class="t-line"><span class="ja">あなたの写真が3秒で、一流の編集を加えたショート動画に。</span><span class="en">Your photo becomes a pro-edited short video in three seconds.</span></span>
+      <span class="t-more mono"><span class="ja">詳しく見る</span><span class="en">See the service</span><i aria-hidden="true">→</i></span>
+    </span>
+  </a></li>
+  {%- endif %}
+  {%- if skip != 'sns' %}
+  <li><a class="tile" href="{{ P }}/services/sns">
+    <span class="t-media t-art" aria-hidden="true">{{ sns_art() }}</span>
+    <span class="t-body">
+      <span class="t-head"><span class="t-no">04</span><{{ hx }} class="t-name"><span class="ja">SNS全般<wbr>サポート</span><span class="en">Social media support</span></{{ hx }}></span>
+      <span class="t-line"><span class="ja">初期設計から、動画の作り方・編集の仕方、分析まで。</span><span class="en">From account setup to shooting, editing and analytics.</span></span>
+      <span class="t-more mono"><span class="ja">詳しく見る</span><span class="en">See the service</span><i aria-hidden="true">→</i></span>
+    </span>
+  </a></li>
+  {%- endif %}
+</ol>
+{%- endmacro %}
+
+{#- Still of the EC animation: a storefront, partners feeding it, sales rising. -#}
+{% macro ec_art() -%}
+<svg viewBox="0 0 160 90" preserveAspectRatio="xMidYMid meet"><path class="g1" d="M0 15H160M0 30H160M0 45H160M0 60H160M0 75H160M20 0V90M40 0V90M60 0V90M80 0V90M100 0V90M120 0V90M140 0V90"/>
+<rect class="bx" x="16" y="17" width="48" height="56" rx="3"/><path class="ln" d="M16 23H64"/><rect class="ph" x="21" y="27" width="38" height="20" rx="1.5"/><rect class="tx" x="21" y="51" width="26" height="2.6" rx="1.3"/><rect class="tx" x="21" y="56" width="18" height="2.6" rx="1.3"/><rect class="gd" x="21" y="62" width="38" height="6" rx="3"/>
+<path class="ds" d="M64 40 C74 40 76 24 86 24M64 50 C74 50 76 66 86 66"/><circle class="gs" cx="89" cy="24" r="4"/><circle class="gs" cx="89" cy="66" r="4"/><circle class="gd" cx="89" cy="24" r="1.4"/><circle class="gd" cx="89" cy="66" r="1.4"/>
+<path class="ln" d="M102 74H148"/><rect class="br" x="104" y="60" width="6" height="14"/><rect class="br" x="113" y="54" width="6" height="20"/><rect class="br" x="122" y="49" width="6" height="25"/><rect class="br" x="131" y="40" width="6" height="34"/><rect class="br hi" x="140" y="28" width="6" height="46"/><path class="cv" d="M107 55 L116 49 L125 44 L134 34 L143 22"/><circle class="gd" cx="143" cy="22" r="2"/></svg>
+{%- endmacro %}
+
+{#- Still of the SNS animation: the blueprint on the left, the chart it becomes on the right. -#}
+{% macro sns_art() -%}
+<svg viewBox="0 0 160 90" preserveAspectRatio="xMidYMid meet"><path class="g1" d="M0 15H160M0 30H160M0 45H160M0 60H160M0 75H160M20 0V90M40 0V90M60 0V90M80 0V90M100 0V90M120 0V90M140 0V90"/>
+<rect class="bx" x="14" y="18" width="24" height="20" rx="1.5"/><rect class="bx" x="44" y="18" width="24" height="20" rx="1.5"/><rect class="bx" x="14" y="46" width="24" height="20" rx="1.5"/><rect class="bx" x="44" y="46" width="24" height="20" rx="1.5"/><path class="ds" d="M38 28H44M26 38V46M56 38V46M38 56H44"/><rect class="tx" x="18" y="29" width="14" height="2.4" rx="1.2"/><rect class="tx" x="48" y="29" width="12" height="2.4" rx="1.2"/><rect class="tx" x="18" y="57" width="10" height="2.4" rx="1.2"/><rect class="tx" x="48" y="57" width="12" height="2.4" rx="1.2"/>
+<path class="ds" d="M72 42 H90"/><path class="gs" d="M86 38 L90 42 L86 46"/>
+<path class="ln" d="M98 74H150"/><rect class="br" x="100" y="58" width="7" height="16"/><rect class="br" x="110" y="52" width="7" height="22"/><rect class="br" x="120" y="54" width="7" height="20"/><rect class="br" x="130" y="42" width="7" height="32"/><rect class="br hi" x="140" y="26" width="7" height="48"/><path class="cv" d="M103 52 L113 46 L123 48 L133 35 L143.5 20"/><circle class="gd" cx="143.5" cy="20" r="2"/></svg>
+{%- endmacro %}
+
+{#- A video that plays muted and looped while it is on screen. shape: 'vert' (9:16) or 'wide' (16:9). -#}
+{% macro vplayer(src, poster, shape='vert', audio=False, label_ja='', label_en='', cap_ja='', cap_en='', tag='') -%}
+<figure class="vp vp-{{ shape }}" data-vp>
+  <div class="vp-frame">
+    <video muted loop playsinline preload="none" poster="{{ poster }}" data-src="{{ src }}"{% if audio %} data-audio="1"{% endif %} aria-label="{{ label_en if lang == 'en' else label_ja }}"></video>
+    {%- if audio %}
+    <button type="button" class="vp-sound mono" aria-pressed="false"><span class="vs-ic" aria-hidden="true"></span><span class="vs-off"><span class="ja">音声オン</span><span class="en">Sound on</span></span><span class="vs-on"><span class="ja">音声オフ</span><span class="en">Sound off</span></span></button>
+    {%- endif %}
+    {%- if tag %}<span class="vp-tag mono">{{ tag }}</span>{% endif %}
+  </div>
+  {%- if cap_ja %}<figcaption><span class="ja">{{ cap_ja }}</span><span class="en">{{ cap_en }}</span></figcaption>{% endif %}
+</figure>
+{%- endmacro %}
+
+{#- The five steps from first message to launch. -#}
+{% macro process(no='', id='flow') -%}
+<section class="flow-sec wrap" id="{{ id }}" aria-labelledby="{{ id }}Title" data-hud="PROCESS">
+  <div class="sec-head" data-reveal>
+    <p class="kicker">{% if no %}<span class="k-no">{{ no }}</span>{% endif %}PROCESS</p>
+    <h2 id="{{ id }}Title"><span class="ja" data-split>ご相談から運用開始まで</span><span class="en" data-split>From first message to launch</span></h2>
+  </div>
+  <ol class="flow">
+    <li data-reveal><span class="n mono">01</span><div><h3><span class="ja">お問い合わせ</span><span class="en">Get in touch</span></h3><p class="ja">公式LINEか、このサイトのフォームからどうぞ。</p><p class="en">Message us on LINE or use the form on this site.</p></div></li>
+    <li data-reveal><span class="n mono">02</span><div><h3><span class="ja">無料相談(30分)</span><span class="en">Free consultation</span></h3><p class="ja">オンラインで、今の課題とこれからの打ち手を一緒に整理します。</p><p class="en">A 30-minute online call to sort out where you are and what to do next.</p></div></li>
+    <li data-reveal><span class="n mono">03</span><div><h3><span class="ja">ご提案・お見積り</span><span class="en">Proposal</span></h3><p class="ja">目標とご予算に合わせたプランをご提案します。</p><p class="en">A plan and quote built around your goals and budget.</p></div></li>
+    <li data-reveal><span class="n mono">04</span><div><h3><span class="ja">ご契約</span><span class="en">Agreement</span></h3><p class="ja">内容にご納得いただいてからスタートします。</p><p class="en">We begin once everything is agreed.</p></div></li>
+    <li data-reveal><span class="n mono">05</span><div><h3><span class="ja">スタート</span><span class="en">Launch</span></h3><p class="ja">動画の制作やECサイトの強化、SNSのサポートを進めます。毎月の数字を見て改善します。</p><p class="en">We get to work on your videos, your online store or your social media, then improve from each month’s numbers.</p></div></li>
+  </ol>
+</section>
+{%- endmacro %}
+
+{#- End card for the inner pages: LINE first, then the form on the home page. -#}
+{% macro endcard(no='') -%}
+<section class="final final-short" id="cta" aria-labelledby="ctaTitle" data-hud="END CARD">
+  <div class="final-bars" aria-hidden="true"><i></i><i></i></div>
+  <div class="wrap final-in final-in-1">
+    <div class="final-l" data-reveal>
+      <p class="kicker">{% if no %}<span class="k-no">{{ no }}</span>{% endif %}END CARD — CONTACT</p>
+      <h2 id="ctaTitle"><span class="ja"><span data-split>まずは、</span><span data-split>無料相談から。</span></span><span class="en" data-split>Start with a free call.</span></h2>
+      <p class="ja">30分のオンライン相談で、今の課題とこれからの打ち手を一緒に整理します。お問い合わせだけでも大歓迎です。</p>
+      <p class="en">A 30-minute online call to sort out where you are and what to do next. Quick questions are welcome too.</p>
+      <div class="final-ctas">
+        <a class="btn btn-gold btn-line" href="https://lin.ee/qmngoTF" target="_blank" rel="noopener"><span class="line-dot" aria-hidden="true"></span><span class="ja">LINEで相談する（友だち追加）</span><span class="en">Chat with us on LINE</span><span class="arr" aria-hidden="true"><i>→</i><i>→</i></span></a>
+        <a class="btn btn-ghost" href="{{ P or '' }}/#contact"><span class="ja">フォームで問い合わせる</span><span class="en">Send us a message</span></a>
+      </div>
+    </div>
+  </div>
+</section>
+{%- endmacro %}

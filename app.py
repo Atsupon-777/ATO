@@ -1,4 +1,4 @@
-from flask import Flask, render_template, request, Response, jsonify, send_from_directory, redirect
+from flask import Flask, render_template, request, Response, jsonify, send_from_directory, redirect, abort
 import smtplib
 from email.mime.text import MIMEText
 import os
@@ -19,7 +19,8 @@ EMAIL_USER = os.getenv("EMAIL_USER")
 EMAIL_PASS = os.getenv("EMAIL_PASS")
 MAIL_TO = os.getenv("MAIL_TO", "atsushi.iwmr@gmail.com")
 
-app = Flask(__name__)
+# ページのHTMLは pages/、画像・動画・CSS・JSは assets/ に置く(URLは今までどおり /static/...)
+app = Flask(__name__, template_folder='pages', static_folder='assets', static_url_path='/static')
 
 
 def send_mail(subject, body, reply_to=''):
@@ -44,12 +45,44 @@ def send_mail(subject, body, reply_to=''):
         server.send_message(msg)
 
 
+SITE = 'https://ato-sns.com'
+SERVICES = ('video', 'ec', 'reels', 'sns')
+LASTMOD = '2026-10-10'
+
+
+def page(template, lang=None, path='/', **kw):
+    """ページを描画する。lang='en' なら /en 付きのURL。canonical と hreflang 用のURLもここで決める。"""
+    en_path = '/en' if path == '/' else '/en' + path
+    return render_template(
+        template, lang=lang, page_path=path,
+        P='/en' if lang == 'en' else '',            # 内部リンクの頭につける
+        href_ja=path, href_en=en_path,
+        url_ja=SITE + path, url_en=SITE + en_path,
+        canonical=SITE + (en_path if lang == 'en' else path),
+        **kw)
+
+
 @app.route('/')
 def index():
-    return render_template('index.html')
+    return page('index.html')
+
+
+@app.route('/about')
+@app.route('/en/about', endpoint='about_en', defaults={'lang': 'en'})
+def about(lang=None):
+    return page('about.html', lang, '/about')
+
+
+@app.route('/services/<slug>')
+@app.route('/en/services/<slug>', endpoint='service_en', defaults={'lang': 'en'})
+def service(slug, lang=None):
+    if slug not in SERVICES:
+        abort(404)
+    return page(f'services/{slug}.html', lang, f'/services/{slug}', slug=slug)
+
 @app.route('/favicon.ico')
 def favicon():
-    return send_from_directory(os.path.join(app.root_path, 'static', 'icons'), 'favicon.ico', mimetype='image/vnd.microsoft.icon')
+    return send_from_directory(os.path.join(app.static_folder, 'icons'), 'favicon.ico', mimetype='image/vnd.microsoft.icon')
 
 @app.route('/google<token>.html')
 def google_verify(token):
@@ -69,30 +102,24 @@ def book():
     # カレンダー予約はやめた。古いリンクから来た人は公式LINEへ
     return redirect(LINE_URL, code=302)
 
-@app.route('/preview')
-def preview():
-    # design trials before they go on the main page (not indexed)
-    return render_template('preview.html')
-
 @app.route('/en')
 def index_en():
-    return render_template('index.html', lang='en')
+    return page('index.html', 'en')
 @app.route('/sitemap.xml')
 def sitemap():
-    sitemap_xml = '''<?xml version="1.0" encoding="UTF-8"?>
-<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
-  <url>
-    <loc>https://ato-sns.com/</loc>
-    <lastmod>2026-10-03</lastmod>
-    <priority>1.0</priority>
-  </url>
-  <url>
-    <loc>https://ato-sns.com/en</loc>
-    <lastmod>2026-10-03</lastmod>
-    <priority>0.8</priority>
-  </url>
-  <!-- 必要に応じて他ページも追加 -->
-</urlset>'''
+    # 日本語と英語の両方のURLを載せ、hreflang で対応を示す
+    pages = [('/', '1.0'), ('/about', '0.7')] + [(f'/services/{s}', '0.9') for s in SERVICES]
+    rows = []
+    for path, prio in pages:
+        en = '/en' if path == '/' else '/en' + path
+        alt = (f'    <xhtml:link rel="alternate" hreflang="ja" href="{SITE}{path}"/>\n'
+               f'    <xhtml:link rel="alternate" hreflang="en" href="{SITE}{en}"/>\n'
+               f'    <xhtml:link rel="alternate" hreflang="x-default" href="{SITE}{path}"/>\n')
+        for loc, p in ((path, prio), (en, str(round(float(prio) * 0.8, 1)))):
+            rows.append(f'  <url>\n    <loc>{SITE}{loc}</loc>\n    <lastmod>{LASTMOD}</lastmod>\n    <priority>{p}</priority>\n{alt}  </url>')
+    sitemap_xml = ('<?xml version="1.0" encoding="UTF-8"?>\n'
+                   '<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9" xmlns:xhtml="http://www.w3.org/1999/xhtml">\n'
+                   + '\n'.join(rows) + '\n</urlset>')
     return Response(sitemap_xml, mimetype='application/xml')
 
 @app.route('/send', methods=['POST'])

@@ -1,0 +1,80 @@
+{% extends "base.html" %}
+{% import 'partials/macros.html' as m with context %}
+{% block meta %}
+{% if lang == 'en' %}
+<title>About the founder | ATO Digital Marketing</title>
+<meta name="description" content="Atsushi Iwamura, founder of ATO. International relations at SOAS University of London and Ritsumeikan University, a career with the United Nations (UNDP) and JICA, and a track record in short-form video, put to work taking Japanese businesses to the world.">
+<meta property="og:title" content="About the founder | ATO Digital Marketing">
+<meta property="og:description" content="Atsushi Iwamura, founder of ATO: SOAS University of London, the United Nations (UNDP) and JICA, and short-form video.">
+{% else %}
+<title>代表紹介｜ATO Digital Marketing</title>
+<meta name="description" content="ATO代表 岩村 篤のプロフィール。ロンドン大学SOASと立命館大学で国際関係を学び、国際連合（UNDP）とJICA（国際協力機構）で世界と関わってきた視点と、ショート動画の実績で、日本の魅力を世界に届けます。">
+<meta property="og:title" content="代表紹介｜ATO Digital Marketing">
+<meta property="og:description" content="ATO代表 岩村 篤。ロンドン大学SOAS、国際連合（UNDP）とJICA、そしてショート動画の実績。">
+{% endif %}
+{% endblock %}
+{% block jsonld %}
+<script type="application/ld+json">{"@context":"https://schema.org","@graph":[{"@type":"AboutPage","@id":"{{ canonical }}#page","url":"{{ canonical }}","name":"{{ 'About the founder' if lang == 'en' else '代表紹介' }}","inLanguage":"{{ 'en' if lang == 'en' else 'ja' }}","isPartOf":{"@id":"https://ato-sns.com/#website"},"mainEntity":{"@id":"https://ato-sns.com/about#founder"}},{"@type":"Person","@id":"https://ato-sns.com/about#founder","name":"岩村 篤","alternateName":"Atsushi Iwamura","jobTitle":"{{ 'Founder' if lang == 'en' else '代表' }}","worksFor":{"@type":"Organization","@id":"https://ato-sns.com/#org","name":"ATO Digital Marketing"},"alumniOf":[{"@type":"CollegeOrUniversity","name":"SOAS University of London"},{"@type":"CollegeOrUniversity","name":"Ritsumeikan University"}],"knowsLanguage":["ja","en","fr","id","ta"],"homeLocation":{"@type":"Place","name":"Tokyo, Japan"},"image":"https://ato-sns.com/static/media/atsushi.jpg","sameAs":["https://www.instagram.com/atsupon_jp/","https://note.com/atsushi_vision"]},{"@type":"BreadcrumbList","itemListElement":[{"@type":"ListItem","position":1,"name":"{{ 'Home' if lang == 'en' else 'ホーム' }}","item":"https://ato-sns.com{{ P or '/' }}"},{"@type":"ListItem","position":2,"name":"{{ 'About the founder' if lang == 'en' else '代表紹介' }}","item":"{{ canonical }}"}]}]}</script>
+{% endblock %}
+{% block bodyclass %}page-inner page-about skip-intro-page{% endblock %}
+{% block hudfirst %}ABOUT{% endblock %}
+{% block main %}
+<section class="sub-hero wrap" id="top" aria-labelledby="aboutTitle" data-hud="ABOUT">
+  <nav class="crumbs mono" aria-label="Breadcrumb"><a href="{{ P or '/' }}"><span class="ja">ホーム</span><span class="en">Home</span></a><i aria-hidden="true">/</i><span aria-current="page"><span class="ja">代表紹介</span><span class="en">About</span></span></nav>
+  <p class="kicker"><span class="k-no">ABOUT</span>DIRECTED BY</p>
+  <h1 class="sub-title" id="aboutTitle"><span class="ja" data-split>代表紹介</span><span class="en" data-split>About the founder</span></h1>
+</section>
+
+<section class="founder wrap" id="founder" aria-label="{{ 'Profile' if lang == 'en' else 'プロフィール' }}" data-hud="DIRECTOR">
+  <figure class="card-id" data-reveal>
+    <div class="cid-img"><img src="/static/media/atsushi.jpg" alt="岩村 篤 / Atsushi Iwamura" width="900" height="1100" decoding="async"></div>
+    <span class="cid-wipe" aria-hidden="true"><i></i><i></i></span>
+    <figcaption>
+      <span class="role mono"><span class="ja">代表</span><span class="en">FOUNDER</span></span>
+      <p class="big"><span class="ja">岩村 篤</span><span class="en">Atsushi Iwamura</span><small><span class="ja">ATSUSHI IWAMURA</span><span class="en">岩村 篤</span></small></p>
+      <div class="card-meta">
+        <div class="cm-row"><span class="cm-label mono">Location</span><span class="loc"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 2a7 7 0 0 0-7 7c0 5 7 13 7 13s7-8 7-13a7 7 0 0 0-7-7zm0 9.5A2.5 2.5 0 1 1 12 6.5a2.5 2.5 0 0 1 0 5z"/></svg><span class="ja">東京(日本)</span><span class="en">Tokyo, Japan</span></span></div>
+        <div class="cm-row"><span class="cm-label mono">Language</span><div class="langs-spoken"><span>日本語</span><span>English</span><span>Français</span><span>Bahasa Indonesia</span><span class="ta" lang="ta">தமிழ்</span></div></div>
+      </div>
+    </figcaption>
+  </figure>
+  <div class="founder-copy">
+    <div class="sec-head" data-reveal>
+      <p class="kicker"><span class="k-no">02</span>MESSAGE</p>
+      <h2><span class="ja" data-split>足りないのは、魅力ではなく届け方。</span><span class="en" data-split>What’s missing is not appeal but reach.</span></h2>
+    </div>
+    <p class="msg ja" data-reveal>日本には、世界にまだ知られていない一流の商品やサービスが数多くあります。足りないのは魅力ではなく、届け方です。ロンドンと京都で国際関係を学び、国連やJICAで世界と関わってきた視点と、ショート動画で積み上げてきた実績で、あなたの商品やサービスの価値を世界に届けます。</p>
+    <p class="msg en" data-reveal>Japan is full of world-class products and services the world has not discovered yet. What is missing is not appeal but reach. With international relations studies in London and Kyoto, experience at the UN and JICA, and a track record in short-form video, I help the true value of your products and services reach the world.</p>
+    <ul class="credits" data-reveal>
+      <li><span class="mono"><span class="ja">学歴</span><span class="en">Education</span></span><span class="ja">ロンドン大学 SOAS / 立命館大学 国際関係学部</span><span class="en">SOAS University of London / Ritsumeikan University, College of International Relations</span></li>
+      <li><span class="mono"><span class="ja">経歴</span><span class="en">Career</span></span><span class="ja">国際連合（UNDP）と JICA（国際協力機構）</span><span class="en">The United Nations (UNDP) and JICA (Japan International Cooperation Agency)</span></li>
+      <li><span class="mono"><span class="ja">活動</span><span class="en">Media</span></span><span class="ja">世界を舞台にビジネスをする方々を支援中</span><span class="en">Supporting people who do business on a global stage</span></li>
+    </ul>
+  </div>
+</section>
+
+<section class="track light" aria-labelledby="trackTitle" data-hud="TRACK RECORD" data-tone="light">
+  <div class="wrap">
+    <div class="sec-head" data-reveal>
+      <p class="kicker"><span class="k-no">03</span>TRACK RECORD</p>
+      <h2 id="trackTitle"><span class="ja" data-split>ATOの実績</span><span class="en" data-split>ATO in numbers</span></h2>
+    </div>
+    <dl class="track-stats" data-reveal>
+      <div><dt><span class="ja">総再生回数</span><span class="en">Total views</span></dt><dd><span class="ja">1億回超</span><span class="en">100M+</span></dd></div>
+      <div><dt><span class="ja">総フォロワー</span><span class="en">Total followers</span></dt><dd><span class="ja">380万人超</span><span class="en">3.8M+</span></dd></div>
+      <div><dt><span class="ja">最高月間リーチ</span><span class="en">Peak monthly reach</span></dt><dd><span class="ja">3,000万人</span><span class="en">30M</span></dd></div>
+    </dl>
+    <p class="fine"><span class="ja">※ATOが支援・運営してきたアカウントの合計です。</span><span class="en">Totals across the accounts ATO has supported and run.</span></p>
+  </div>
+</section>
+
+<section class="more wrap" aria-labelledby="moreTitle" data-hud="4 SERVICES">
+  <div class="sec-head" data-reveal>
+    <p class="kicker"><span class="k-no">04</span>WHAT WE DO</p>
+    <h2 id="moreTitle"><span class="ja" data-split>4つの事業</span><span class="en" data-split>Four services</span></h2>
+  </div>
+  {{ m.tiles() }}
+</section>
+
+{{ m.endcard('05') }}
+{% endblock %}

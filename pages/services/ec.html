@@ -1,0 +1,101 @@
+{% extends "services/_service.html" %}
+{% import "partials/macros.html" as m with context %}
+{% block meta %}
+{% if lang == 'en' %}
+<title>E-commerce growth | ATO Digital Marketing</title>
+<meta name="description" content="Everything for your online store: product pages, photos, pricing and bundles that sell; launching a cross-border store with multilingual pages and overseas payment and shipping; bringing in customers from social media, ads and search; affiliate programs; and plans linked to your results. Start with a free consultation.">
+<meta property="og:title" content="E-commerce growth | ATO Digital Marketing">
+<meta property="og:description" content="A store that sells, a cross-border launch, traffic and affiliates: an online store built to reach the world.">
+{% else %}
+<title>ECサイト強化｜ATO Digital Marketing</title>
+<meta name="description" content="商品ページ・写真・価格とセットの見直しで売れる売り場に。ネットショップ構築・多言語化・海外決済と配送の設計まで含めた越境ECの立ち上げ、SNS・広告・検索からの集客と運用、アフィリエイトの仕組みづくり、成果に連動するプランのご相談まで。ECのことはまとめてATOへ。">
+<meta property="og:title" content="ECサイト強化｜ATO Digital Marketing">
+<meta property="og:description" content="売れる売り場づくりから、越境ECの立ち上げ、集客、アフィリエイトまで。世界に届くECを一緒につくります。">
+{% endif %}
+{% endblock %}
+{% block ld_name %}{{ 'E-commerce growth' if lang == 'en' else 'ECサイト強化' }}{% endblock %}
+{% block ld_desc %}{{ 'Product pages, photos, pricing and bundles that sell; cross-border store launch with multilingual pages and overseas payment and shipping; traffic from social media, ads and search; affiliate programs; plans linked to results.' if lang == 'en' else '商品ページ・写真・価格とセットの見直し、越境ECの立ち上げ（ネットショップ構築・多言語化・海外決済と配送の設計）、SNS・広告・検索からの集客と運用、アフィリエイト支援、成果に連動するプランのご相談。' }}{% endblock %}
+{% block ld_type %}E-commerce consulting{% endblock %}
+{% block svc_hud %}02 E-COMMERCE{% endblock %}
+{% block crumb %}<span class="ja">ECサイト強化</span><span class="en">E-commerce growth</span>{% endblock %}
+{% block svc_no %}02{% endblock %}
+{% block svc_kicker %}E-COMMERCE GROWTH{% endblock %}
+{% block svc_title %}<span class="ja" data-split>ECサイト強化</span><span class="en" data-split>E-commerce growth</span>{% endblock %}
+{% block svc_lede %}<span class="ja">世界に届く、売り場の設計。</span><span class="en">A store designed to reach the world.</span>{% endblock %}
+{% block svc_body %}
+<p class="svc-body ja">売れる売り場づくりから、越境ECの立ち上げ、集客、アフィリエイトまで。海外のお客さまに見つけてもらい、買ってもらうまでの流れを、まとめてお手伝いします。</p>
+<p class="svc-body en">From a store that sells to launching overseas, bringing in customers and building affiliate programs. We help with the whole path, from being found by customers abroad to being bought.</p>
+{% endblock %}
+{% block svc_media %}
+<figure class="mon mon-ec" data-mon>
+  <div class="mon-screen" aria-hidden="true">
+    <div class="grid-bp"></div><div class="grid-an"></div>
+    <svg class="bp" viewBox="0 0 100 100">
+      <rect class="bp-bx b1" x="12" y="15" width="76" height="58" rx="1.5" pathLength="100"/>
+      <path class="bp-cn" d="M12 21 H88" pathLength="100"/>
+      <rect class="bp-bx b2" x="17" y="26" width="30" height="40" rx="1" pathLength="100"/>
+      <path class="bp-ph" d="M17 26 L47 66 M47 26 L17 66"/>
+      <path class="bp-cn" d="M53 41 H82" pathLength="100"/>
+      <rect class="bp-bx b3" x="53" y="45" width="29" height="7" rx="1" pathLength="100"/>
+      <rect class="bp-bx b4 bp-btn" x="53" y="57" width="29" height="8" rx="4" pathLength="100"/>
+      <rect class="bp-pill" x="12" y="78" width="12" height="6" rx="3"/><rect class="bp-pill" x="26" y="78" width="12" height="6" rx="3"/><rect class="bp-pill" x="40" y="78" width="12" height="6" rx="3"/>
+      <rect class="bp-bx b5" x="56" y="78" width="34" height="6" rx="3" pathLength="100"/>
+      <g class="bp-tx">
+        <text x="14" y="19.6">STORE · PRODUCT PAGE</text>
+        <text x="19" y="30">01</text><text x="53" y="29.6">02</text><text x="54.6" y="49.9">03</text><text x="58" y="82.2">04</text>
+        <text class="sm mid ja" x="32" y="47.4">写真</text><text class="sm mid en" x="32" y="47.4">PHOTOS</text>
+        <text class="sm ja" x="53" y="37">商品ページ</text><text class="sm en" x="53" y="37">PRODUCT PAGE</text>
+        <text class="sm ja" x="59.5" y="50.3">価格・セット</text><text class="sm en" x="59.5" y="50.3">PRICE &amp; BUNDLE</text>
+        <text class="sm mid ja" x="67.5" y="62.3">カートに入れる</text><text class="sm mid en" x="67.5" y="62.3">ADD TO CART</text>
+        <text class="mid" x="18" y="82.1">JP</text><text class="mid" x="32" y="82.1">EN</text><text class="mid" x="46" y="82.1">中文</text>
+        <text class="sm ja" x="62.5" y="82.4">海外決済・配送</text><text class="sm en" x="62.5" y="82.4">PAY · SHIP</text>
+      </g>
+    </svg>
+    <svg class="fl" viewBox="0 0 100 100">
+      <path class="fl-rail" d="M20 30 L50 52 M80 30 L50 52 M20 76 L50 52 M80 76 L50 52"/>
+      <path class="fl-ln" d="M20 30 L50 52"/><path class="fl-ln" d="M80 30 L50 52"/><path class="fl-ln" d="M20 76 L50 52"/><path class="fl-ln" d="M80 76 L50 52"/>
+      <g class="fl-nd n1"><circle cx="20" cy="30" r="6"/><path d="M17.4 27.4 h5.2 v5.2 h-5.2 z M19.2 29.2 a1 1 0 1 0 0.01 0 M21.4 28.3 h0.01"/></g>
+      <g class="fl-nd n2"><circle cx="80" cy="30" r="6"/><path d="M78.8 28.8 m-2 0 a2 2 0 1 0 4 0 a2 2 0 1 0 -4 0 M80.3 30.3 L82.6 32.6"/></g>
+      <g class="fl-nd n3"><circle cx="20" cy="76" r="6"/><path d="M17.2 74.6 L21 73 V79 L17.2 77.4 Z M21 74.4 H22.8 V77.6 H21"/></g>
+      <g class="fl-nd n4"><circle cx="80" cy="76" r="6"/><path d="M76.2 79.2 a2 2 0 0 1 4 0 M79.8 79.2 a2 2 0 0 1 4 0 M77.1 75 a1.1 1.1 0 1 0 2.2 0 a1.1 1.1 0 1 0 -2.2 0 M80.7 75 a1.1 1.1 0 1 0 2.2 0 a1.1 1.1 0 1 0 -2.2 0"/></g>
+      <text class="fl-tx ja" x="20" y="41.2">SNS</text><text class="fl-tx en" x="20" y="41.2">SOCIAL</text>
+      <text class="fl-tx ja" x="80" y="41.2">検索</text><text class="fl-tx en" x="80" y="41.2">SEARCH</text>
+      <text class="fl-tx ja" x="20" y="87.2">広告</text><text class="fl-tx en" x="20" y="87.2">ADS</text>
+      <text class="fl-tx ja" x="80" y="87.2">アフィリエイト</text><text class="fl-tx en" x="80" y="87.2">AFFILIATES</text>
+      <g class="fl-store"><circle class="halo" cx="50" cy="52" r="13"/><circle cx="50" cy="52" r="9.5"/><path d="M44.6 48 h1.8 l1.6 6.4 h6.2 l1.4 -4.6 h-8.4 M48.6 57 h0.01 M53.6 57 h0.01"/></g>
+      <g class="ord o1"><rect x="40" y="31" width="20" height="5" rx="2.5"/><text x="50" y="34.3">NEW ORDER</text></g>
+      <g class="ord o2"><rect x="40" y="31" width="20" height="5" rx="2.5"/><text x="50" y="34.3">NEW ORDER</text></g>
+      <g class="ord o3"><rect x="40" y="31" width="20" height="5" rx="2.5"/><text x="50" y="34.3">NEW ORDER</text></g>
+    </svg>
+    <svg class="an" viewBox="0 0 100 100">
+      <path class="an-ax" d="M10 82 H92"/>
+      <rect class="bar k1" x="14" y="66" width="8" height="16"/>
+      <rect class="bar k2" x="27" y="60" width="8" height="22"/>
+      <rect class="bar k3" x="40" y="55" width="8" height="27"/>
+      <rect class="bar k4" x="53" y="47" width="8" height="35"/>
+      <rect class="bar k5" x="66" y="37" width="8" height="45"/>
+      <rect class="bar k6" x="79" y="24" width="8" height="58"/>
+      <path class="an-ln" d="M18 60 L31 54 L44 48 L57 41 L70 30 L83 16" pathLength="100"/>
+      <circle class="an-hd" cx="83" cy="16" r="1.8"/>
+      <g class="an-tx"><text x="15" y="88">M1</text><text x="28" y="88">M2</text><text x="41" y="88">M3</text><text x="54" y="88">M4</text><text x="67" y="88">M5</text><text x="80" y="88">M6</text></g>
+    </svg>
+    <div class="kpis mono"><span class="kp1">SALES <i>↑</i></span><span class="kp2">ORDERS <i>↑</i></span><span class="kp3">PARTNERS <i>↑</i></span></div>
+    <ol class="steps"><li class="st1"><span class="ja">売り場</span><span class="en">Store</span></li><li class="st2"><span class="ja">集客</span><span class="en">Traffic</span></li><li class="st3"><span class="ja">注文</span><span class="en">Orders</span></li><li class="st4"><span class="ja">売上</span><span class="en">Sales</span></li></ol>
+    <div class="mon-hud mono"><span>CH.02 · E-COMMERCE</span><span class="hud-rec">REC</span></div>
+  </div>
+  <div class="mon-tl mono" aria-hidden="true"><span class="tl-play"></span><span class="tl-tc">00:00:07:12</span><span class="tl-bar"><i class="k1"></i><i class="k2"></i><i class="k3"></i><i class="ph-head"></i></span></div>
+  <figcaption><span class="ja">売り場の設計図から、集客と注文、そして売上のグラフへ（イメージのアニメーション）。</span><span class="en">Animation (illustrative): a store blueprint turns into traffic, orders and a rising sales chart.</span></figcaption>
+</figure>
+{% endblock %}
+{% block pt_kicker %}WHAT WE DO FOR YOUR STORE{% endblock %}
+{% block pt_hud %}EC SUPPORT{% endblock %}
+{% block pt_title %}<span class="ja" data-split>ECのことは、まとめてATOへ。</span><span class="en" data-split>Everything your online store needs.</span>{% endblock %}
+{% block pt_intro %}<p class="pt-intro ja">売り場の見直しから、海外向けのお店の立ち上げ、お客さまを呼ぶところ、紹介の仕組みまで。必要なところから、一緒に進めます。</p><p class="pt-intro en">From reworking your store to launching one for overseas customers, bringing people in and building referral programs. We start wherever you need us.</p>{% endblock %}
+{% block pts_class %} pts-rows{% endblock %}
+{% block points %}
+<li data-reveal><span class="pt-no">01</span><h3><span class="ja">EC物販強化</span><span class="en">A store that sells</span></h3><p class="ja">商品ページ・写真・価格とセットの見直しで、売れる売り場に。</p><p class="en">We rework product pages, photos, pricing and bundles so your store sells.</p><div class="chips"><span><span class="ja">商品ページ</span><span class="en">Product pages</span></span><span><span class="ja">商品写真</span><span class="en">Product photos</span></span><span><span class="ja">価格とセットの見直し</span><span class="en">Pricing and bundles</span></span></div></li>
+<li data-reveal><span class="pt-no">02</span><h3><span class="ja">越境ECサイトの立ち上げ</span><span class="en">Launching a cross-border store</span></h3><p class="ja">ネットショップの構築から、多言語化、海外決済・配送の設計まで。</p><p class="en">From building the online shop to multilingual pages and overseas payment and shipping.</p><div class="chips"><span><span class="ja">ネットショップ構築</span><span class="en">Store build</span></span><span><span class="ja">多言語化</span><span class="en">Multilingual</span></span><span><span class="ja">海外決済・配送の設計</span><span class="en">Overseas payment and shipping</span></span></div></li>
+<li data-reveal><span class="pt-no">03</span><h3><span class="ja">集客と運用</span><span class="en">Traffic and day-to-day running</span></h3><p class="ja">SNS・広告・検索から、お店へ。集客から日々の運用まで支えます。</p><p class="en">Bringing people to your store from social media, ads and search, and keeping it running day to day.</p><div class="chips"><span>SNS</span><span><span class="ja">広告</span><span class="en">Ads</span></span><span><span class="ja">検索</span><span class="en">Search</span></span><span><span class="ja">運用</span><span class="en">Operations</span></span></div></li>
+<li data-reveal><span class="pt-no">04</span><h3><span class="ja">アフィリエイト支援</span><span class="en">Affiliate programs</span></h3><p class="ja">紹介パートナーや成果報酬の仕組みをつくり、運用まで行います。</p><p class="en">We set up referral partners and performance-based rewards, then run the program.</p><div class="chips"><span><span class="ja">紹介パートナー</span><span class="en">Referral partners</span></span><span><span class="ja">成果報酬の仕組み</span><span class="en">Performance-based rewards</span></span><span><span class="ja">運用</span><span class="en">Operations</span></span></div></li>
+<li data-reveal><span class="pt-no">05</span><h3><span class="ja">成果に連動するプランの相談</span><span class="en">Plans linked to your results</span></h3><p class="ja">成果に連動するかたちのプランについても、ご相談いただけます。</p><p class="en">Ask us about plans that are tied to the results we deliver.</p></li>
+{% endblock %}
