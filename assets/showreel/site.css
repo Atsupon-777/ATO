@@ -233,7 +233,7 @@ html.anim:not(.skip-intro) .letterbox{display:block}
 .letterbox .lb-line{position:absolute;left:calc(50% - min(32vw,360px));top:50%;width:min(64vw,720px);height:1px;background:linear-gradient(90deg,transparent,var(--gold) 20%,var(--gold-hi) 50%,var(--gold) 80%,transparent);transform:scaleX(0)}
 html.anim:not(.skip-intro) .letterbox .lb-line{animation:lbLineIn .55s var(--e-out) .05s both}
 html.anim.intro-go:not(.skip-intro) .letterbox .lb-line{animation:lbLine calc(var(--beat)*1.6) var(--e-out) forwards}
-.letterbox .lb-cap{position:absolute;left:0;right:0;top:calc(50% + 16px);text-align:center;font:500 10px/1 var(--mono);letter-spacing:.32em;color:var(--muted);opacity:0}
+.letterbox .lb-cap{position:absolute;left:0;right:0;top:calc(50% + 18px);text-align:center;font:500 15px/1 var(--mono);letter-spacing:.62em;padding-left:.62em;color:var(--gold-hi);opacity:0}
 html.anim:not(.skip-intro) .letterbox .lb-cap{animation:fadeIn .6s ease .25s both}
 html.anim.intro-go:not(.skip-intro) .letterbox .lb-cap{animation:fadeOut .3s ease both}
 @keyframes lbLineIn{from{transform:scaleX(0)}to{transform:scaleX(1)}}

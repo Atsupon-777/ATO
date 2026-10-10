@@ -46,7 +46,7 @@ def send_mail(subject, body, reply_to=''):
 
 
 SITE = 'https://ato-sns.com'
-SERVICES = ('video', 'ec', 'reels', 'sns')
+SERVICES = ('video', 'reels', 'sns', 'ec')
 LASTMOD = '2026-10-10'
 
 
