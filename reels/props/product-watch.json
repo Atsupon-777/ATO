@@ -1,0 +1,18 @@
+{
+  "brand": "ATO",
+  "productName": "ÉCLAT DE TEMPS",
+  "tagline": "時を纏う、金の輝き。",
+  "photo": "samples/watch.jpg",
+  "cutout": "samples/watch-cutout.png",
+  "cutoutAspect": 0.5938,
+  "glints": [{ "x": 0.945, "y": 0.41 }, { "x": 0.12, "y": 0.22 }, { "x": 0.7, "y": 0.66 }],
+  "details": [
+    { "x": 0.55, "y": 0.35, "zoom": 2.6, "kicker": "Sunburst dial", "title": "光を描く文字盤" },
+    { "x": 0.9, "y": 0.45, "zoom": 2.8, "kicker": "Rose gold case", "title": "金の質感" },
+    { "x": 0.45, "y": 0.74, "zoom": 2.3, "kicker": "Croco leather", "title": "手に馴染む革" }
+  ],
+  "cta": "詳しくはプロフィールへ",
+  "handle": "@ato_watches",
+  "bpm": 120,
+  "palette": { "accent": "#D8B57A", "glow": "#FFC98A", "base": "#070605" }
+}
