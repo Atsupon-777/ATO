@@ -7,7 +7,12 @@ const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 let serveUrl: Promise<string> | null = null;
 
 /** Bundles once per process, then renders any template with the given props. */
-export async function renderTemplate(id: string, inputProps: Record<string, unknown>, out: string) {
+export async function renderTemplate(
+  id: string,
+  inputProps: Record<string, unknown>,
+  out: string,
+  onProgress?: (progress: number) => void,
+) {
   serveUrl ??= bundle({ entryPoint: path.join(root, 'src/index.ts'), publicDir: path.join(root, 'public') });
   const url = await serveUrl;
   const browserExecutable = process.env.REMOTION_BROWSER ?? null;
@@ -21,7 +26,10 @@ export async function renderTemplate(id: string, inputProps: Record<string, unkn
     crf: 18,
     outputLocation: out,
     browserExecutable,
-    onProgress: ({ progress }) => process.stdout.write(`\r  render ${id} ${(progress * 100).toFixed(0)}%`),
+    onProgress: ({ progress }) => {
+      if (onProgress) onProgress(progress);
+      else process.stdout.write(`\r  render ${id} ${(progress * 100).toFixed(0)}%`);
+    },
   });
   process.stdout.write('\n');
   return { out, frames: composition.durationInFrames, seconds: (Date.now() - started) / 1000 };

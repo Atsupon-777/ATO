@@ -74,10 +74,18 @@ export type ProductBrief = {
   /** Cosmetics: generate an on-skin model shot and animate that instead of the product shot. */
   onSkin: boolean;
   jobId?: string;
+  /** Progress callback for the web app (step number, total, label). */
+  onStep?: (step: number, total: number, label: string) => void;
+  /** false: stop after building props, so the editor can preview and tweak before rendering. */
+  render?: boolean;
 };
 
 export async function buildProductReel(brief: ProductBrief) {
   const usage = new Usage();
+  const step = (n: number, label: string) => {
+    console.log(`${n}/5 ${label}`);
+    brief.onStep?.(n, 5, label);
+  };
   const jobId = brief.jobId ?? `job-${Date.now().toString(36)}`;
   const dir = path.join(publicDir, 'jobs', jobId);
   const rel = (f: string) => `jobs/${jobId}/${f}`;
@@ -86,12 +94,12 @@ export async function buildProductReel(brief: ProductBrief) {
   const original = path.join(dir, `original${path.extname(brief.photo) || '.jpg'}`);
   await copyFile(brief.photo, original);
 
-  console.log('1/5 cut-out');
+  step(1, 'cut-out');
   const cut = await cutout(original, path.join(dir, 'cutout.png'), usage);
 
   // Re-running a job reuses the studio shot, plan and clip already paid for.
   const exists = (f: string) => access(f).then(() => true, () => false);
-  console.log('2/5 studio shot');
+  step(2, 'studio shot');
   const studioFile = path.join(dir, 'studio.png');
   const studio = (await exists(studioFile)) ? studioFile : await editImage({
     input: [original],
@@ -106,7 +114,7 @@ export async function buildProductReel(brief: ProductBrief) {
     step: 'studio shot',
   });
 
-  console.log('3/5 plan and copy');
+  step(3, 'plan and copy');
   const planFile = path.join(dir, 'plan.json');
   const raw = (await exists(planFile)) ? JSON.parse(await readFile(planFile, 'utf8')) : await askJson({
     images: [original, studio, cut.file],
@@ -127,7 +135,7 @@ export async function buildProductReel(brief: ProductBrief) {
   if (brief.video) {
     let source = studio;
     if (brief.onSkin) {
-      console.log('4/5 on-skin model shot');
+      step(4, 'on-skin model shot');
       source = await editImage({
         input: [original],
         out: path.join(dir, 'on-skin.png'),
@@ -140,7 +148,7 @@ export async function buildProductReel(brief: ProductBrief) {
         step: 'on-skin shot',
       });
     }
-    console.log('4/5 motion clip (Veo)');
+    step(4, 'motion clip (Veo)');
     clip = rel('clip.mp4');
     if (!(await exists(path.join(dir, 'clip.mp4')))) await imageToVideo({
       image: source,
@@ -151,7 +159,7 @@ export async function buildProductReel(brief: ProductBrief) {
     });
   }
 
-  console.log('5/5 render');
+  step(5, brief.render === false ? 'build props' : 'render');
   const props: ProductShineProps = productShineSchema.parse({
     brand: brief.brand,
     productName: brief.productName,
@@ -173,6 +181,8 @@ export async function buildProductReel(brief: ProductBrief) {
     ...(clip ? { clip } : {}),
   });
   await writeFile(path.join(dir, 'props.json'), JSON.stringify(props, null, 2));
+  await writeFile(path.join(dir, 'usage.json'), JSON.stringify(usage, null, 2));
+  if (brief.render === false) return { jobId, dir, out: null, props, usage: usage.toJSON(), render: null };
   const out = path.join(dir, 'reel.mp4');
   const result = await renderTemplate('ProductShine', props, out);
   await writeFile(path.join(dir, 'usage.json'), JSON.stringify(usage, null, 2));

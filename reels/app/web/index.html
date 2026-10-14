@@ -1,0 +1,109 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>ATO Reels</title>
+<link id="reels-fonts" rel="stylesheet" href="/fonts/fonts.css" />
+<style>
+  :root {
+    --bg: #0c0c0e; --panel: #151518; --panel2: #1c1c21; --line: #2a2a31; --ink: #f2f1ee; --mute: #9a99a3;
+    --accent: #d8b57a; --accent-ink: #141008; --danger: #ff6b5a; --ok: #6fd39a; --radius: 14px;
+  }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; background: var(--bg); color: var(--ink); font-family: "Noto Sans JP", system-ui, sans-serif; font-size: 14px; }
+  button, input, textarea, select { font: inherit; color: inherit; }
+  a { color: inherit; }
+  .top { display: flex; align-items: center; gap: 24px; padding: 14px 24px; border-bottom: 1px solid var(--line); position: sticky; top: 0; background: rgba(12,12,14,.9); backdrop-filter: blur(10px); z-index: 10; }
+  .logo { font-family: "Plus Jakarta Sans", sans-serif; font-weight: 800; font-size: 18px; letter-spacing: .02em; cursor: pointer; }
+  .logo span { color: var(--accent); }
+  .nav { display: flex; gap: 4px; }
+  .nav button { background: none; border: 0; padding: 8px 14px; border-radius: 999px; color: var(--mute); cursor: pointer; }
+  .nav button.on { background: var(--panel2); color: var(--ink); }
+  .spacer { flex: 1; }
+  .pill { font-size: 12px; color: var(--mute); border: 1px solid var(--line); padding: 5px 12px; border-radius: 999px; }
+  main { max-width: 1180px; margin: 0 auto; padding: 32px 24px 80px; }
+  h1 { font-size: 28px; font-weight: 900; margin: 0 0 6px; letter-spacing: .01em; }
+  h2 { font-size: 16px; font-weight: 700; margin: 0 0 12px; }
+  .sub { color: var(--mute); margin: 0 0 28px; }
+  .grid3 { display: grid; grid-template-columns: repeat(3, minmax(0, 300px)); gap: 24px; }
+  .card { background: var(--panel); border: 1px solid var(--line); border-radius: var(--radius); overflow: hidden; cursor: pointer; transition: transform .2s, border-color .2s; text-align: left; padding: 0; }
+  .card:hover { transform: translateY(-3px); border-color: var(--accent); }
+  .card .thumb { aspect-ratio: 9/16; background: #000; position: relative; }
+  .card .body { padding: 16px 18px 18px; }
+  .card .name { font-weight: 900; font-size: 17px; margin-bottom: 4px; }
+  .card .desc { color: var(--mute); font-size: 13px; line-height: 1.6; }
+  .tag { display: inline-block; font-size: 11px; padding: 3px 9px; border-radius: 999px; background: var(--panel2); color: var(--accent); margin-bottom: 8px; }
+  .btn { background: var(--accent); color: var(--accent-ink); border: 0; border-radius: 10px; padding: 12px 20px; font-weight: 700; cursor: pointer; }
+  .btn:disabled { opacity: .45; cursor: default; }
+  .btn.ghost { background: var(--panel2); color: var(--ink); border: 1px solid var(--line); }
+  .btn.small { padding: 7px 12px; font-size: 12px; border-radius: 8px; }
+  .form { max-width: 640px; display: grid; gap: 18px; }
+  .field { display: grid; gap: 6px; }
+  .field label { font-size: 12px; color: var(--mute); display: flex; justify-content: space-between; }
+  .field input[type=text], .field textarea, .field select, .field input[type=number] { background: var(--panel); border: 1px solid var(--line); border-radius: 10px; padding: 10px 12px; width: 100%; }
+  .field textarea { min-height: 72px; resize: vertical; }
+  .field input:focus, .field textarea:focus { outline: none; border-color: var(--accent); }
+  .drop { border: 1.5px dashed var(--line); border-radius: var(--radius); padding: 18px; display: flex; gap: 14px; align-items: center; cursor: pointer; background: var(--panel); }
+  .drop:hover, .drop.over { border-color: var(--accent); }
+  .drop img, .drop video { width: 72px; height: 72px; object-fit: cover; border-radius: 8px; background: #000; }
+  .drop .hint { color: var(--mute); font-size: 12px; }
+  .row { display: flex; gap: 12px; align-items: center; flex-wrap: wrap; }
+  .chips { display: flex; gap: 8px; flex-wrap: wrap; }
+  .chip { border: 1px solid var(--line); background: var(--panel); border-radius: 10px; padding: 10px 14px; cursor: pointer; text-align: left; }
+  .chip.on { border-color: var(--accent); background: #221d14; }
+  .chip small { display: block; color: var(--mute); font-size: 11px; margin-top: 2px; }
+  .check { display: flex; gap: 10px; align-items: flex-start; cursor: pointer; }
+  .check input { margin-top: 3px; accent-color: var(--accent); }
+  .check small { color: var(--mute); display: block; }
+  .editor { display: grid; grid-template-columns: minmax(300px, 400px) 1fr; gap: 32px; align-items: start; }
+  .stage { position: sticky; top: 76px; }
+  .player { border-radius: 16px; overflow: hidden; background: #000; position: relative; box-shadow: 0 30px 80px rgba(0,0,0,.5); }
+  .panel { background: var(--panel); border: 1px solid var(--line); border-radius: var(--radius); padding: 20px; margin-bottom: 16px; }
+  .panel h2 { display: flex; justify-content: space-between; align-items: center; }
+  .grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+  .colors { display: flex; gap: 10px; flex-wrap: wrap; }
+  .colors label { display: flex; flex-direction: column; align-items: center; gap: 4px; font-size: 11px; color: var(--mute); }
+  .colors input { width: 44px; height: 32px; border: 1px solid var(--line); border-radius: 8px; background: none; padding: 2px; cursor: pointer; }
+  .caplist { display: grid; gap: 6px; max-height: 520px; overflow: auto; padding-right: 4px; }
+  .cap { display: grid; grid-template-columns: 54px 1fr auto auto; gap: 8px; align-items: center; padding: 6px 8px; border-radius: 10px; border: 1px solid transparent; }
+  .cap.now { border-color: var(--line); background: var(--panel2); }
+  .cap.sel { border-color: var(--accent); }
+  .cap.off input { text-decoration: line-through; opacity: .45; }
+  .cap time { font-size: 11px; color: var(--mute); font-variant-numeric: tabular-nums; cursor: pointer; }
+  .cap input { background: transparent; border: 1px solid transparent; border-radius: 6px; padding: 6px 8px; width: 100%; }
+  .cap input:hover, .cap input:focus { border-color: var(--line); background: var(--bg); outline: none; }
+  .iconbtn { background: none; border: 1px solid var(--line); color: var(--mute); border-radius: 8px; padding: 5px 8px; cursor: pointer; font-size: 12px; }
+  .iconbtn.on { color: var(--accent); border-color: var(--accent); }
+  .dragzone { position: absolute; inset: 0; cursor: crosshair; }
+  .handle { position: absolute; transform: translate(-50%, -50%); border: 2px dashed var(--accent); border-radius: 8px; padding: 4px 10px; color: var(--accent); font-size: 11px; background: rgba(0,0,0,.4); pointer-events: none; white-space: nowrap; }
+  .bar { height: 6px; background: var(--panel2); border-radius: 99px; overflow: hidden; }
+  .bar > div { height: 100%; background: var(--accent); transition: width .4s; }
+  .steps { display: grid; gap: 10px; margin: 18px 0; }
+  .steps div { display: flex; gap: 10px; color: var(--mute); }
+  .steps div.done { color: var(--ink); }
+  .steps div.cur { color: var(--accent); }
+  .err { color: var(--danger); white-space: pre-wrap; font-size: 13px; }
+  .warn { color: #ffc46b; font-size: 12px; }
+  .ok { color: var(--ok); }
+  .cost { font-size: 12px; color: var(--mute); }
+  .cost b { color: var(--ink); }
+  .hist { display: grid; grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); gap: 16px; }
+  .hist .card .thumb { aspect-ratio: 4/5; background-size: cover; background-position: center; }
+  .status { font-size: 11px; }
+  .actions { display: flex; gap: 10px; align-items: center; margin-top: 16px; flex-wrap: wrap; }
+  input[type=range] { width: 100%; accent-color: var(--accent); }
+  @media (max-width: 900px) {
+    .grid3 { grid-template-columns: 1fr; }
+    .editor { grid-template-columns: 1fr; }
+    .stage { position: static; max-width: 360px; margin: 0 auto; }
+    .grid2 { grid-template-columns: 1fr; }
+    main { padding: 20px 16px 60px; }
+  }
+</style>
+</head>
+<body>
+<div id="root"></div>
+<script type="module" src="/app.js"></script>
+</body>
+</html>

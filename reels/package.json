@@ -5,6 +5,7 @@
   "description": "ATO Reels: template-driven reel rendering with Remotion",
   "scripts": {
     "studio": "remotion studio src/index.ts",
+    "app": "node app/server.ts",
     "render": "node scripts/render.mjs",
     "typecheck": "tsc --noEmit",
     "fonts": "node scripts/fetch-fonts.mjs",
@@ -20,6 +21,7 @@
     "@remotion/media-utils": "^4.0.534",
     "@remotion/noise": "^4.0.534",
     "@remotion/paths": "^4.0.534",
+    "@remotion/player": "^4.0.534",
     "@remotion/renderer": "^4.0.534",
     "@remotion/shapes": "^4.0.534",
     "@remotion/transitions": "^4.0.534",
@@ -31,6 +33,8 @@
   },
   "devDependencies": {
     "@types/react": "^19.3.0",
+    "@types/react-dom": "^19.3.0",
+    "esbuild": "^0.28.2",
     "typescript": "^7.0.2"
   }
 }

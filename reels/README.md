@@ -57,8 +57,23 @@ Steps, each recorded with its cost in `public/jobs/<id>/usage.json`:
 Models are set in `server/config.ts` and can be overridden with `REELS_TEXT_MODEL`, `REELS_IMAGE_MODEL` and
 `REELS_VIDEO_MODEL`. Inside a sandbox whose outbound traffic goes through a proxy, also set `NODE_USE_ENV_PROXY=1`.
 
+## Web app (`app/`)
+
+```bash
+GEMINI_API_KEY=... npm run app        # http://127.0.0.1:3000
+```
+
+Template first: pick 商品を魅せる / サービス紹介 / トーク動画＋字幕, upload material, and the server runs the
+matching pipeline (`server/product.ts`, `server/saas.ts`, `server/talk.ts`). The editor previews the template live in
+the browser with `@remotion/player`, so every text, colour, caption edit (rewrite, hide, drag to move) shows at once;
+「MP4を書き出す」 renders the same props on the server. Jobs are kept in `public/jobs/<id>/job.json`.
+
+`server/talk.ts` transcribes with Gemini (phrase timings snapped to the audio with ffmpeg silencedetect) and converts
+uploads to H.264 so iPhone HEVC clips play in every browser.
+
 ## Still to do
 
 - Transcription in the server (ElevenLabs Scribe v2 → `words` for `TalkCaptions`).
-- A job API and queue so the web app can submit photos and show progress.
+- Accounts, token balance and billing (Stripe); the app has no login yet.
+- Durable job queue and storage (jobs run in the web process and files sit on local disk).
 - Rendering at scale: Remotion Lambda (or a render worker). Companies with 4+ people need a Remotion company license.
