@@ -849,6 +849,15 @@ html.anim .svc-hero-copy>:nth-child(5){animation-delay:.32s}html.anim .svc-hero-
 .vp-sound[aria-pressed="true"] .vs-on{display:inline}
 .vp-sound[hidden]{display:none}
 .svc-hero-media .mon{max-width:600px;margin-inline:auto}
+.reel-more{margin-top:clamp(48px,6vw,80px)}
+.reel-more>p{font-size:11px;letter-spacing:.2em;color:var(--muted);margin-bottom:20px}
+.reel-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:clamp(14px,2.2vw,28px)}
+.reel-grid .vp-vert .vp-frame{max-width:none;border-radius:26px;padding:7px}
+.reel-grid .vp-vert video{border-radius:20px}
+.reel-grid .vp-tag{top:16px;left:16px}
+.reel-grid .vp-sound{right:14px;bottom:14px}
+@media (max-width:860px){.reel-grid{grid-template-columns:repeat(2,minmax(0,1fr))}}
+@media (max-width:520px){.reel-grid{grid-template-columns:minmax(0,1fr)}.reel-grid .vp-vert .vp-frame{max-width:340px}}
 .svc-hero-media .mon figcaption{margin-top:12px;font-size:12.5px;color:var(--muted);text-align:center}
 
 /* points */
