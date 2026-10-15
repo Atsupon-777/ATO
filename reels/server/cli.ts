@@ -3,10 +3,13 @@
 //   node server/cli.ts product --photo path.jpg --brand ATO --name "ÉCLAT DE TEMPS" \
 //     --facts "18K rose gold case, sapphire crystal" [--style luxury|clean|cosmetic|natural] \
 //     [--video] [--on-skin] [--cta "詳しくはプロフィールへ"] [--handle @ato]
+//   node server/cli.ts matte --video talk.mp4 --out public/uploads/talk-matte.webm [--model u2net_human_seg]
 import { parseArgs } from 'node:util';
 import { listModels } from './gemini.ts';
 import { models } from './config.ts';
 import { buildProductReel, STYLES, type Style } from './product.ts';
+import { matte } from './matte.ts';
+import { Usage } from './usage.ts';
 
 const [cmd, ...rest] = process.argv.slice(2);
 
@@ -46,7 +49,16 @@ if (cmd === 'models') {
     jobId: values.job,
   });
   console.log(JSON.stringify({ out: res.out, usage: res.usage }, null, 2));
+} else if (cmd === 'matte') {
+  const { values } = parseArgs({
+    args: rest,
+    options: { video: { type: 'string' }, out: { type: 'string' }, model: { type: 'string' }, height: { type: 'string' } },
+  });
+  if (!values.video || !values.out) throw new Error('--video and --out are required');
+  const usage = new Usage();
+  const info = await matte(values.video, values.out, usage, { model: values.model, height: values.height ? Number(values.height) : undefined });
+  console.log(JSON.stringify(info));
 } else {
-  console.error('commands: models | product');
+  console.error('commands: models | product | matte');
   process.exit(1);
 }

@@ -8,7 +8,8 @@ import path from 'node:path';
 import { pipeline } from 'node:stream/promises';
 import { fileURLToPath } from 'node:url';
 import * as esbuild from 'esbuild';
-import { productShineSchema, saasPromoSchema, talkCaptionsSchema } from '../src/schemas.ts';
+import { effectsReelSchema, productShineSchema, saasPromoSchema, talkCaptionsSchema } from '../src/schemas.ts';
+import { buildEffectsProps } from '../server/effects.ts';
 import { buildProductReel, STYLES, type Style } from '../server/product.ts';
 import { renderTemplate } from '../server/render.ts';
 import { buildSaasProps } from '../server/saas.ts';
@@ -21,7 +22,12 @@ const uploadsDir = path.join(publicDir, 'uploads');
 const PORT = Number(process.env.PORT ?? 3000);
 const ORIGIN = `http://127.0.0.1:${PORT}`;
 
-const schemas = { ProductShine: productShineSchema, SaaSPromo: saasPromoSchema, TalkCaptions: talkCaptionsSchema };
+const schemas = {
+  ProductShine: productShineSchema,
+  SaaSPromo: saasPromoSchema,
+  TalkCaptions: talkCaptionsSchema,
+  EffectsReel: effectsReelSchema,
+};
 type Template = keyof typeof schemas;
 
 type Job = {
@@ -119,6 +125,13 @@ async function startJob(template: Template, input: Record<string, any>) {
         });
         job.props = res.props;
         job.usage = res.usage;
+      } else if (template === 'EffectsReel') {
+        const video = upload(input.video);
+        if (!video) throw new Error('動画をアップロードしてください');
+        const res = await buildEffectsProps({ video, jobId: id, onStep });
+        job.props = res.props;
+        job.usage = res.usage;
+        job.title = String(res.title || job.title);
       } else {
         const video = upload(input.video);
         if (!video) throw new Error('動画をアップロードしてください');
@@ -184,6 +197,7 @@ const types: Record<string, string> = {
   '.webp': 'image/webp',
   '.mp4': 'video/mp4',
   '.mov': 'video/quicktime',
+  '.webm': 'video/webm',
   '.mp3': 'audio/mpeg',
   '.woff2': 'font/woff2',
   '.ttf': 'font/ttf',

@@ -6,7 +6,7 @@ import { execFileSync } from 'node:child_process';
 const FAMILIES = [
   'Noto+Sans+JP:wght@400;700;900',
   'Shippori+Mincho:wght@500;800',
-  'Cormorant+Garamond:wght@500;600',
+  'Cormorant+Garamond:ital,wght@0,500;0,600;1,500;1,600',
   'Plus+Jakarta+Sans:wght@600;800',
 ];
 const UA = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0 Safari/537.36';

@@ -17,6 +17,7 @@ const FACES = [
   '800 40px "Shippori Mincho"',
   '500 40px "Cormorant Garamond"',
   '600 40px "Cormorant Garamond"',
+  'italic 500 40px "Cormorant Garamond"',
   '600 40px "Plus Jakarta Sans"',
   '800 40px "Plus Jakarta Sans"',
 ];

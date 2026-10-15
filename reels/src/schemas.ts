@@ -108,3 +108,59 @@ export const talkCaptionsSchema = z.object({
 });
 
 export type TalkCaptionsProps = z.infer<typeof talkCaptionsSchema>;
+
+/** Effects from the "17 video effects" catalog (notes/video-effects.md). */
+export const effectIds = [
+  'orbit',
+  'couchWall',
+  'uiWorld',
+  'frameBreak',
+  'digitalZoom',
+  'phoneMockup',
+  'checklist',
+  'headlineWall',
+  'zoomThrough',
+  'chartGrow',
+  'pullBack',
+  'greenScreen',
+  'paperCut',
+  'doodleBoil',
+  'vertigo',
+  'coverStory',
+  'glassType',
+] as const;
+
+export const effectSegmentSchema = z.object({
+  effect: z.enum(effectIds),
+  /** Source range in seconds. */
+  start: z.number().min(0),
+  end: z.number().positive(),
+  /** Spoken line shown word by word; words listed in `emphasis` get the accent colour. */
+  caption: z.string().max(60).optional(),
+  emphasis: z.array(z.string()).default([]),
+  /** Main text of the effect: cover title, glass word, chart badge, paper-cut letters, accent script line. */
+  text: z.string().max(40).optional(),
+  /** Short lines: checklist items, wall headlines, editor steps, phone chat messages. */
+  items: z.array(z.string().max(60)).max(12).default([]),
+  /** Images for cards (orbit, couch wall, ui world thumbnails). Falls back to stills of the footage. */
+  images: z.array(z.string()).max(12).default([]),
+  /** Chart values (chart grow), 2–8 points. */
+  values: z.array(z.number()).max(8).default([]),
+});
+
+export const effectsReelSchema = z.object({
+  /** Talking footage. */
+  video: z.string(),
+  /** Same footage with only the person kept, as a transparent WebM (server/matte.ts). Optional. */
+  matte: z.string().optional(),
+  focusX: z.number().min(0).max(1),
+  segments: z.array(effectSegmentSchema).min(1),
+  /** Show the "01/17" counter pill in the corner. */
+  counter: z.boolean().default(false),
+  palette: z.object({ accent: zColor(), ink: zColor(), paper: zColor() }),
+  music: z.string().optional(),
+});
+
+export type EffectSegment = z.infer<typeof effectSegmentSchema>;
+export type EffectsReelProps = z.infer<typeof effectsReelSchema>;
+export type EffectId = (typeof effectIds)[number];

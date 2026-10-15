@@ -2,12 +2,21 @@ import React from 'react';
 import { Composition } from 'remotion';
 import { FPS, beatFrames } from './lib/timing';
 import { ProductShine, productShineBeats } from './templates/ProductShine';
-import { productShineSchema, saasPromoSchema, talkCaptionsSchema, type TalkCaptionsProps } from './schemas';
+import {
+  effectsReelSchema,
+  productShineSchema,
+  saasPromoSchema,
+  talkCaptionsSchema,
+  type EffectsReelProps,
+  type TalkCaptionsProps,
+} from './schemas';
 import productWatch from '../props/product-watch.json';
 import { SaaSPromo, saasPromoBeats } from './templates/SaaSPromo';
 import saasAto from '../props/saas-ato.json';
 import { TalkCaptions, talkCaptionsDuration } from './templates/TalkCaptions';
 import talkAto from '../props/talk-ato.json';
+import { EffectsReel, effectsReelDuration } from './templates/EffectsReel';
+import effectsDemo from '../props/effects-demo.json';
 
 export const RemotionRoot: React.FC = () => (
   <>
@@ -47,6 +56,17 @@ export const RemotionRoot: React.FC = () => (
       height={1920}
       durationInFrames={talkCaptionsDuration(talkAto as TalkCaptionsProps, FPS)}
       calculateMetadata={({ props }) => ({ durationInFrames: talkCaptionsDuration(props, FPS) })}
+    />
+    <Composition
+      id="EffectsReel"
+      component={EffectsReel}
+      schema={effectsReelSchema}
+      defaultProps={effectsDemo as EffectsReelProps}
+      fps={FPS}
+      width={1080}
+      height={1920}
+      durationInFrames={effectsReelDuration(effectsDemo as EffectsReelProps, FPS)}
+      calculateMetadata={({ props }) => ({ durationInFrames: effectsReelDuration(props, FPS) })}
     />
   </>
 );

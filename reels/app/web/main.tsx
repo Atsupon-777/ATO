@@ -4,14 +4,16 @@ import { Player, type PlayerRef } from '@remotion/player';
 import { ProductShine, productShineBeats } from '../../src/templates/ProductShine';
 import { SaaSPromo, saasPromoBeats } from '../../src/templates/SaaSPromo';
 import { TalkCaptions, talkCaptionsDuration } from '../../src/templates/TalkCaptions';
+import { EffectsReel, effectsReelDuration } from '../../src/templates/EffectsReel';
 import { FPS, beatFrames } from '../../src/lib/timing';
 import { keepSegments, paginate, placeWords } from '../../src/lib/edit';
-import type { ProductShineProps, SaaSPromoProps, TalkCaptionsProps } from '../../src/schemas';
+import { effectIds, type EffectsReelProps, type ProductShineProps, type SaaSPromoProps, type TalkCaptionsProps } from '../../src/schemas';
 import productSample from '../../props/product-watch.json';
 import saasSample from '../../props/saas-ato.json';
 import talkSample from '../../props/talk-ato.json';
+import effectsSample from '../../props/effects-demo.json';
 
-type TemplateId = 'ProductShine' | 'SaaSPromo' | 'TalkCaptions';
+type TemplateId = 'ProductShine' | 'SaaSPromo' | 'TalkCaptions' | 'EffectsReel';
 
 const TEMPLATES: Record<
   TemplateId,
@@ -41,6 +43,35 @@ const TEMPLATES: Record<
     frames: (p) => talkCaptionsDuration(p, FPS),
     sample: talkSample,
   },
+  EffectsReel: {
+    name: 'トーク＋動画エフェクト',
+    tag: '動画から',
+    desc: '話している動画に、人物の後ろに文字やカードを出す・落書き・ズームなど17種のエフェクトをAIが話の内容に合わせて付けます。',
+    component: EffectsReel,
+    frames: (p) => effectsReelDuration(p, FPS),
+    sample: effectsSample,
+  },
+};
+
+/** Japanese names for the 17 effects (catalog: notes/video-effects.md). */
+const EFFECT_NAMES: Record<(typeof effectIds)[number], string> = {
+  orbit: '01 オービット（カードが周回）',
+  couchWall: '02 壁一面のカード',
+  uiWorld: '03 アプリ画面の世界',
+  frameBreak: '04 フレームを破る',
+  digitalZoom: '05 デジタルズーム',
+  phoneMockup: '06 スマホモック',
+  checklist: '07 チェックリスト',
+  headlineWall: '08 見出しの壁',
+  zoomThrough: '09 ズームスルー',
+  chartGrow: '10 グラフが伸びる',
+  pullBack: '11 引いて見せる',
+  greenScreen: '12 背景差し替え',
+  paperCut: '13 紙の切り抜き',
+  doodleBoil: '14 落書きアニメ',
+  vertigo: '15 めまいズーム',
+  coverStory: '16 雑誌の表紙',
+  glassType: '17 ガラス文字',
 };
 
 type Job = {
@@ -96,7 +127,8 @@ const uploadFile = async (f: File) => {
 };
 
 // Tokens per reel, from the pricing plan (A: own material 2, B: AI photo 5, C: AI video 12).
-const tokensFor = (t: TemplateId, input: Record<string, any>) => (t === 'ProductShine' ? (input.video ? 12 : 5) : 2);
+const tokensFor = (t: TemplateId, input: Record<string, any>) =>
+  t === 'ProductShine' ? (input.video ? 12 : 5) : t === 'EffectsReel' ? 5 : 2;
 
 const STEP_LABELS: Record<string, string> = {
   'cut-out': '商品を切り抜き',
@@ -109,6 +141,8 @@ const STEP_LABELS: Record<string, string> = {
   'copy and layout': '画面を読み取り、コピーと見せ場を作成',
   audio: '音声を抽出',
   transcribe: '文字起こし',
+  matte: '人物を切り抜き（数分かかります）',
+  'plan effects': '話に合わせてエフェクトを選ぶ',
 };
 
 // ---------- small UI pieces ----------
@@ -368,7 +402,11 @@ const NewJob: React.FC<{ template: TemplateId; onStarted: (job: Job) => void; on
           ) : (
             <>
               <Drop label="トーク動画" hint="3分以内のMP4 / MOV。縦でも横でもOK" accept="video/*" value={input.video} onChange={set('video')} />
-              <p className="cost">文字起こし → 無音・言い淀み（えー、あの）のカット → 単語ごとのテロップまで自動で行います。</p>
+              <p className="cost">
+                {template === 'EffectsReel'
+                  ? '文字起こし → 人物の切り抜き → 話の内容に合わせて17種からエフェクトを選んで配置します。'
+                  : '文字起こし → 無音・言い淀み（えー、あの）のカット → 単語ごとのテロップまで自動で行います。'}
+              </p>
             </>
           )}
           <div className="actions">
@@ -418,7 +456,9 @@ const Generating: React.FC<{ job: Job }> = ({ job }) => {
       ? ['cut-out', 'studio shot', 'plan and copy', 'motion clip (Veo)', 'build props']
       : job.template === 'SaaSPromo'
         ? ['copy and layout', 'build props']
-        : ['audio', 'transcribe', 'build props'];
+        : job.template === 'EffectsReel'
+          ? ['audio', 'transcribe', 'matte', 'plan effects']
+          : ['audio', 'transcribe', 'build props'];
   const cur = job.step?.label;
   const curIdx = steps.findIndex((s) => s === cur || (cur === 'on-skin model shot' && s === 'motion clip (Veo)'));
   return (
@@ -444,7 +484,7 @@ const Cost: React.FC<{ job: Job }> = ({ job }) =>
   job.usage ? (
     <details className="cost">
       <summary>
-        原価 <b>${job.usage.totalUsd.toFixed(2)}</b>（約{Math.round(job.usage.totalUsd * 150)}円） ・ 消費 {job.template === 'ProductShine' ? (job.props?.clip ? 12 : 5) : 2}トークン
+        原価 <b>${job.usage.totalUsd.toFixed(2)}</b>（約{Math.round(job.usage.totalUsd * 150)}円） ・ 消費 {job.template === 'ProductShine' ? (job.props?.clip ? 12 : 5) : job.template === 'EffectsReel' ? 5 : 2}トークン
       </summary>
       <div style={{ marginTop: 8, display: 'grid', gap: 4 }}>
         {job.usage.lines.map((l, i) => (
@@ -556,6 +596,8 @@ const Editor: React.FC<{ id: string }> = ({ id }) => {
           <ProductPanel p={props} update={update} />
         ) : job.template === 'SaaSPromo' ? (
           <SaasPanel p={props} update={update} />
+        ) : job.template === 'EffectsReel' ? (
+          <EffectsPanel p={props} update={update} playerRef={playerRef} />
         ) : (
           <TalkPanel p={props} update={update} playerRef={playerRef} />
         )}
@@ -619,6 +661,57 @@ const ProductPanel: React.FC<PanelProps<ProductShineProps>> = ({ p, update }) =>
             <span>AI動画クリップを使う</span>
           </label>
         ) : null}
+      </div>
+    </>
+  );
+};
+
+const EffectsPanel: React.FC<PanelProps<EffectsReelProps> & { playerRef: React.RefObject<PlayerRef | null> }> = ({ p, update, playerRef }) => {
+  const set = (fn: (p: EffectsReelProps) => void) => mut(update, fn)();
+  // Segments play back to back, so a segment's place on the timeline is the sum of the ones before it.
+  const startFrame = (i: number) => p.segments.slice(0, i).reduce((a, s) => a + Math.max(1, Math.round((s.end - s.start) * FPS)), 0);
+  return (
+    <>
+      <div className="panel">
+        <h2>エフェクト（区間ごと）</h2>
+        {!p.matte ? <p className="cost">人物の切り抜きがないため、「人物の後ろ」に出る系のエフェクトは前面に重なって表示されます。</p> : null}
+        <div style={{ display: 'grid', gap: 18 }}>
+          {p.segments.map((seg, i) => (
+            <div key={i} style={{ display: 'grid', gap: 8, paddingBottom: 14, borderBottom: '1px solid var(--line, #e5e5e5)' }}>
+              <div className="row" style={{ justifyContent: 'space-between' }}>
+                <select value={seg.effect} onChange={(e) => set((x) => void (x.segments[i].effect = e.target.value as never))}>
+                  {effectIds.map((id) => (
+                    <option key={id} value={id}>
+                      {EFFECT_NAMES[id]}
+                    </option>
+                  ))}
+                </select>
+                <button className="btn ghost small" onClick={() => playerRef.current?.seekTo(startFrame(i))}>
+                  {seg.start.toFixed(1)}–{seg.end.toFixed(1)}秒 ▶
+                </button>
+              </div>
+              <Field label="字幕" max={60} value={seg.caption ?? ''} onChange={(v) => set((x) => void (x.segments[i].caption = v))} />
+              <div className="grid2">
+                <Field label="強調する言葉（空白区切り）" value={seg.emphasis.join(' ')} onChange={(v) => set((x) => void (x.segments[i].emphasis = v.split(/\s+/).filter(Boolean)))} />
+                <Field label="エフェクトの文字" max={40} value={seg.text ?? ''} onChange={(v) => set((x) => void (x.segments[i].text = v || undefined))} />
+              </div>
+              <Field
+                label="項目（1行に1つ：チェックリスト・見出し・カードなど）"
+                multiline
+                value={seg.items.join('\n')}
+                onChange={(v) => set((x) => void (x.segments[i].items = v.split('\n').filter((l) => l.trim()).slice(0, 12)))}
+              />
+            </div>
+          ))}
+        </div>
+      </div>
+      <div className="panel">
+        <h2>色</h2>
+        <Colors value={p.palette} labels={{ accent: 'アクセント', ink: '文字', paper: '紙' }} onChange={(v) => set((x) => void (x.palette = v as any))} />
+        <label className="check" style={{ marginTop: 10 }}>
+          <input type="checkbox" checked={p.counter} onChange={(e) => set((x) => void (x.counter = e.target.checked))} />
+          <span>番号（01/17）を表示</span>
+        </label>
       </div>
     </>
   );
