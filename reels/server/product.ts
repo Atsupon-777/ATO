@@ -58,7 +58,7 @@ const planSchema = z.object({
     .describe('2-3 points (0-1) on IMAGE 3 (cut-out) where metal, glass or gloss would catch a sparkle'),
   motionPrompt: z
     .string()
-    .describe('English prompt for an 8s image-to-video shot of IMAGE 2: slow premium camera move and light change only, product stays rigid and unchanged'),
+    .describe('English prompt for an 8s image-to-video shot of IMAGE 2 for a fast-paced Instagram ad: an energetic, continuous camera move (for example a fast dolly-in that arcs around the product, a crane move or a parallax slide past foreground elements), moving light and shadows, and atmospheric motion that suits the product (drifting leaves, steam, mist, sparkles) that never covers it. The product itself stays rigid and unchanged'),
 });
 
 export type ProductBrief = {
@@ -176,7 +176,7 @@ export async function buildProductReel(brief: ProductBrief) {
     })),
     cta: brief.cta,
     handle: brief.handle,
-    bpm: 120,
+    bpm: 128,
     palette: style.palette,
     ...(clip ? { clip } : {}),
   });
