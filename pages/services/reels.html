@@ -26,7 +26,7 @@
 <p class="svc-body ja">写真を選ぶだけ。たった3秒で、一流の動画編集を加えたショート動画に変身します。ATOが自社で開発したツールです。</p>
 <p class="svc-body en">Pick a photo. In just three seconds it becomes a short video with world-class editing. A tool ATO built in-house.</p>
 {% endblock %}
-{% block svc_media %}{{ m.vplayer('/static/media/reels-a7iv.mp4','/static/media/reels-a7iv.jpg','vert',True,'サンプル動画：カメラの商品紹介','Sample video: a camera product film','サンプル動画（カメラの商品紹介）','Sample video (a camera product film)','SAMPLE 01') }}{% endblock %}
+{% block svc_media %}{{ m.vplayer('/static/media/reels-matcha.mp4','/static/media/reels-matcha.jpg','vert',False,'ATO Reelsで作った動画：抹茶の商品紹介','Made with ATO Reels: a matcha product reel','ATO Reelsで作った動画（抹茶の商品紹介）','Made with ATO Reels (a matcha product reel)','MADE WITH ATO REELS') }}{% endblock %}
 {% block pt_kicker %}HOW IT WORKS{% endblock %}
 {% block pt_hud %}HOW IT WORKS{% endblock %}
 {% block pt_title %}<span class="ja" data-split>選んで、3秒。</span><span class="en" data-split>Pick, then three seconds.</span>{% endblock %}
@@ -37,11 +37,11 @@
 {% endblock %}
 {% block pt_extra %}
 <div class="reel-more" data-reveal>
-  <p class="mono"><span class="ja">ほかのサンプル動画</span><span class="en">More samples</span></p>
+  <p class="mono"><span class="ja">ATO Reelsで作ったほかの動画</span><span class="en">More reels made with ATO Reels</span></p>
   <div class="reel-grid">
-    {{ m.vplayer('/static/media/reels-fx5.mp4','/static/media/reels-fx5.jpg','vert',True,'サンプル動画：シネマカメラの商品紹介','Sample video: a cinema camera reel','シネマカメラの商品紹介','A cinema camera reel','SAMPLE 02') }}
-    {{ m.vplayer('/static/media/reels-manzai.mp4','/static/media/reels-manzai.jpg','vert',True,'サンプル動画：イベントの告知','Sample video: an event promo','イベントの告知','An event promo','SAMPLE 03') }}
-    {{ m.vplayer('/static/media/reels-watch.mp4','/static/media/reels-watch.jpg','vert',True,'サンプル動画：時計のCM','Sample video: a watch commercial','時計のCM','A watch commercial','SAMPLE 04') }}
+    {{ m.vplayer('/static/media/reels-ato-dark.mp4','/static/media/reels-ato-dark.jpg','vert',False,'ATO Reelsで作った動画：Webサービスの紹介','Made with ATO Reels: a web service promo','Webサービスの紹介','A web service promo','SAMPLE 02') }}
+    {{ m.vplayer('/static/media/reels-ato-light.mp4','/static/media/reels-ato-light.jpg','vert',False,'ATO Reelsで作った動画：Webサービスの紹介（別デザイン）','Made with ATO Reels: a web service promo, another design','Webサービスの紹介（別デザイン）','A web service promo (another design)','SAMPLE 03') }}
+    {{ m.vplayer('/static/media/reels-talk.mp4','/static/media/reels-talk.jpg','vert',True,'ATO Reelsで作った動画：自動字幕つきトーク','Made with ATO Reels: a talk with auto captions','自動字幕つきトーク','A talk with auto captions','SAMPLE 04') }}
   </div>
 </div>
 {% endblock %}
