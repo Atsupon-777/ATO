@@ -1,13 +1,13 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { createRoot } from 'react-dom/client';
-import { Player, type PlayerRef } from '@remotion/player';
+import { Player, Thumbnail, type PlayerRef } from '@remotion/player';
 import { ProductShine, productShineBeats } from '../../src/templates/ProductShine';
 import { SaaSPromo, saasPromoBeats } from '../../src/templates/SaaSPromo';
 import { TalkCaptions, talkCaptionsDuration } from '../../src/templates/TalkCaptions';
 import { EffectsReel, effectsReelDuration } from '../../src/templates/EffectsReel';
 import { FPS, beatFrames } from '../../src/lib/timing';
 import { keepSegments, paginate, placeWords } from '../../src/lib/edit';
-import { effectIds, type EffectsReelProps, type ProductShineProps, type SaaSPromoProps, type TalkCaptionsProps } from '../../src/schemas';
+import { effectIds, type EffectId, type EffectsReelProps, type ProductShineProps, type SaaSPromoProps, type TalkCaptionsProps } from '../../src/schemas';
 import productSample from '../../props/product-watch.json';
 import saasSample from '../../props/saas-ato.json';
 import talkSample from '../../props/talk-ato.json';
@@ -258,46 +258,6 @@ const Preview: React.FC<{ template: TemplateId; props: any; playerRef?: React.Re
 
 // ---------- screens ----------
 
-const Home: React.FC<{ onPick: (t: TemplateId) => void }> = ({ onPick }) => {
-  const [hover, setHover] = useState<TemplateId | null>(null);
-  return (
-    <>
-      <h1>テンプレートを選んでください</h1>
-      <p className="sub">素材を入れるだけで、AIが構成・コピー・演出まで自動で作ります。できあがった後に文字や色を直して書き出せます。</p>
-      <div className="grid3">
-        {(Object.keys(TEMPLATES) as TemplateId[]).map((id) => {
-          const t = TEMPLATES[id];
-          return (
-            <button key={id} className="card" onClick={() => onPick(id)} onMouseEnter={() => setHover(id)} onMouseLeave={() => setHover(null)}>
-              <div className="thumb">
-                <Player
-                  component={t.component}
-                  inputProps={t.sample}
-                  durationInFrames={t.frames(t.sample)}
-                  fps={FPS}
-                  compositionWidth={1080}
-                  compositionHeight={1920}
-                  style={{ width: '100%', height: '100%' }}
-                  autoPlay
-                  loop
-                  initiallyMuted
-                  key={hover === id ? 'h' : 'n'}
-                  acknowledgeRemotionLicense
-                />
-              </div>
-              <div className="body">
-                <span className="tag">{t.tag}</span>
-                <div className="name">{t.name}</div>
-                <div className="desc">{t.desc}</div>
-              </div>
-            </button>
-          );
-        })}
-      </div>
-    </>
-  );
-};
-
 const STYLE_OPTIONS = [
   { id: 'luxury', name: 'ラグジュアリー', note: '黒大理石・金色の光' },
   { id: 'clean', name: 'クリーン', note: '白背景・やわらかい光' },
@@ -305,8 +265,8 @@ const STYLE_OPTIONS = [
   { id: 'natural', name: 'ナチュラル', note: '木目・木漏れ日' },
 ];
 
-const NewJob: React.FC<{ template: TemplateId; onStarted: (job: Job) => void; onBack: () => void }> = ({ template, onStarted, onBack }) => {
-  const [input, setInput] = useState<Record<string, any>>({ style: 'luxury', cta: '詳しくはプロフィールへ' });
+const NewJob: React.FC<{ template: TemplateId; fx?: EffectId; onStarted: (job: Job) => void; onBack: () => void }> = ({ template, fx, onStarted, onBack }) => {
+  const [input, setInput] = useState<Record<string, any>>({ style: 'luxury', cta: '詳しくはプロフィールへ', effects: fx ? [fx] : [] });
   const [err, setErr] = useState('');
   const [busy, setBusy] = useState(false);
   const set = (k: string) => (v: any) => setInput((s) => ({ ...s, [k]: v }));
@@ -327,8 +287,12 @@ const NewJob: React.FC<{ template: TemplateId; onStarted: (job: Job) => void; on
   return (
     <div className="editor">
       <div className="stage">
-        <Preview template={template} props={t.sample} autoPlay />
-        <p className="cost" style={{ textAlign: 'center' }}>サンプル: {t.name}</p>
+        <div className="player">
+          <div style={{ aspectRatio: '9 / 16' }}>
+            <ShowVideo k={fx ?? template} controls />
+          </div>
+        </div>
+        <p className="cost" style={{ textAlign: 'center' }}>このテンプレートで実際に作った見本</p>
       </div>
       <div>
         <button className="btn ghost small" onClick={onBack}>← テンプレート一覧</button>
@@ -966,8 +930,6 @@ const History: React.FC<{ onOpen: (id: string) => void }> = ({ onOpen }) => {
   const label = { generating: '作成中', ready: '編集できます', rendering: '書き出し中', done: '書き出し済み', error: 'エラー' };
   return (
     <>
-      <h1>作成したリール</h1>
-      <p className="sub">{jobs.length}本</p>
       <div className="hist">
         {jobs.map((j) => (
           <button key={j.id} className="card" onClick={() => onOpen(j.id)}>
@@ -987,6 +949,382 @@ const History: React.FC<{ onOpen: (id: string) => void }> = ({ onOpen }) => {
   );
 };
 
+// ---------- catalog: base templates + each effect as its own pattern ----------
+
+type Group = 'base' | 'behind' | 'camera' | 'ui' | 'craft';
+const GROUPS: { id: Group; name: string; note: string }[] = [
+  { id: 'base', name: 'テンプレート', note: '商品・サービス・トーク' },
+  { id: 'behind', name: '人物の後ろに出す', note: 'エフェクト・文字やカードを人の後ろに' },
+  { id: 'camera', name: 'カメラワーク', note: 'エフェクト・ズームや引き' },
+  { id: 'ui', name: '画面・UI', note: 'エフェクト・アプリやスマホを見せる' },
+  { id: 'craft', name: '手描き・コラージュ', note: 'エフェクト・落書きや切り抜き' },
+];
+
+const EFFECT_GROUP: Record<EffectId, Group> = {
+  orbit: 'behind', couchWall: 'behind', headlineWall: 'behind', chartGrow: 'behind', coverStory: 'behind', glassType: 'behind',
+  frameBreak: 'camera', digitalZoom: 'camera', zoomThrough: 'camera', pullBack: 'camera', vertigo: 'camera',
+  uiWorld: 'ui', phoneMockup: 'ui', checklist: 'ui', greenScreen: 'ui',
+  paperCut: 'craft', doodleBoil: 'craft',
+};
+
+const EFFECT_DESC: Record<EffectId, string> = {
+  orbit: 'SNS投稿のカードが人物の周りを3Dで回る',
+  couchWall: '後ろの壁にリールのカードが次々に貼られる',
+  uiWorld: 'アプリ画面に動画が飛び込み、入力が進む',
+  frameBreak: '画面がインスタ投稿のカードに縮み、人物がはみ出す',
+  digitalZoom: '話の途中で一気にパンチイン、キーワードが浮かぶ',
+  phoneMockup: '横に浮かぶスマホの中でチャットが進む',
+  checklist: 'ガラスのカードにチェック項目が増えていく',
+  headlineWall: '新聞の見出しや付箋が後ろに貼られていく',
+  zoomThrough: '被写体に突っ込んで次のカットへ抜ける',
+  chartGrow: '後ろで光るグラフが右肩上がりに伸びる',
+  pullBack: '引いて編集画面の中のプレビューになる',
+  greenScreen: '人物の背景をアプリ画面に差し替える',
+  paperCut: '紙の切り抜き風、文字が1つずつ貼られる',
+  doodleBoil: '輪郭と落書きが手描きでうごめく（人気）',
+  vertigo: '人物はそのまま背景だけが伸びるめまいズーム',
+  coverStory: '雑誌の表紙のように大きな文字が頭の後ろに',
+  glassType: '立体のガラス文字が後ろで光る',
+};
+
+type CatalogItem = { key: string; template: TemplateId; effect?: EffectId; name: string; desc: string; group: Group };
+
+const CATALOG: CatalogItem[] = [
+  { key: 'ProductShine', template: 'ProductShine', name: TEMPLATES.ProductShine.name, desc: TEMPLATES.ProductShine.desc, group: 'base' },
+  { key: 'SaaSPromo', template: 'SaaSPromo', name: TEMPLATES.SaaSPromo.name, desc: TEMPLATES.SaaSPromo.desc, group: 'base' },
+  { key: 'TalkCaptions', template: 'TalkCaptions', name: TEMPLATES.TalkCaptions.name, desc: TEMPLATES.TalkCaptions.desc, group: 'base' },
+  { key: 'EffectsReel', template: 'EffectsReel', name: 'エフェクトおまかせ', desc: TEMPLATES.EffectsReel.desc, group: 'base' },
+  ...effectIds.map((fx) => ({
+    key: fx,
+    template: 'EffectsReel' as TemplateId,
+    effect: fx,
+    name: EFFECT_NAMES[fx].replace(/^\d+\s*/, '').replace(/（.*）/, ''),
+    desc: EFFECT_DESC[fx],
+    group: EFFECT_GROUP[fx],
+  })),
+];
+
+
+/** Real render of this template (public/showcase, built by scripts/make-showcase.py). */
+const showcase = (key: string) => ({ video: media(`showcase/${key}.mp4`), poster: media(`showcase/${key}.jpg`) });
+
+const ShowVideo: React.FC<{ k: string; controls?: boolean }> = ({ k, controls }) => {
+  const s = showcase(k);
+  return <video src={s.video} poster={s.poster} autoPlay muted loop playsInline controls={controls} preload="auto" style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block', background: '#000' }} />;
+};
+
+/** Poster in the grid; plays while hovered (desktop). Tap opens the full preview. */
+const TemplateCard: React.FC<{ it: CatalogItem; onOpen: () => void }> = ({ it, onOpen }) => {
+  const [hover, setHover] = useState(false);
+  return (
+    <button className="tcard" onClick={onOpen} onMouseEnter={() => setHover(true)} onMouseLeave={() => setHover(false)}>
+      <div className="tthumb">
+        {hover ? <ShowVideo k={it.key} /> : <img src={showcase(it.key).poster} alt="" loading="lazy" />}
+        <span className="tplay" aria-hidden>
+          ▶
+        </span>
+        {it.effect ? <span className="tnum">{String(effectIds.indexOf(it.effect) + 1).padStart(2, '0')}</span> : null}
+      </div>
+      <div className="tname">{it.name}</div>
+    </button>
+  );
+};
+
+const PreviewSheet: React.FC<{ it: CatalogItem; onClose: () => void; onUse: () => void }> = ({ it, onClose, onUse }) => {
+  useEffect(() => {
+    const f = (e: KeyboardEvent) => e.key === 'Escape' && onClose();
+    addEventListener('keydown', f);
+    return () => removeEventListener('keydown', f);
+  }, []);
+  return (
+    <div className="sheet" onClick={onClose}>
+      <div className="sheetbox" onClick={(e) => e.stopPropagation()}>
+        <div className="sheetplayer">
+          <ShowVideo k={it.key} controls />
+        </div>
+        <div className="sheetinfo">
+          <span className="tag">{GROUPS.find((g) => g.id === it.group)!.name}</span>
+          <div className="name">{it.name}</div>
+          <div className="desc">{it.desc}</div>
+          <p className="cost">
+            {it.effect
+              ? 'この見本は、このエフェクトの実際の書き出し動画です。作るときは、選んだエフェクトを必ず入れて、話の内容に合わせてAIがほかのエフェクトも5〜10カット組み合わせます。'
+              : 'この見本は、このテンプレートでAIが実際に作って書き出した動画です。'}
+          </p>
+          <div className="row">
+            <button className="btn" onClick={onUse}>
+              このテンプレートで作る
+            </button>
+            <button className="btn ghost" onClick={onClose}>
+              閉じる
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+};
+
+const useCatalogPicker = (go: (h: string) => void) => {
+  const [open, setOpen] = useState<CatalogItem | null>(null);
+  const sheet = open ? (
+    <PreviewSheet it={open} onClose={() => setOpen(null)} onUse={() => go(open.effect ? `#/new/EffectsReel/${open.effect}` : `#/new/${open.template}`)} />
+  ) : null;
+  return { setOpen, sheet };
+};
+
+const Grid: React.FC<{ items: CatalogItem[]; onOpen: (it: CatalogItem) => void }> = ({ items, onOpen }) => (
+  <div className="tgrid">
+    {items.map((it) => (
+      <TemplateCard key={it.key} it={it} onOpen={() => onOpen(it)} />
+    ))}
+  </div>
+);
+
+const Home: React.FC<{ go: (h: string) => void }> = ({ go }) => {
+  const [group, setGroup] = useState<Group | 'all'>('all');
+  const { setOpen, sheet } = useCatalogPicker(go);
+  const shown = group === 'all' ? GROUPS : GROUPS.filter((g) => g.id === group);
+  return (
+    <>
+      <div className="hero">
+        <h1>何を作りますか？</h1>
+        <p className="sub">テンプレートかエフェクトを選んで素材を入れるだけ。AIが構成・コピー・演出まで作ります。</p>
+      </div>
+      <div className="chipbar" role="tablist">
+        <button className={`fchip ${group === 'all' ? 'on' : ''}`} onClick={() => setGroup('all')}>
+          すべて <small>{CATALOG.length}</small>
+        </button>
+        {GROUPS.map((g) => (
+          <button key={g.id} className={`fchip ${group === g.id ? 'on' : ''}`} onClick={() => setGroup(g.id)}>
+            {g.name} <small>{CATALOG.filter((c) => c.group === g.id).length}</small>
+          </button>
+        ))}
+      </div>
+      {shown.map((g) => (
+        <section key={g.id} className="tsection">
+          <div className="thead">
+            <h2>{g.name}</h2>
+            <span className="cost">{g.note}</span>
+          </div>
+          <Grid items={CATALOG.filter((c) => c.group === g.id)} onOpen={setOpen} />
+        </section>
+      ))}
+      {sheet}
+    </>
+  );
+};
+
+const Search: React.FC<{ go: (h: string) => void }> = ({ go }) => {
+  const [q, setQ] = useState('');
+  const { setOpen, sheet } = useCatalogPicker(go);
+  const words = q.trim().toLowerCase().split(/\s+/).filter(Boolean);
+  const hits = CATALOG.filter((c) => {
+    const hay = `${c.name} ${c.desc} ${GROUPS.find((g) => g.id === c.group)!.name} ${c.effect ?? ''} ${c.template}`.toLowerCase();
+    return words.every((w) => hay.includes(w));
+  });
+  const ideas = ['ズーム', 'グラフ', 'スマホ', '文字', '落書き', '商品', '字幕', 'カード'];
+  return (
+    <>
+      <div className="searchbox">
+        <span aria-hidden>⌕</span>
+        <input id="q" type="search" placeholder="テンプレートやエフェクトを検索" value={q} onChange={(e) => setQ(e.target.value)} autoFocus />
+      </div>
+      <div className="chipbar">
+        {ideas.map((w) => (
+          <button key={w} className={`fchip ${q === w ? 'on' : ''}`} onClick={() => setQ(w)}>
+            {w}
+          </button>
+        ))}
+      </div>
+      <p className="cost">{hits.length}件</p>
+      <Grid items={hits} onOpen={setOpen} />
+      {sheet}
+    </>
+  );
+};
+
+const STATUS_LABEL = { generating: '作成中', ready: '編集できます', rendering: '書き出し中', done: '書き出し済み', error: 'エラー' } as const;
+
+/** One reel per screen, like Reels: the one in view plays. */
+const ReelsFeed: React.FC<{ go: (h: string) => void }> = ({ go }) => {
+  const [jobs, setJobs] = useState<Job[] | null>(null);
+  useEffect(() => {
+    api<Job[]>('/api/jobs').then(async (list) => {
+      const full = await Promise.all(list.filter((j) => j.status !== 'error').map((j) => api<Job>(`/api/jobs/${j.id}`).catch(() => j)));
+      setJobs(full);
+    });
+  }, []);
+  if (!jobs) return <p className="sub">読み込み中…</p>;
+  if (!jobs.length)
+    return (
+      <div className="empty">
+        <h1>まだリールがありません</h1>
+        <p className="sub">ホームでテンプレートを選んで、最初の1本を作りましょう。</p>
+        <button className="btn" onClick={() => go('#/')}>
+          テンプレートを見る
+        </button>
+      </div>
+    );
+  return (
+    <div className="feed">
+      {jobs.map((j) => (
+        <FeedItem key={j.id} job={j} onEdit={() => go(`#/job/${j.id}`)} />
+      ))}
+    </div>
+  );
+};
+
+const FeedItem: React.FC<{ job: Job; onEdit: () => void }> = ({ job, onEdit }) => {
+  const box = useRef<HTMLDivElement>(null);
+  const [visible, setVisible] = useState(false);
+  useEffect(() => {
+    const io = new IntersectionObserver(([e]) => setVisible(e.intersectionRatio > 0.6), { threshold: [0, 0.6, 1] });
+    io.observe(box.current!);
+    return () => io.disconnect();
+  }, []);
+  const t = TEMPLATES[job.template];
+  return (
+    <div className="feeditem" ref={box}>
+      <div className="feedvideo">
+        {job.props && visible ? (
+          <Player component={t.component} inputProps={job.props} durationInFrames={Math.max(1, t.frames(job.props))} fps={FPS} compositionWidth={1080} compositionHeight={1920} style={{ width: '100%', height: '100%' }} autoPlay loop initiallyMuted acknowledgeRemotionLicense />
+        ) : job.props ? (
+          <Thumbnail component={t.component} inputProps={job.props} durationInFrames={Math.max(1, t.frames(job.props))} fps={FPS} compositionWidth={1080} compositionHeight={1920} frameToDisplay={20} style={{ width: '100%', height: '100%' }} />
+        ) : (
+          <div className="feedblank">{STATUS_LABEL[job.status]}</div>
+        )}
+        <div className="feedmeta">
+          <div className="name">{job.title}</div>
+          <div className="cost">
+            {t.name} · {STATUS_LABEL[job.status]}
+          </div>
+        </div>
+        <div className="feedactions">
+          <button onClick={onEdit} aria-label="編集">
+            <span>✎</span>編集
+          </button>
+          {job.video ? (
+            <a href={media(job.video)} target="_blank" aria-label="MP4">
+              <span>⤓</span>MP4
+            </a>
+          ) : null}
+        </div>
+      </div>
+    </div>
+  );
+};
+
+const PLANS = [
+  { name: 'スターター', price: '9,800円', tokens: 60, note: '週3投稿の目安' },
+  { name: 'スタンダード', price: '29,800円', tokens: 200, note: '毎日投稿の目安' },
+  { name: 'プロ', price: '79,800円', tokens: 600, note: '複数ブランド・優先書き出し' },
+];
+
+const jobTokens = (j: Job) => (j.template === 'ProductShine' ? (j.props?.clip ? 12 : 5) : j.template === 'EffectsReel' ? 5 : 2);
+
+const Account: React.FC<{ go: (h: string) => void }> = ({ go }) => {
+  const [jobs, setJobs] = useState<Job[]>([]);
+  useEffect(() => {
+    api<Job[]>('/api/jobs').then(async (list) => setJobs(await Promise.all(list.map((j) => api<Job>(`/api/jobs/${j.id}`).catch(() => j)))));
+  }, []);
+  const made = jobs.filter((j) => j.props);
+  const used = made.reduce((a, j) => a + jobTokens(j), 0);
+  const cost = jobs.reduce((a, j) => a + (j.usage?.totalUsd ?? 0), 0);
+  return (
+    <>
+      <div className="profile">
+        <div className="avatar">A</div>
+        <div>
+          <div className="name">ATO</div>
+          <div className="cost">β版・課金はまだつながっていません</div>
+        </div>
+      </div>
+      <div className="stats3">
+        <div>
+          <b>{made.length}</b>
+          <span>作ったリール</span>
+        </div>
+        <div>
+          <b>{used}</b>
+          <span>使ったトークン</span>
+        </div>
+        <div>
+          <b>{Math.round(cost * 150).toLocaleString()}円</b>
+          <span>AIの原価</span>
+        </div>
+      </div>
+      <h2>プラン</h2>
+      <div className="plans">
+        {PLANS.map((p) => (
+          <div key={p.name} className="plan">
+            <div className="name">{p.name}</div>
+            <div className="price">
+              {p.price}
+              <small>/月</small>
+            </div>
+            <div className="cost">
+              毎月 {p.tokens}トークン ・ {p.note}
+            </div>
+            <button className="btn ghost small" disabled title="課金の接続後に選べます">
+              準備中
+            </button>
+          </div>
+        ))}
+      </div>
+      <p className="cost">消費トークン: 自分の素材だけ 2 ／ AI写真・エフェクト 5 ／ AI動画あり 12</p>
+      <h2 style={{ marginTop: 24 }}>履歴</h2>
+      <History onOpen={(id) => go(`#/job/${id}`)} />
+    </>
+  );
+};
+
+const CreateSheet: React.FC<{ go: (h: string) => void; onClose: () => void }> = ({ go, onClose }) => (
+  <div className="sheet" onClick={onClose}>
+    <div className="sheetbox list" onClick={(e) => e.stopPropagation()}>
+      <h2>新しく作る</h2>
+      {CATALOG.filter((c) => !c.effect).map((c) => (
+        <button key={c.key} className="listrow" onClick={() => (onClose(), go(`#/new/${c.template}`))}>
+          <span className="tag">{TEMPLATES[c.template].tag}</span>
+          <b>{c.name}</b>
+        </button>
+      ))}
+      <button className="listrow" onClick={() => (onClose(), go('#/'))}>
+        <span className="tag">17種</span>
+        <b>エフェクトから選ぶ</b>
+      </button>
+    </div>
+  </div>
+);
+
+const Icon: React.FC<{ name: 'home' | 'reels' | 'plus' | 'search' | 'me' }> = ({ name }) => {
+  const p = { fill: 'none', stroke: 'currentColor', strokeWidth: 2, strokeLinecap: 'round' as const, strokeLinejoin: 'round' as const };
+  return (
+    <svg width="26" height="26" viewBox="0 0 24 24" aria-hidden>
+      {name === 'home' ? <path {...p} d="M4 11 12 4l8 7v8a1 1 0 0 1-1 1h-4v-6H9v6H5a1 1 0 0 1-1-1z" /> : null}
+      {name === 'reels' ? (
+        <>
+          <rect {...p} x="3.5" y="3.5" width="17" height="17" rx="5" />
+          <path {...p} d="M10 9v6l5-3z" />
+        </>
+      ) : null}
+      {name === 'plus' ? <path {...p} d="M12 5v14M5 12h14" /> : null}
+      {name === 'search' ? (
+        <>
+          <circle {...p} cx="11" cy="11" r="6.5" />
+          <path {...p} d="m16 16 4 4" />
+        </>
+      ) : null}
+      {name === 'me' ? (
+        <>
+          <circle {...p} cx="12" cy="9" r="4" />
+          <path {...p} d="M4.5 20c1.5-3.5 4.2-5 7.5-5s6 1.5 7.5 5" />
+        </>
+      ) : null}
+    </svg>
+  );
+};
+
 // ---------- app shell (hash routing) ----------
 
 const useHash = () => {
@@ -1002,8 +1340,17 @@ const useHash = () => {
 const App = () => {
   const hash = useHash();
   const [sel, setSel] = useState<number | null>(null);
+  const [creating, setCreating] = useState(false);
   const go = (h: string) => (location.hash = h);
-  const [, route, arg] = hash.split('?')[0].split('/');
+  const [, route, arg, arg2] = hash.split('?')[0].split('/');
+  const tab = route === 'reels' || route === 'job' ? 'reels' : route === 'search' ? 'search' : route === 'me' ? 'me' : route === 'new' ? 'new' : 'home';
+  const tabs = [
+    { id: 'home', label: 'ホーム', icon: 'home', onClick: () => go('#/') },
+    { id: 'reels', label: 'リール', icon: 'reels', onClick: () => go('#/reels') },
+    { id: 'new', label: '作成', icon: 'plus', onClick: () => setCreating(true) },
+    { id: 'search', label: '検索', icon: 'search', onClick: () => go('#/search') },
+    { id: 'me', label: 'アカウント', icon: 'me', onClick: () => go('#/me') },
+  ] as const;
   return (
     <SelContext.Provider value={{ sel, setSel }}>
       <div className="top">
@@ -1011,27 +1358,38 @@ const App = () => {
           ATO <span>Reels</span>
         </div>
         <div className="nav">
-          <button className={!route || route === 'new' ? 'on' : ''} onClick={() => go('#/')}>
-            新規作成
-          </button>
-          <button className={route === 'history' || route === 'job' ? 'on' : ''} onClick={() => go('#/history')}>
-            履歴
-          </button>
+          {tabs.map((t) => (
+            <button key={t.id} className={tab === t.id ? 'on' : ''} onClick={t.onClick}>
+              {t.label}
+            </button>
+          ))}
         </div>
         <div className="spacer" />
         <span className="pill">β版</span>
       </div>
-      <main>
+      <main className={route === 'reels' ? 'wide' : ''}>
         {route === 'new' && arg in TEMPLATES ? (
-          <NewJob template={arg as TemplateId} onBack={() => go('#/')} onStarted={(j) => go(`#/job/${j.id}`)} />
+          <NewJob key={hash} template={arg as TemplateId} fx={effectIds.includes(arg2 as EffectId) ? (arg2 as EffectId) : undefined} onBack={() => history.back()} onStarted={(j) => go(`#/job/${j.id}`)} />
         ) : route === 'job' && arg ? (
           <Editor key={arg} id={arg} />
-        ) : route === 'history' ? (
-          <History onOpen={(id) => go(`#/job/${id}`)} />
+        ) : route === 'history' || route === 'me' ? (
+          <Account go={go} />
+        ) : route === 'reels' ? (
+          <ReelsFeed go={go} />
+        ) : route === 'search' ? (
+          <Search go={go} />
         ) : (
-          <Home onPick={(t) => go(`#/new/${t}`)} />
+          <Home go={go} />
         )}
       </main>
+      <nav className="tabbar" aria-label="メニュー">
+        {tabs.map((t) => (
+          <button key={t.id} className={`${tab === t.id ? 'on' : ''} ${t.id === 'new' ? 'make' : ''}`} onClick={t.onClick} aria-label={t.label}>
+            <Icon name={t.icon} />
+          </button>
+        ))}
+      </nav>
+      {creating ? <CreateSheet go={go} onClose={() => setCreating(false)} /> : null}
     </SelContext.Provider>
   );
 };

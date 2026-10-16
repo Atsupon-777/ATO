@@ -8,7 +8,7 @@ import path from 'node:path';
 import { pipeline } from 'node:stream/promises';
 import { fileURLToPath } from 'node:url';
 import * as esbuild from 'esbuild';
-import { effectsReelSchema, productShineSchema, saasPromoSchema, talkCaptionsSchema } from '../src/schemas.ts';
+import { effectIds, effectsReelSchema, productShineSchema, saasPromoSchema, talkCaptionsSchema } from '../src/schemas.ts';
 import { buildEffectsProps } from '../server/effects.ts';
 import { buildProductReel, STYLES, type Style } from '../server/product.ts';
 import { renderTemplate } from '../server/render.ts';
@@ -128,7 +128,8 @@ async function startJob(template: Template, input: Record<string, any>) {
       } else if (template === 'EffectsReel') {
         const video = upload(input.video);
         if (!video) throw new Error('動画をアップロードしてください');
-        const res = await buildEffectsProps({ video, jobId: id, onStep });
+        const prefer = (Array.isArray(input.effects) ? input.effects : []).filter((e: string) => (effectIds as readonly string[]).includes(e));
+        const res = await buildEffectsProps({ video, jobId: id, prefer, onStep });
         job.props = res.props;
         job.usage = res.usage;
         job.title = String(res.title || job.title);

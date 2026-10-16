@@ -3,7 +3,7 @@
 import { writeFile } from 'node:fs/promises';
 import path from 'node:path';
 import { z } from 'zod';
-import { effectIds, effectsReelSchema, type EffectSegment, type EffectsReelProps } from '../src/schemas.ts';
+import { effectIds, effectsReelSchema, type EffectId, type EffectSegment, type EffectsReelProps } from '../src/schemas.ts';
 import { askJson } from './gemini.ts';
 import { matte } from './matte.ts';
 import { buildTalkProps } from './talk.ts';
@@ -78,7 +78,13 @@ function closeGaps(segs: EffectSegment[], duration: number) {
     .filter((s) => s.end > s.start);
 }
 
-export async function buildEffectsProps(brief: { video: string; jobId?: string; onStep?: (n: number, total: number, label: string) => void }) {
+export async function buildEffectsProps(brief: {
+  video: string;
+  jobId?: string;
+  /** Effects the user picked in the gallery; the planner leans on these. */
+  prefer?: EffectId[];
+  onStep?: (n: number, total: number, label: string) => void;
+}) {
   const total = 4;
   const talk = await buildTalkProps({ video: brief.video, jobId: brief.jobId, onStep: (n, _t, label) => brief.onStep?.(n, total, label) });
   const usage = new Usage();
@@ -105,6 +111,9 @@ export async function buildEffectsProps(brief: { video: string; jobId?: string; 
         'and give each beat exactly one visual effect that fits what is said. Use each effect at most once and vary them.',
         'start/end are seconds from the transcript; beats must be in order and not overlap. caption = the words spoken in that beat',
         `(max 60 characters). Write text and items in the transcript's language (${talk.language}). Leave values empty unless the effect is chartGrow.`,
+        ...(brief.prefer?.length
+          ? [`The user chose these effects: ${brief.prefer.join(', ')}. Use every one of them, and fill the remaining beats with others that fit.`]
+          : []),
         '',
         'Effects:',
         ...Object.entries(EFFECT_GUIDE).map(([k, v]) => `- ${k}: ${v}`),
