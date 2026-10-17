@@ -733,7 +733,7 @@ const FivePassPanel: React.FC<{ job: Job; p: FivePassProps; update: PanelProps<F
               <ul className="notes">
                 {notes.map((n, i) => (
                   <li key={i}>
-                    <span className="tag">v{n.version}</span> {n.text}
+                    <span className="tag">v{n.version + 1}</span> {n.text}
                   </li>
                 ))}
               </ul>
