@@ -368,5 +368,21 @@
  "動画全体に「{0}」の質感を重ねます。": "Menambahkan tekstur “{0}” ke seluruh video.",
  "この設定だけを変えて実際に書き出した見本です。選ぶと全カットにこの設定がかかり、ほかの要素はAIが組み合わせます。": "Ekspor asli dengan hanya pengaturan ini yang diubah. Pilih ini dan setiap potongan memakainya; AI memadukan sisanya.",
  "マイアカウント": "Akun saya",
- "言語": "Bahasa"
+ "言語": "Bahasa",
+ "ハイプ": "Hype",
+ "速いカットとズーム、太字と強い色。勢いで見せるリール向け。": "Potongan dan zoom cepat, huruf tebal, warna kuat. Untuk reel yang energik.",
+ "エディトリアル": "Editorial",
+ "雑誌の表紙のような上品なセリフ体と落ち着いた色。ブランド・美容向け。": "Huruf serif elegan ala sampul majalah dan warna tenang. Untuk brand dan kecantikan.",
+ "ビジネス・SaaS": "Bisnis · SaaS",
+ "アプリ画面、チェックリスト、グラフで「何ができるか」を伝える。": "Layar aplikasi, checklist, dan grafik untuk menunjukkan fungsinya.",
+ "手づくり": "Buatan tangan",
+ "落書き、切り貼り、マーカー。親しみやすいクリエイター系。": "Coretan, potongan kertas, dan spidol. Gaya kreator yang ramah.",
+ "シネマ": "Sinema",
+ "ゆっくりした寄り引きと映画のような色。語り・ストーリー向け。": "Gerak kamera pelan dan warna ala film. Untuk cerita dan narasi.",
+ "Y2K・ネオン": "Y2K · Neon",
+ "ネオン、グリッチ、走査線。若い層・エンタメ向け。": "Neon, glitch, dan garis pindai. Untuk anak muda dan hiburan.",
+ "やさしい": "Lembut",
+ "淡い色とやわらかい動き。暮らし・ウェルネス・美容向け。": "Warna pucat dan gerakan halus. Untuk gaya hidup, wellness, dan kecantikan.",
+ "おまかせミックス": "Mix otomatis",
+ "すべての要素から、話の内容に合わせて自由に組み合わせます。": "Memadukan semua elemen sesuai isi pembicaraan."
 }

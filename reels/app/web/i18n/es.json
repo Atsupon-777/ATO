@@ -368,5 +368,21 @@
  "動画全体に「{0}」の質感を重ねます。": "Añade la textura «{0}» a todo el video.",
  "この設定だけを変えて実際に書き出した見本です。選ぶと全カットにこの設定がかかり、ほかの要素はAIが組み合わせます。": "Una exportación real cambiando solo este ajuste. Elígelo y cada corte lo usará; la IA combina el resto.",
  "マイアカウント": "Mi cuenta",
- "言語": "Idioma"
+ "言語": "Idioma",
+ "ハイプ": "Hype",
+ "速いカットとズーム、太字と強い色。勢いで見せるリール向け。": "Cortes y zooms rápidos, letras gruesas y colores fuertes. Para reels con energía.",
+ "エディトリアル": "Editorial",
+ "雑誌の表紙のような上品なセリフ体と落ち着いた色。ブランド・美容向け。": "Serifas elegantes de portada de revista y colores sobrios. Para marcas y belleza.",
+ "ビジネス・SaaS": "Negocios · SaaS",
+ "アプリ画面、チェックリスト、グラフで「何ができるか」を伝える。": "Pantallas de app, checklists y gráficos que muestran lo que haces.",
+ "手づくり": "Hecho a mano",
+ "落書き、切り貼り、マーカー。親しみやすいクリエイター系。": "Garabatos, recortes y rotuladores. Estilo creador cercano.",
+ "シネマ": "Cine",
+ "ゆっくりした寄り引きと映画のような色。語り・ストーリー向け。": "Acercamientos lentos y color de película. Para historias y narración.",
+ "Y2K・ネオン": "Y2K · Neón",
+ "ネオン、グリッチ、走査線。若い層・エンタメ向け。": "Neón, glitches y líneas de escaneo. Para público joven y entretenimiento.",
+ "やさしい": "Suave",
+ "淡い色とやわらかい動き。暮らし・ウェルネス・美容向け。": "Colores pálidos y movimiento suave. Para estilo de vida, bienestar y belleza.",
+ "おまかせミックス": "Mezcla automática",
+ "すべての要素から、話の内容に合わせて自由に組み合わせます。": "Combina libremente todo según lo que dices."
 }

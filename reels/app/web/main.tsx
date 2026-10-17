@@ -690,8 +690,8 @@ const MixPicker: React.FC<{ value: string; onChange: (id: string) => void }> = (
     <div className="mixgrid">
       {recipes.map((r) => (
         <button key={r.id} className={`mix ${value === r.id ? 'on' : ''}`} onClick={() => onChange(r.id)}>
-          <b>{r.name}</b>
-          <small>{r.desc}</small>
+          <b>{tr(r.name)}</b>
+          <small>{tr(r.desc)}</small>
         </button>
       ))}
     </div>
@@ -1390,7 +1390,7 @@ const CATALOG: CatalogItem[] = [
   { key: 'SaaSPromo', template: 'SaaSPromo', name: TEMPLATES.SaaSPromo.name, desc: TEMPLATES.SaaSPromo.desc, group: 'base' },
   { key: 'TalkCaptions', template: 'TalkCaptions', name: TEMPLATES.TalkCaptions.name, desc: TEMPLATES.TalkCaptions.desc, group: 'base' },
   { key: 'EffectsReel', template: 'EffectsReel', name: tr("エフェクトおまかせ"), desc: TEMPLATES.EffectsReel.desc, group: 'base' },
-  ...recipes.map((r) => ({ key: `mix-${r.id}`, template: 'EffectsReel' as TemplateId, mix: r.id, name: r.name, desc: r.desc, group: 'mix' as Group })),
+  ...recipes.map((r) => ({ key: `mix-${r.id}`, template: 'EffectsReel' as TemplateId, mix: r.id, name: tr(r.name), desc: tr(r.desc), group: 'mix' as Group })),
   ...effectIds.map((fx) => ({
     key: fx,
     template: 'EffectsReel' as TemplateId,
