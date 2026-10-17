@@ -20,17 +20,24 @@ def enc(inp, key, ss=None, t=None):
 enc(src / 'matcha-product-dynamic.mp4', 'ProductShine')
 enc(src / 'ato-saas-promo.mp4', 'SaaSPromo')
 enc(src / 'talk-captions-ja.mp4', 'TalkCaptions')
-enc(src / 'effects-17-test.mp4', 'EffectsReel')
-# effects-17-test.mp4 is props/effects-demo.json rendered with a person matte: segments play back to back.
+# Prefer the black-background renders (no person in frame) when the effects thread made them.
+fx17 = src / 'effects-17-black.mp4' if (src / 'effects-17-black.mp4').exists() else src / 'effects-17-test.mp4'
+enc(fx17, 'EffectsReel')
+# effects-17-*.mp4 is props/effects-demo.json rendered with a person matte: segments play back to back.
 segs = json.load(open(root / 'props/effects-demo.json'))['segments']
 at = 0.0
 for s in segs:
     d = round((s['end'] - s['start']) * 30) / 30
-    enc(src / 'effects-17-test.mp4', s['effect'], ss=round(at, 3), t=d)
+    enc(fx17, s['effect'], ss=round(at, 3), t=d)
     at += d
 # Mix samples from the effects thread: effects-mix-<id>.mp4 → mix-<id>
+mixes = {}
 for f in sorted(src.glob('effects-mix-*.mp4')):
-    enc(f, 'mix-' + f.stem[len('effects-mix-'):])
+    mid = f.stem[len('effects-mix-'):].removesuffix('-black')
+    if f.stem.endswith('-black') or mid not in mixes:
+        mixes[mid] = f
+for mid, f in mixes.items():
+    enc(f, 'mix-' + mid)
 # The app hides gallery items that have no real render yet.
 json.dump(sorted(p.stem for p in out.glob('*.mp4')), open(out / 'index.json', 'w'))
 print('done')
