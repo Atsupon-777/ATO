@@ -6,7 +6,7 @@
       "effect": "orbit",
       "start": 0.3,
       "end": 1.7,
-      "caption": "what does ATO actually do",
+      "caption": "what does this app actually do",
       "emphasis": [],
       "items": [],
       "images": [],
@@ -23,7 +23,7 @@
       ],
       "items": [
         "6 ways to make money with AI",
-        "Claude made my website",
+        "AI made my website",
         "POV: AI edits your reel",
         "100 reels in a week"
       ],
@@ -42,7 +42,7 @@
       ],
       "images": [],
       "values": [],
-      "text": "ATO Reels"
+      "text": "Studio"
     },
     {
       "effect": "frameBreak",
@@ -51,11 +51,11 @@
       "caption": "story-driven commercials",
       "emphasis": [],
       "items": [
-        "ATO edited this whole reel"
+        "AI edited this whole reel"
       ],
       "images": [],
       "values": [],
-      "text": "atoreels"
+      "text": "yourbrand"
     },
     {
       "effect": "digitalZoom",
@@ -221,7 +221,7 @@
       ],
       "images": [],
       "values": [],
-      "text": "ATO"
+      "text": "REELS"
     },
     {
       "effect": "glassType",

@@ -5,6 +5,7 @@ import { writeFile } from 'node:fs/promises';
 import path from 'node:path';
 import { z } from 'zod';
 import { effectIds, effectsReelSchema, type EffectId, type EffectSegment, type EffectsReelProps } from '../src/schemas.ts';
+import { LANG_NAMES, fit, langs, type Lang } from '../src/lang.ts';
 import { recipeAxes, recipeById, rollStyles } from '../src/effects/recipes.ts';
 import { askJson } from './gemini.ts';
 import { matte } from './matte.ts';
@@ -33,6 +34,21 @@ export const EFFECT_GUIDE: Record<(typeof effectIds)[number], string> = {
   kineticType: 'kinetic typography: the line itself slams in word by word, huge, stacking like a poster (behind the speaker if matted); text = up to 8 words (else the caption is used), emphasis = words in accent colour. Good for a punchline or hook.',
   infographic: 'animated infographic: a ring counts up to values[0] percent, then labelled bars grow; text = title, caption = what the percentage means, items = bar labels (2-4), values = [percent, bar values...]. Good for stats, comparisons, results.',
 };
+
+
+/** Cuts a caption to `n` characters at a word boundary when there is one. */
+const clip = (t: string, n: number) => {
+  if (t.length <= n) return t;
+  const cut = t.slice(0, n);
+  const sp = cut.lastIndexOf(' ');
+  return sp > n * 0.5 ? cut.slice(0, sp) : cut;
+};
+
+/** Planner instruction for which language captions and on-screen text are written in. */
+export const langRule = (spoken: string, lang?: Lang) =>
+  !lang || spoken.startsWith(lang)
+    ? `Write caption, emphasis, text and items in the transcript's language (${spoken}).`
+    : `The speaker talks in ${spoken}, but the reel is for a ${LANG_NAMES[lang].english} audience: write caption as a natural, short ${LANG_NAMES[lang].english} subtitle of what is said in that beat (a translation, not a transcript), and write emphasis, text and items in ${LANG_NAMES[lang].english} too. Every emphasis word must appear in its caption.`;
 
 /** What each style axis option looks like, so the planner can pick by meaning. */
 export const STYLE_GUIDE = {
@@ -114,6 +130,8 @@ export async function buildEffectsProps(brief: {
   prefer?: EffectId[];
   /** Mix to plan with (src/effects/recipes.ts); defaults to おまかせミックス. */
   recipe?: string;
+  /** Language to write captions and on-screen text in; defaults to the spoken language. */
+  lang?: Lang;
   onStep?: (n: number, total: number, label: string) => void;
 }) {
   const total = 4;
@@ -134,6 +152,7 @@ export async function buildEffectsProps(brief: {
   // Effects picked in the gallery are always allowed, even outside the mix.
   for (const e of brief.prefer ?? []) if (!ax.scenes.includes(e)) ax.scenes.push(e);
   const planSchema = planSchemaFor(ax);
+  const outLang: Lang = brief.lang ?? ((langs as readonly string[]).find((l) => talk.language.startsWith(l)) as Lang | undefined) ?? 'en';
   let segments: EffectSegment[];
   try {
     const raw = await askJson({
@@ -151,7 +170,7 @@ export async function buildEffectsProps(brief: {
         'for the whole reel so it feels like one video.',
         `Mix: ${recipe.name} — ${recipe.desc}`,
         'start/end are seconds from the transcript; beats must be in order and not overlap. caption = the words spoken in that beat',
-        `(max 60 characters). Write text and items in the transcript's language (${talk.language}). Leave values empty unless the effect is chartGrow.`,
+        `(max ${fit(outLang, 60)} characters). ${langRule(talk.language, brief.lang)} Leave values empty unless the effect is chartGrow or infographic.`,
         ...(brief.prefer?.length
           ? [`The user chose these effects: ${brief.prefer.join(', ')}. Use every one of them at a moment where it fits.`]
           : []),
@@ -171,7 +190,7 @@ export async function buildEffectsProps(brief: {
         effect: s.effect as EffectId,
         start: s.start,
         end: s.end,
-        caption: s.caption.slice(0, 60),
+        caption: clip(s.caption, fit(outLang, 60)),
         emphasis: s.emphasis,
         text: s.text?.slice(0, 40) || undefined,
         items: s.items.slice(0, 12).map((x) => x.slice(0, 60)),
@@ -200,6 +219,7 @@ export async function buildEffectsProps(brief: {
     counter: false,
     palette: { accent: segments[0]?.style?.color ?? '#E9F06B', ink: '#16161A', paper: '#F4F1E8' },
     recipe: recipe.id,
+    lang: brief.lang ?? (langs as readonly string[]).find((l) => talk.language.startsWith(l)) as Lang | undefined,
   });
   await writeFile(path.join(talk.dir, 'props.json'), JSON.stringify(props, null, 2));
   await writeFile(path.join(talk.dir, 'usage.json'), JSON.stringify(usage, null, 2));

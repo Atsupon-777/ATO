@@ -24,7 +24,7 @@ export const UiWorld: React.FC<EffectProps> = ({ seg }) => {
         <Footage style={{ transform: 'translateY(-300px)' }} />
       </AbsoluteFill>
       <div style={{ position: 'absolute', top: 210, width: '100%', textAlign: 'center', fontFamily: fonts.serif, fontWeight: 600, fontSize: 64, color: '#2A2724' }}>
-        <span style={{ color: '#D97757' }}>✳</span> {seg.text ?? 'ATO Reels'}
+        <span style={{ color: accent }}>●</span> {seg.text ?? 'Studio'}
       </div>
       <div style={{ position: 'absolute', left: 60, right: 60, top: 330, height: 420, borderRadius: 34, background: '#fff', boxShadow: '0 20px 60px rgba(0,0,0,0.12)', border: '2px solid #E7E2D8' }}>
         {frame < landed - 2 ? (
@@ -33,9 +33,9 @@ export const UiWorld: React.FC<EffectProps> = ({ seg }) => {
           </div>
         ) : null}
         <div style={{ position: 'absolute', left: 40, bottom: 110, fontFamily: fonts.display, fontWeight: 600, fontSize: 34, color: frame > landed + 8 ? '#222' : '#A39C8F' }}>
-          {frame > landed + 8 ? `${typed(command, frame, landed + 8)}|` : 'How can I help you today?'}
+          {frame > landed + 8 ? `${typed(command, frame, landed + 8)}|` : 'Describe your edit…'}
         </div>
-        <div style={{ position: 'absolute', right: 30, bottom: 30, width: 60, height: 60, borderRadius: 16, background: frame > landed + 8 + command.length * 2 ? '#D97757' : '#EBC3B3' }} />
+        <div style={{ position: 'absolute', right: 30, bottom: 30, width: 60, height: 60, borderRadius: 16, background: frame > landed + 8 + command.length * 2 ? '#2A2724' : '#D9D2C4' }} />
         <div style={{ position: 'absolute', right: 40, top: 70, padding: '8px 20px', background: accent, fontFamily: fonts.display, fontWeight: 800, fontSize: 30, transform: `scale(${label}) rotate(-3deg)` }}>
           {seg.items[1] ?? 'RAW CLIPS'}
         </div>
@@ -190,7 +190,7 @@ export const GreenScreen: React.FC<EffectProps> = ({ seg }) => {
   return (
     <AbsoluteFill style={{ background: 'linear-gradient(180deg, #5B2BE0 0%, #EDE9F7 22%, #F7F5F0 60%, #3D2CC9 100%)' }}>
       <div style={{ position: 'absolute', left: 50, right: 50, top: 170, borderRadius: 28, background: '#FBFAF7', boxShadow: '0 30px 80px rgba(40,20,120,0.3)', overflow: 'hidden', fontFamily: fonts.display }}>
-        <div style={{ height: 50, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 22, color: '#8B877E' }}>✳ {seg.text ?? 'Focus'}</div>
+        <div style={{ height: 50, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 22, color: '#8B877E' }}>● {seg.text ?? 'Focus'}</div>
         <div style={{ background: '#121214', color: '#fff', display: 'flex', alignItems: 'center', gap: 26, padding: '20px 30px' }}>
           <span style={{ fontSize: 22, color: '#F07B5A' }}>● FOCUS</span>
           <span style={{ fontSize: 64, fontWeight: 800 }}>{clock}</span>
@@ -205,7 +205,7 @@ export const GreenScreen: React.FC<EffectProps> = ({ seg }) => {
         <div style={{ height: 30 }} />
       </div>
       <div style={{ position: 'absolute', top: 820, width: '100%', textAlign: 'center', fontFamily: fonts.serif, fontWeight: 600, fontSize: 92, color: '#1B1A18', opacity: line, transform: `translateY(${(1 - line) * 30}px)` }}>
-        <span style={{ color: accent === '#E9F06B' ? '#D97757' : accent }}>✳</span> {seg.items[3] ?? 'Everything else waits.'}
+        <span style={{ color: accent === '#E9F06B' ? '#2A2724' : accent }}>●</span> {seg.items[3] ?? 'Everything else waits.'}
       </div>
       {hasSubject ? (
         <Subject style={{ transform: 'translateY(240px) scale(0.95)' }} />

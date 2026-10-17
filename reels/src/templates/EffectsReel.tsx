@@ -3,7 +3,7 @@ import { AbsoluteFill, Audio, Sequence, useVideoConfig } from 'remotion';
 import type { EffectsReelProps } from '../schemas';
 import { effectIds } from '../schemas';
 import { asset } from '../lib/assets';
-import { fonts } from '../lib/fonts';
+import { cjkVars, fonts } from '../lib/fonts';
 import { useFonts } from '../lib/useFonts';
 import { effects } from '../effects';
 import { SourceContext } from '../effects/layers';
@@ -19,7 +19,7 @@ export const EffectsReel: React.FC<EffectsReelProps> = (p) => {
   const total = effectsReelDuration(p, fps);
   let at = 0;
   return (
-    <AbsoluteFill style={{ background: '#000' }}>
+    <AbsoluteFill lang={p.lang} style={{ background: '#000', ...cjkVars(p.lang) }}>
       {p.segments.map((seg, i) => {
         const dur = Math.max(1, Math.round((seg.end - seg.start) * fps));
         const from = at;

@@ -1,13 +1,23 @@
+import type React from 'react';
 import { continueRender, delayRender, staticFile } from 'remotion';
 
 // Fonts are self-hosted from public/fonts (run `npm run fonts` once), so a render never depends on
 // Google's servers. All families are SIL Open Font License and may be embedded in commercial video.
+// Han characters come from Noto Sans JP unless a reel sets `--cjk` (Chinese reels put Noto Sans SC first,
+// see cjkVars); Tamil falls back to Noto Sans Tamil. Latin faces cover fr/es/id accents.
+const CJK = 'var(--cjk, "Noto Sans JP", "Noto Sans SC")';
+const CJK_SERIF = 'var(--cjk-serif, "Shippori Mincho", "Noto Sans SC")';
+const TAMIL = '"Noto Sans Tamil"';
 export const fonts = {
-  sansJP: '"Noto Sans JP", "Noto Sans SC", "Noto Sans Tamil", sans-serif',
-  minchoJP: '"Shippori Mincho", "Noto Sans SC", "Noto Sans Tamil", serif',
-  serif: '"Cormorant Garamond", "Shippori Mincho", "Noto Sans SC", "Noto Sans Tamil", serif',
-  display: '"Plus Jakarta Sans", "Noto Sans JP", "Noto Sans SC", "Noto Sans Tamil", sans-serif',
+  sansJP: `${CJK}, ${TAMIL}, sans-serif`,
+  minchoJP: `${CJK_SERIF}, ${TAMIL}, serif`,
+  serif: `"Cormorant Garamond", ${CJK_SERIF}, ${TAMIL}, serif`,
+  display: `"Plus Jakarta Sans", ${CJK}, ${TAMIL}, sans-serif`,
 };
+
+/** CSS variables for the root of a reel in `lang`, so shared Han glyphs take the right regional shapes. */
+export const cjkVars = (lang?: string): React.CSSProperties =>
+  (lang === 'zh' ? { '--cjk': '"Noto Sans SC", "Noto Sans JP"', '--cjk-serif': '"Noto Sans SC", "Shippori Mincho"' } : {}) as React.CSSProperties;
 
 const FACES = [
   '400 40px "Noto Sans JP"',

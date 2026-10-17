@@ -3,7 +3,11 @@ import React from 'react';
 import { AbsoluteFill, interpolate, useCurrentFrame, useVideoConfig } from 'remotion';
 import { fonts } from '../lib/fonts';
 import { clamp, easeInOut, easeOutExpo, pop, progress } from '../lib/timing';
-import { FONT_FAMILY, Footage, Sandwich, useSource, type EffectProps } from './layers';
+import { FONT_FAMILY, Footage, Sandwich, splitWords, useSource, type EffectProps } from './layers';
+
+/** Rough width of a word in ems: full-width CJK glyphs are about 1em, Latin capitals about 0.68em, combining marks 0. */
+const emWidth = (w: string) =>
+  [...w].reduce((n, ch) => n + (/[\u3000-\u9fff\uac00-\ud7af\uff00-\uffef]/.test(ch) ? 1 : /\p{M}/u.test(ch) ? 0 : 0.68), 0);
 
 /**
  * Kinetic typography: the line itself becomes the picture. Words slam in one at a time, each sized to
@@ -16,7 +20,7 @@ export const KineticType: React.FC<EffectProps> = ({ seg }) => {
   const s = useSource();
   const family = s.style.font ? FONT_FAMILY[s.style.font] : fonts.display;
   const line = seg.text ?? seg.caption ?? 'MAKE IT MOVE';
-  const words = line.split(/\s+/).filter(Boolean).slice(0, 8);
+  const words = splitWords(line).slice(0, 8);
   const emph = seg.emphasis.map((w) => w.toLowerCase());
   const per = Math.max(5, (durationInFrames * 0.75) / words.length);
   const shown = words.filter((_, i) => frame >= i * per).length;
@@ -31,7 +35,7 @@ export const KineticType: React.FC<EffectProps> = ({ seg }) => {
           const at = i * per;
           const p = pop(frame, fps, at, 12);
           const isEm = emph.includes(w.toLowerCase().replace(/[^\p{L}\p{N}]/gu, ''));
-          const size = Math.min(230, 1250 / Math.max(2, [...w].length));
+          const size = Math.min(230, 840 / Math.max(1.4, emWidth(w)));
           const kind = i % 3;
           const enter =
             kind === 0
@@ -65,6 +69,7 @@ export const KineticType: React.FC<EffectProps> = ({ seg }) => {
                   transformOrigin: '50% 100%',
                   display: 'inline-block',
                   textTransform: 'uppercase',
+                  whiteSpace: 'nowrap',
                 }}
               >
                 {w}
@@ -97,7 +102,7 @@ export const Infographic: React.FC<EffectProps> = ({ seg }) => {
   const [ringV, ...rest] = seg.values.length ? seg.values : [87, 120, 64, 38];
   const ringPct = Math.max(0, Math.min(100, ringV));
   const bars = (rest.length ? rest : [120, 64, 38]).slice(0, 4);
-  const labels = seg.items.length ? seg.items : ['With ATO', 'Agency', 'DIY'];
+  const labels = seg.items.length ? seg.items : ['With AI', 'Agency', 'DIY'];
   const max = Math.max(...bars, 1);
   const enter = pop(frame, fps, 0, 15);
   const ring = progress(frame, 6, 40, easeOutExpo);
@@ -138,7 +143,7 @@ export const Infographic: React.FC<EffectProps> = ({ seg }) => {
               transform={`rotate(-90 ${R + 20} ${R + 20})`}
               style={{ filter: `drop-shadow(0 0 16px ${s.accent})` }}
             />
-            <text x={R + 20} y={R + 46 - 6} textAnchor="middle" fill="#fff" fontFamily={family} fontWeight={800} fontSize={76}>
+            <text x={R + 20} y={R + 46 - 6} textAnchor="middle" fill="#fff" fontWeight={800} fontSize={76} style={{ fontFamily: family }}>
               {Math.round(ringPct * ring)}%
             </text>
           </svg>

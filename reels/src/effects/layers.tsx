@@ -40,6 +40,28 @@ export const useSource = () => {
 export type EffectProps = { seg: EffectSegment };
 
 /**
+ * Splits a line into the units captions reveal one by one: spaces where the language uses them,
+ * otherwise (Japanese, Chinese) dictionary words, with punctuation kept on the word before it.
+ */
+export const splitWords = (text: string): string[] => {
+  const t = text.trim();
+  if (!t) return [];
+  if (/\s/.test(t) || typeof Intl === 'undefined' || !('Segmenter' in Intl)) return t.split(/\s+/).filter(Boolean);
+  const out: string[] = [];
+  for (const s of new Intl.Segmenter(/[\u3040-\u30ff]/.test(t) ? 'ja' : 'zh', { granularity: 'word' }).segment(t)) {
+    if (!s.isWordLike && out.length) out[out.length - 1] += s.segment;
+    else out.push(s.segment);
+  }
+  // very short pieces read better joined with the next one
+  return out.reduce<string[]>((acc, w) => {
+    const last = acc[acc.length - 1];
+    if (last !== undefined && [...last].length < 2) acc[acc.length - 1] = last + w;
+    else acc.push(w);
+    return acc;
+  }, []);
+};
+
+/**
  * Extra transforms a camera move gives the two depth layers, on top of moving the whole frame:
  * the wall (bg) and the person (fg) shift by different amounts, which reads as real parallax.
  */
@@ -150,7 +172,7 @@ export const Caption: React.FC<{
   if (!text) return null;
   const look: CaptionStyle = s.style.caption ?? LEGACY[variant];
   const family = s.style.font ? FONT_FAMILY[s.style.font] : look === 'script' ? fonts.serif : fonts.display;
-  const words = text.split(/\s+/).filter(Boolean);
+  const words = splitWords(text);
   const span = (over ?? (durationInFrames / fps) * 0.7) * fps;
   const step = span / Math.max(1, words.length);
   const em = emphasis.map((e) => e.toLowerCase());

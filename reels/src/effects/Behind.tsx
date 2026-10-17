@@ -158,7 +158,7 @@ export const CouchWall: React.FC<EffectProps> = ({ seg }) => {
 export const HeadlineWall: React.FC<EffectProps> = ({ seg }) => {
   const frame = useCurrentFrame();
   const { fps } = useVideoConfig();
-  const lines = seg.items.length ? seg.items : ['Claude edits everyone’s videos now', 'POV: Claude edits your reel', 'Your next video editor is Claude'];
+  const lines = seg.items.length ? seg.items : ['AI edits everyone’s videos now', 'POV: AI edits your reel', 'Your next video editor is AI'];
   const n = 11;
   const kinds = ['news', 'note', 'post', 'search'] as const;
   const behind = (

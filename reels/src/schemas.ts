@@ -3,6 +3,7 @@
 import { z } from 'zod';
 import { zColor } from '@remotion/zod-types';
 import { accents, cameraMoves, captionStyles, fontChoices, grades, textures, transitions } from './effects/axes.ts';
+import { langs } from './lang.ts';
 
 const point = z.object({ x: z.number().min(0).max(1), y: z.number().min(0).max(1) });
 
@@ -152,7 +153,7 @@ export const effectSegmentSchema = z.object({
   start: z.number().min(0),
   end: z.number().positive(),
   /** Spoken line shown word by word; words listed in `emphasis` get the accent colour. */
-  caption: z.string().max(60).optional(),
+  caption: z.string().max(120).optional(),
   emphasis: z.array(z.string()).default([]),
   /** Main text of the effect: cover title, glass word, chart badge, paper-cut letters, accent script line. */
   text: z.string().max(40).optional(),
@@ -178,6 +179,8 @@ export const effectsReelSchema = z.object({
   music: z.string().optional(),
   /** Mix the beats were planned with (src/effects/recipes.ts); informational for the editor. */
   recipe: z.string().optional(),
+  /** Language of captions and on-screen text; picks Chinese glyph shapes for zh. */
+  lang: z.enum(langs).optional(),
 });
 
 export type EffectSegment = z.infer<typeof effectSegmentSchema>;
