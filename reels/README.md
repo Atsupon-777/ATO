@@ -36,6 +36,12 @@ speaker. The person matte is a transparent WebM made locally with rembg:
 node server/cli.ts matte --video talk.mp4 --out public/uploads/talk-matte.webm   # ~1 s per frame on CPU
 ```
 
+Effects combine: each segment is a scene effect plus `style` picks on eight axes (caption style, camera move,
+transition, grade, texture, font, colour) and any set of ten accents (`src/effects/axes.ts`, rendered by
+`src/effects/modifiers.tsx`), about 96 billion looks per beat. Mixes in `src/effects/recipes.ts` (ハイプ,
+エディトリアル, SaaS, 手づくり, シネマ, Y2K, やさしい, おまかせ) narrow the axes so a reel stays consistent;
+`rollStyles(recipe, n, seed)` makes a reproducible random mix, and the planner picks inside the mix per beat.
+
 Without a matte every effect still renders; graphics then sit on top of the speaker. In the web app, the
 "トーク＋動画エフェクト" template transcribes the upload, makes the matte, and asks Gemini to split the talk into beats
 and pick an effect for each (`server/effects.ts`); each beat's effect and text can be changed in the editor.

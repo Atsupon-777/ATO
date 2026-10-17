@@ -129,7 +129,8 @@ async function startJob(template: Template, input: Record<string, any>) {
         const video = upload(input.video);
         if (!video) throw new Error('動画をアップロードしてください');
         const prefer = (Array.isArray(input.effects) ? input.effects : []).filter((e: string) => (effectIds as readonly string[]).includes(e));
-        const res = await buildEffectsProps({ video, jobId: id, prefer, onStep });
+        const recipe = typeof input.recipe === 'string' ? input.recipe : undefined;
+        const res = await buildEffectsProps({ video, jobId: id, prefer, recipe, onStep });
         job.props = res.props;
         job.usage = res.usage;
         job.title = String(res.title || job.title);

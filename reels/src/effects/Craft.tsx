@@ -7,7 +7,7 @@ import { pop, progress } from '../lib/timing';
 import { Caption, Footage, Subject, rand, useHasSubject, type EffectProps } from './layers';
 
 /** SVG filters used by the craft effects. Ids are scoped per segment so two segments never clash. */
-const Filters: React.FC<{ id: string; seed: number; outline: number; sticker: number }> = ({ id, seed, outline, sticker }) => (
+export const Filters: React.FC<{ id: string; seed: number; outline: number; sticker: number }> = ({ id, seed, outline, sticker }) => (
   <svg width={0} height={0} style={{ position: 'absolute' }}>
     <defs>
       {/* white outline only, wobbling with the seed ("boil") */}

@@ -2,6 +2,7 @@
 // can validate AI output against exactly what the templates accept.
 import { z } from 'zod';
 import { zColor } from '@remotion/zod-types';
+import { accents, cameraMoves, captionStyles, fontChoices, grades, textures, transitions } from './effects/axes.ts';
 
 const point = z.object({ x: z.number().min(0).max(1), y: z.number().min(0).max(1) });
 
@@ -130,6 +131,19 @@ export const effectIds = [
   'glassType',
 ] as const;
 
+/** Per-beat look on top of the scene effect: one pick per axis plus any accents (src/effects/axes.ts). */
+export const beatStyleSchema = z.object({
+  caption: z.enum(captionStyles).optional(),
+  camera: z.enum(cameraMoves).optional(),
+  transition: z.enum(transitions).optional(),
+  grade: z.enum(grades).optional(),
+  texture: z.enum(textures).optional(),
+  accents: z.array(z.enum(accents)).max(accents.length).optional(),
+  font: z.enum(fontChoices).optional(),
+  /** Accent colour for this beat; falls back to the reel palette. */
+  color: zColor().optional(),
+});
+
 export const effectSegmentSchema = z.object({
   effect: z.enum(effectIds),
   /** Source range in seconds. */
@@ -146,6 +160,7 @@ export const effectSegmentSchema = z.object({
   images: z.array(z.string()).max(12).default([]),
   /** Chart values (chart grow), 2–8 points. */
   values: z.array(z.number()).max(8).default([]),
+  style: beatStyleSchema.optional(),
 });
 
 export const effectsReelSchema = z.object({
@@ -159,8 +174,11 @@ export const effectsReelSchema = z.object({
   counter: z.boolean().default(false),
   palette: z.object({ accent: zColor(), ink: zColor(), paper: zColor() }),
   music: z.string().optional(),
+  /** Mix the beats were planned with (src/effects/recipes.ts); informational for the editor. */
+  recipe: z.string().optional(),
 });
 
 export type EffectSegment = z.infer<typeof effectSegmentSchema>;
+export type BeatStyle = z.infer<typeof beatStyleSchema>;
 export type EffectsReelProps = z.infer<typeof effectsReelSchema>;
 export type EffectId = (typeof effectIds)[number];

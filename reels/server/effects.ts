@@ -1,9 +1,11 @@
 // Talking video → EffectsReel props: transcribe (talk.ts), cut the person out (matte.ts), then let Gemini
-// split the talk into short beats and pick one of the 17 effects for each beat, with the text it needs.
+// split the talk into short beats and dress each with a scene effect plus a caption style, camera move,
+// transition and accents from the chosen mix (src/effects/recipes.ts), with the text it needs.
 import { writeFile } from 'node:fs/promises';
 import path from 'node:path';
 import { z } from 'zod';
 import { effectIds, effectsReelSchema, type EffectId, type EffectSegment, type EffectsReelProps } from '../src/schemas.ts';
+import { recipeAxes, recipeById, rollStyles } from '../src/effects/recipes.ts';
 import { askJson } from './gemini.ts';
 import { matte } from './matte.ts';
 import { buildTalkProps } from './talk.ts';
@@ -30,25 +32,45 @@ export const EFFECT_GUIDE: Record<(typeof effectIds)[number], string> = {
   glassType: 'extruded glass letters on the wall behind the speaker; text = 1 word (max 8 letters). Good for a keyword.',
 };
 
-const planSchema = z.object({
-  segments: z
-    .array(
-      z.object({
-        effect: z.enum(effectIds),
-        start: z.number(),
-        end: z.number(),
-        caption: z.string(),
-        emphasis: z.array(z.string()),
-        text: z.string().optional(),
-        items: z.array(z.string()),
-        values: z.array(z.number()),
-      }),
-    )
-    .min(1),
-});
+/** What each style axis option looks like, so the planner can pick by meaning. */
+export const STYLE_GUIDE = {
+  caption: 'pop=bold word pop, blur=sharpen from blur, spaced=small tracked caps, upper=bold caps, script=gold italic serif, outline=hollow letters, box=words on black tags, highlighter=marker swipe on key words, typewriter=types on, stack=one word per line with huge key word, bounce=words drop and bounce, neon=glowing letters',
+  camera: 'still, push=slow push in, pull=slow pull out, drift=sideways drift, punch=punch-in on the beat, shake=impact shake, tilt=dutch tilt settles, spinIn=rotates in, handheld=subtle wobble, rack=blur into focus',
+  transition: 'how the beat arrives: cut, zoomBlur, whipLeft, whipUp, flash, glitch, slide, dip=from black, iris=circle wipe, split=halves close, spin, blurDissolve',
+  accents: 'extra overlays, any number: sparkles, outline=boiling outline around the person, arrows=hand-drawn arrows, underline=marker under key words, emoji=emoji pops after the line, beatFlash=white flash on the beat, letterbox=cinema bars, progress=progress bar, stickers=round stickers, glow=glow around the person',
+};
+
+/** The plan's JSON shape, with every axis limited to what the chosen mix allows. */
+const planSchemaFor = (ax: ReturnType<typeof recipeAxes>) =>
+  z.object({
+    look: z.object({
+      grade: z.enum(ax.grades as [string, ...string[]]),
+      texture: z.enum(ax.textures as [string, ...string[]]),
+      font: z.enum(ax.fonts as [string, ...string[]]),
+      color: z.enum(ax.colors as [string, ...string[]]),
+    }),
+    segments: z
+      .array(
+        z.object({
+          effect: z.enum(ax.scenes as [string, ...string[]]),
+          start: z.number(),
+          end: z.number(),
+          caption: z.string(),
+          emphasis: z.array(z.string()),
+          text: z.string().optional(),
+          items: z.array(z.string()),
+          values: z.array(z.number()),
+          caption_style: z.enum(ax.captions as [string, ...string[]]),
+          camera: z.enum(ax.cameras as [string, ...string[]]),
+          transition: z.enum(ax.transitions as [string, ...string[]]),
+          accents: z.array(z.enum(ax.accents as [string, ...string[]])),
+        }),
+      )
+      .min(1),
+  });
 
 /** Plain fallback when no plan is available: one beat per ~2 s of speech, effects in catalog order. */
-export function autoSegments(words: { text: string; start: number; end: number }[], duration: number): EffectSegment[] {
+export function autoSegments(words: { text: string; start: number; end: number }[], duration: number, recipe = recipeById('all'), seed = 1): EffectSegment[] {
   const segs: EffectSegment[] = [];
   let cur: typeof words = [];
   const flush = () => {
@@ -62,7 +84,12 @@ export function autoSegments(words: { text: string; start: number; end: number }
     if (w.end - cur[0].start >= 2) flush();
   }
   flush();
-  return closeGaps(segs, duration);
+  // give every beat a scene and a look from the mix
+  const looks = rollStyles(recipe, segs.length, seed, { hasMatte: true });
+  return closeGaps(
+    segs.map((sg, i) => ({ ...sg, effect: looks[i].scene, style: looks[i].style })),
+    duration,
+  );
 }
 
 /** Segments play back to back, so make them contiguous over the speech and keep each at least 0.8 s. */
@@ -83,6 +110,8 @@ export async function buildEffectsProps(brief: {
   jobId?: string;
   /** Effects the user picked in the gallery; the planner leans on these. */
   prefer?: EffectId[];
+  /** Mix to plan with (src/effects/recipes.ts); defaults to おまかせミックス. */
+  recipe?: string;
   onStep?: (n: number, total: number, label: string) => void;
 }) {
   const total = 4;
@@ -98,25 +127,37 @@ export async function buildEffectsProps(brief: {
   brief.onStep?.(4, total, 'plan effects');
   const words = talk.props.words;
   const duration = talk.props.sourceDuration;
+  const recipe = recipeById(brief.recipe);
+  const ax = recipeAxes(recipe);
+  // Effects picked in the gallery are always allowed, even outside the mix.
+  for (const e of brief.prefer ?? []) if (!ax.scenes.includes(e)) ax.scenes.push(e);
+  const planSchema = planSchemaFor(ax);
   let segments: EffectSegment[];
   try {
     const raw = await askJson({
       images: [],
       usage,
       step: 'plan effects',
-      temperature: 0.7,
+      temperature: 0.8,
       jsonSchema: z.toJSONSchema(planSchema),
       prompt: [
-        'You are editing a short vertical talking-head reel. Split the transcript into 5-10 consecutive beats of 1.2-3.5 seconds',
-        'and give each beat exactly one visual effect that fits what is said. Use each effect at most once and vary them.',
+        'You are editing a short vertical talking-head reel, the way a professional editor mixes many effects in one video.',
+        'Split the transcript into 6-12 consecutive beats of 1-3.5 seconds. For each beat pick one scene effect that fits what is said,',
+        'and dress it with a caption style, a camera move, a transition in and 0-3 accents. Mix freely: vary scenes, never use the same',
+        'scene or the same transition twice in a row, put the strongest effects on the key moments (hook, numbers, punchline) and',
+        'calmer ones (camera move + caption only, e.g. digitalZoom or vertigo) in between. Pick one look (grade, texture, font, colour)',
+        'for the whole reel so it feels like one video.',
+        `Mix: ${recipe.name} — ${recipe.desc}`,
         'start/end are seconds from the transcript; beats must be in order and not overlap. caption = the words spoken in that beat',
         `(max 60 characters). Write text and items in the transcript's language (${talk.language}). Leave values empty unless the effect is chartGrow.`,
         ...(brief.prefer?.length
-          ? [`The user chose these effects: ${brief.prefer.join(', ')}. Use every one of them, and fill the remaining beats with others that fit.`]
+          ? [`The user chose these effects: ${brief.prefer.join(', ')}. Use every one of them at a moment where it fits.`]
           : []),
         '',
-        'Effects:',
-        ...Object.entries(EFFECT_GUIDE).map(([k, v]) => `- ${k}: ${v}`),
+        'Scene effects:',
+        ...ax.scenes.map((k) => `- ${k}: ${EFFECT_GUIDE[k]}`),
+        '',
+        ...Object.entries(STYLE_GUIDE).map(([k, v]) => `${k}: ${v}`),
         '',
         'Transcript (start-end: word):',
         ...words.map((w) => `${w.start.toFixed(2)}-${w.end.toFixed(2)}: ${w.text}`),
@@ -125,18 +166,28 @@ export async function buildEffectsProps(brief: {
     const plan = planSchema.parse(raw);
     segments = closeGaps(
       plan.segments.map((s) => ({
-        ...s,
+        effect: s.effect as EffectId,
+        start: s.start,
+        end: s.end,
         caption: s.caption.slice(0, 60),
+        emphasis: s.emphasis,
         text: s.text?.slice(0, 40) || undefined,
         items: s.items.slice(0, 12).map((x) => x.slice(0, 60)),
         values: s.values.slice(0, 8),
         images: [],
-      })),
+        style: {
+          caption: s.caption_style,
+          camera: s.camera,
+          transition: s.transition,
+          accents: [...new Set(s.accents)].slice(0, 3),
+          ...plan.look,
+        },
+      })) as EffectSegment[],
       duration,
     );
   } catch (e) {
-    console.error('effect plan failed, using the default order', e);
-    segments = autoSegments(words, duration);
+    console.error('effect plan failed, using a random mix', e);
+    segments = autoSegments(words, duration, recipe, Date.now() % 100000);
   }
 
   const props: EffectsReelProps = effectsReelSchema.parse({
@@ -145,7 +196,8 @@ export async function buildEffectsProps(brief: {
     focusX: 0.5,
     segments,
     counter: false,
-    palette: { accent: '#E9F06B', ink: '#16161A', paper: '#F4F1E8' },
+    palette: { accent: segments[0]?.style?.color ?? '#E9F06B', ink: '#16161A', paper: '#F4F1E8' },
+    recipe: recipe.id,
   });
   await writeFile(path.join(talk.dir, 'props.json'), JSON.stringify(props, null, 2));
   await writeFile(path.join(talk.dir, 'usage.json'), JSON.stringify(usage, null, 2));

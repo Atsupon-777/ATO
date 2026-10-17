@@ -7,6 +7,7 @@ import { fonts } from '../lib/fonts';
 import { useFonts } from '../lib/useFonts';
 import { effects } from '../effects';
 import { SourceContext } from '../effects/layers';
+import { AccentOverlays, CameraMotion, TextureOverlay, TransitionIn } from '../effects/modifiers';
 
 /** Segments play back to back; each one is a slice of the source with one effect on it. */
 export const effectsReelDuration = (p: EffectsReelProps, fps: number) =>
@@ -15,6 +16,7 @@ export const effectsReelDuration = (p: EffectsReelProps, fps: number) =>
 export const EffectsReel: React.FC<EffectsReelProps> = (p) => {
   useFonts(p);
   const { fps } = useVideoConfig();
+  const total = effectsReelDuration(p, fps);
   let at = 0;
   return (
     <AbsoluteFill style={{ background: '#000' }}>
@@ -24,12 +26,30 @@ export const EffectsReel: React.FC<EffectsReelProps> = (p) => {
         at += dur;
         const Effect = effects[seg.effect];
         const trimBefore = Math.round(seg.start * fps);
+        const style = seg.style ?? {};
         return (
           <Sequence key={i} from={from} durationInFrames={dur} premountFor={20}>
             <SourceContext.Provider
-              value={{ video: p.video, matte: p.matte, focusX: p.focusX, trimBefore, ...p.palette }}
+              value={{
+                video: p.video,
+                matte: p.matte,
+                focusX: p.focusX,
+                trimBefore,
+                ...p.palette,
+                accent: style.color ?? p.palette.accent,
+                style,
+                reelFrom: from,
+                reelTotal: total,
+              }}
             >
-              <Effect seg={seg} />
+              {/* scene × camera × transition × grade/caption/font (read from context) × texture × accents */}
+              <TransitionIn kind={style.transition}>
+                <CameraMotion move={style.camera}>
+                  <Effect seg={seg} />
+                  <AccentOverlays />
+                </CameraMotion>
+                <TextureOverlay kind={style.texture} />
+              </TransitionIn>
               <Audio src={asset(p.video)} trimBefore={trimBefore} />
               {p.counter ? <Counter n={effectIds.indexOf(seg.effect) + 1} /> : null}
             </SourceContext.Provider>
