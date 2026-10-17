@@ -5,6 +5,7 @@
   "description": "ATO Reels: template-driven reel rendering with Remotion",
   "scripts": {
     "studio": "remotion studio src/index.ts",
+    "app": "node app/server.ts",
     "render": "node scripts/render.mjs",
     "typecheck": "tsc --noEmit",
     "fonts": "node scripts/fetch-fonts.mjs",
@@ -12,6 +13,7 @@
   },
   "dependencies": {
     "@google/genai": "^2.28.0",
+    "@react-three/fiber": "^9.8.2",
     "@remotion/bundler": "^4.0.534",
     "@remotion/captions": "^4.0.534",
     "@remotion/cli": "^4.0.534",
@@ -20,17 +22,24 @@
     "@remotion/media-utils": "^4.0.534",
     "@remotion/noise": "^4.0.534",
     "@remotion/paths": "^4.0.534",
+    "@remotion/player": "^4.0.534",
     "@remotion/renderer": "^4.0.534",
     "@remotion/shapes": "^4.0.534",
+    "@remotion/three": "^4.0.534",
     "@remotion/transitions": "^4.0.534",
     "@remotion/zod-types": "^4.0.534",
+    "@types/three": "^0.170.0",
+    "firebase": "^12.19.0",
     "react": "^19.3.0",
     "react-dom": "^19.3.0",
     "remotion": "^4.0.534",
+    "three": "^0.170.0",
     "zod": "^4.5.4"
   },
   "devDependencies": {
     "@types/react": "^19.3.0",
+    "@types/react-dom": "^19.3.0",
+    "esbuild": "^0.28.2",
     "typescript": "^7.0.2"
   }
 }

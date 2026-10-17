@@ -1,0 +1,76 @@
+{
+ "name": "Lumina",
+ "logo": "samples/lumina-logo.png",
+ "url": "lumina.app",
+ "hook": [
+  "予約の電話、",
+  "まだ手で",
+  "受けてる？"
+ ],
+ "hookEmphasis": "手で",
+ "desktop": "samples/lumina-desktop.jpg",
+ "mobile": "samples/lumina-mobile.jpg",
+ "chips": [
+  "24時間ネット予約",
+  "自動リマインド",
+  "売上の見える化"
+ ],
+ "features": [
+  {
+   "kicker": "Online booking",
+   "title": "予約が自動で埋まる",
+   "device": "mobile",
+   "focus": {
+    "x": 0.5,
+    "y": 0.4,
+    "zoom": 1.6
+   }
+  },
+  {
+   "kicker": "Auto reminders",
+   "title": "前日に自動でお知らせ",
+   "device": "desktop",
+   "focus": {
+    "x": 0.78,
+    "y": 0.64,
+    "zoom": 2.0
+   }
+  },
+  {
+   "kicker": "Insights",
+   "title": "数字で次の一手",
+   "device": "desktop",
+   "focus": {
+    "x": 0.5,
+    "y": 0.2,
+    "zoom": 1.8
+   }
+  }
+ ],
+ "stats": [
+  {
+   "value": 86,
+   "suffix": "%",
+   "label": "ネット予約の割合"
+  },
+  {
+   "value": 72,
+   "suffix": "%",
+   "label": "リピート率"
+  },
+  {
+   "value": 342,
+   "suffix": "件",
+   "label": "自動リマインド"
+  }
+ ],
+ "cta": "無料で試してみる",
+ "bpm": 128,
+ "palette": {
+  "bg": "#F4F2EE",
+  "ink": "#15161A",
+  "accent": "#7C5CFF",
+  "accent2": "#FF7A59",
+  "panel": "#FFFFFF"
+ }
+}

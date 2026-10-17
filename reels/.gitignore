@@ -2,3 +2,10 @@ node_modules
 out
 public/fonts
 public/jobs
+public/uploads
+public/showcase
+public/samples/talk-matte.webm
+public/samples/black-long.mp4
+deploy/env.yaml
+data
+.ca.crt

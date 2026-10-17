@@ -1,0 +1,162 @@
+{
+ "video": "samples/talk-black.mp4",
+ "focusX": 0.5,
+ "segments": [
+  {
+   "effect": "object3d",
+   "start": 0.5,
+   "end": 3.1,
+   "items": [],
+   "images": [],
+   "values": [],
+   "caption": "新しい作り方を紹介します",
+   "emphasis": [
+    "新しい"
+   ],
+   "text": "NEW WAY",
+   "style": {
+    "transition": "cut",
+    "camera": "still",
+    "font": "display",
+    "color": "#5B8CFF"
+   }
+  },
+  {
+   "effect": "particles3d",
+   "start": 3.1,
+   "end": 5.7,
+   "items": [],
+   "images": [],
+   "values": [],
+   "caption": "アイデアは無限に広がる",
+   "emphasis": [
+    "無限"
+   ],
+   "text": "VISION",
+   "style": {
+    "transition": "zoomBlur",
+    "camera": "still",
+    "font": "display",
+    "color": "#5B8CFF"
+   }
+  },
+  {
+   "effect": "textReveal",
+   "start": 5.7,
+   "end": 8.3,
+   "items": [
+    "MOTION STUDIO"
+   ],
+   "images": [],
+   "values": [],
+   "caption": "短い時間で伝わる動画を",
+   "emphasis": [
+    "伝わる"
+   ],
+   "text": "Create quick and effective reels",
+   "style": {
+    "transition": "zoomBlur",
+    "camera": "still",
+    "font": "display",
+    "color": "#5B8CFF"
+   }
+  },
+  {
+   "effect": "uiLayers",
+   "start": 8.3,
+   "end": 10.9,
+   "items": [
+    "Product",
+    "Docs",
+    "Pricing"
+   ],
+   "images": [],
+   "values": [],
+   "caption": "サイトのデザインをそのまま動画に",
+   "emphasis": [
+    "デザイン"
+   ],
+   "text": "Uncomplicate",
+   "style": {
+    "transition": "zoomBlur",
+    "camera": "still",
+    "font": "display",
+    "color": "#5B8CFF"
+   }
+  },
+  {
+   "effect": "isoGrid",
+   "start": 10.9,
+   "end": 13.5,
+   "items": [],
+   "images": [],
+   "values": [],
+   "caption": "AIと一緒に組み立てる",
+   "emphasis": [
+    "AI"
+   ],
+   "text": "WITH THE AI",
+   "style": {
+    "transition": "zoomBlur",
+    "camera": "still",
+    "font": "display",
+    "color": "#5B8CFF"
+   }
+  },
+  {
+   "effect": "lineIcons",
+   "start": 13.5,
+   "end": 16.1,
+   "items": [
+    "ひらめく",
+    "つくる",
+    "とどける"
+   ],
+   "images": [],
+   "values": [],
+   "caption": "3つのステップで完成",
+   "emphasis": [
+    "3つ"
+   ],
+   "text": "3 Steps",
+   "style": {
+    "transition": "zoomBlur",
+    "camera": "still",
+    "font": "display",
+    "color": "#5B8CFF"
+   }
+  },
+  {
+   "effect": "flatBoard",
+   "start": 16.1,
+   "end": 18.7,
+   "items": [
+    "計画",
+    "開発",
+    "確認",
+    "公開"
+   ],
+   "images": [],
+   "values": [],
+   "caption": "チームの流れを図解で見せる",
+   "emphasis": [
+    "図解"
+   ],
+   "text": "Agile",
+   "style": {
+    "transition": "zoomBlur",
+    "camera": "still",
+    "font": "display",
+    "color": "#5B8CFF"
+   }
+  }
+ ],
+ "counter": false,
+ "palette": {
+  "accent": "#5B8CFF",
+  "ink": "#111111",
+  "paper": "#F4F1EA"
+ },
+ "recipe": "motion",
+ "lang": "ja"
+}

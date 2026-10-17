@@ -22,16 +22,22 @@ const inlineImage = async (file: string) => ({
  */
 export async function askJson(opts: {
   images: string[];
+  /** Other media (e.g. audio) sent inline with an explicit MIME type. */
+  media?: { file: string; mimeType: string }[];
+  temperature?: number;
   prompt: string;
   jsonSchema: unknown;
   usage: Usage;
   step: string;
 }): Promise<unknown> {
-  const parts = [...(await Promise.all(opts.images.map(inlineImage))), { text: opts.prompt }];
+  const media = await Promise.all(
+    (opts.media ?? []).map(async (m) => ({ inlineData: { mimeType: m.mimeType, data: (await readFile(m.file)).toString('base64') } })),
+  );
+  const parts = [...(await Promise.all(opts.images.map(inlineImage))), ...media, { text: opts.prompt }];
   const res = await ai().models.generateContent({
     model: models.text,
     contents: [{ role: 'user', parts }],
-    config: { responseMimeType: 'application/json', responseJsonSchema: opts.jsonSchema, temperature: 0.6 },
+    config: { responseMimeType: 'application/json', responseJsonSchema: opts.jsonSchema, temperature: opts.temperature ?? 0.6 },
   });
   const u = res.usageMetadata;
   const inTok = u?.promptTokenCount ?? 0;

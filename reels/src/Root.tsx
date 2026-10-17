@@ -2,12 +2,25 @@ import React from 'react';
 import { Composition } from 'remotion';
 import { FPS, beatFrames } from './lib/timing';
 import { ProductShine, productShineBeats } from './templates/ProductShine';
-import { productShineSchema, saasPromoSchema, talkCaptionsSchema, type TalkCaptionsProps } from './schemas';
+import {
+  effectsReelSchema,
+  fivePassSchema,
+  type FivePassProps,
+  productShineSchema,
+  saasPromoSchema,
+  talkCaptionsSchema,
+  type EffectsReelProps,
+  type TalkCaptionsProps,
+} from './schemas';
 import productWatch from '../props/product-watch.json';
 import { SaaSPromo, saasPromoBeats } from './templates/SaaSPromo';
-import saasAto from '../props/saas-ato.json';
+import saasSample from '../props/saas-sample.json';
 import { TalkCaptions, talkCaptionsDuration } from './templates/TalkCaptions';
-import talkAto from '../props/talk-ato.json';
+import talkSample from '../props/talk-sample.json';
+import { EffectsReel, effectsReelDuration } from './templates/EffectsReel';
+import effectsDemo from '../props/effects-demo.json';
+import { FivePass, fivePassDuration } from './templates/FivePass';
+import fivePassDemo from '../props/fivepass-demo.json';
 
 export const RemotionRoot: React.FC = () => (
   <>
@@ -28,11 +41,11 @@ export const RemotionRoot: React.FC = () => (
       id="SaaSPromo"
       component={SaaSPromo}
       schema={saasPromoSchema}
-      defaultProps={saasAto as never}
+      defaultProps={saasSample as never}
       fps={FPS}
       width={1080}
       height={1920}
-      durationInFrames={Math.round(saasPromoBeats * beatFrames(saasAto.bpm))}
+      durationInFrames={Math.round(saasPromoBeats * beatFrames(saasSample.bpm))}
       calculateMetadata={({ props }) => ({
         durationInFrames: Math.round(saasPromoBeats * beatFrames(props.bpm)),
       })}
@@ -41,12 +54,34 @@ export const RemotionRoot: React.FC = () => (
       id="TalkCaptions"
       component={TalkCaptions}
       schema={talkCaptionsSchema}
-      defaultProps={talkAto as TalkCaptionsProps}
+      defaultProps={talkSample as TalkCaptionsProps}
       fps={FPS}
       width={1080}
       height={1920}
-      durationInFrames={talkCaptionsDuration(talkAto as TalkCaptionsProps, FPS)}
+      durationInFrames={talkCaptionsDuration(talkSample as TalkCaptionsProps, FPS)}
       calculateMetadata={({ props }) => ({ durationInFrames: talkCaptionsDuration(props, FPS) })}
+    />
+    <Composition
+      id="EffectsReel"
+      component={EffectsReel}
+      schema={effectsReelSchema}
+      defaultProps={effectsDemo as EffectsReelProps}
+      fps={FPS}
+      width={1080}
+      height={1920}
+      durationInFrames={effectsReelDuration(effectsDemo as EffectsReelProps, FPS)}
+      calculateMetadata={({ props }) => ({ durationInFrames: effectsReelDuration(props, FPS) })}
+    />
+    <Composition
+      id="FivePass"
+      component={FivePass}
+      schema={fivePassSchema}
+      defaultProps={fivePassDemo as FivePassProps}
+      fps={FPS}
+      width={1080}
+      height={1920}
+      durationInFrames={fivePassDuration(fivePassDemo as FivePassProps, FPS)}
+      calculateMetadata={({ props }) => ({ durationInFrames: fivePassDuration(props, FPS) })}
     />
   </>
 );
