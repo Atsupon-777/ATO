@@ -26,6 +26,7 @@
     "@remotion/shapes": "^4.0.534",
     "@remotion/transitions": "^4.0.534",
     "@remotion/zod-types": "^4.0.534",
+    "firebase": "^12.19.0",
     "react": "^19.3.0",
     "react-dom": "^19.3.0",
     "remotion": "^4.0.534",

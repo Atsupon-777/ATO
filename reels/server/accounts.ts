@@ -1,0 +1,100 @@
+// Accounts and token balances, kept in one JSON file (DATA_DIR/accounts.json).
+// The server runs as a single instance, so one in-memory copy written after every change is enough.
+import { mkdir, readFile, rename, writeFile } from 'node:fs/promises';
+import path from 'node:path';
+import { dataDir } from './paths.ts';
+
+export type PlanId = 'free' | 'starter' | 'standard' | 'pro';
+
+/** Monthly token allowance of each plan. Prices live in Stripe (STRIPE_PRICE_<PLAN>). */
+export const PLAN_TOKENS: Record<PlanId, number> = { free: 0, starter: 60, standard: 200, pro: 600 };
+/** Tokens a new account starts with, so people can try it before paying. */
+export const FREE_TOKENS = Number(process.env.FREE_TOKENS ?? 10);
+/** Tokens in one top-up purchase (STRIPE_PRICE_TOPUP). */
+export const TOPUP_TOKENS = Number(process.env.TOPUP_TOKENS ?? 30);
+
+export type Account = {
+  uid: string;
+  email?: string;
+  createdAt: string;
+  plan: PlanId;
+  /** Left from this month's plan allowance; reset when the subscription renews. */
+  tokens: number;
+  /** Bought with top-ups or given at sign-up; never expires. Used after `tokens`. */
+  extra: number;
+  customerId?: string;
+  subscriptionId?: string;
+  /** Stripe events already applied, so a retried webhook is not counted twice. */
+  events?: string[];
+};
+
+const file = path.join(dataDir, 'accounts.json');
+let accounts: Map<string, Account> | null = null;
+let writing = Promise.resolve();
+
+async function load() {
+  if (accounts) return accounts;
+  try {
+    accounts = new Map(Object.entries(JSON.parse(await readFile(file, 'utf8'))));
+  } catch {
+    accounts = new Map();
+  }
+  return accounts;
+}
+
+function persist() {
+  const snapshot = JSON.stringify(Object.fromEntries(accounts!), null, 1);
+  writing = writing.then(async () => {
+    await mkdir(dataDir, { recursive: true });
+    await writeFile(`${file}.tmp`, snapshot);
+    await rename(`${file}.tmp`, file);
+  });
+  return writing;
+}
+
+export async function getAccount(uid: string, email?: string): Promise<Account> {
+  const all = await load();
+  let a = all.get(uid);
+  if (!a) {
+    a = { uid, email, createdAt: new Date().toISOString(), plan: 'free', tokens: 0, extra: FREE_TOKENS };
+    all.set(uid, a);
+    await persist();
+  } else if (email && a.email !== email) {
+    a.email = email;
+    await persist();
+  }
+  return a;
+}
+
+export const balance = (a: Account) => a.tokens + a.extra;
+
+export class NotEnoughTokens extends Error {}
+
+/** Takes `n` tokens, monthly allowance first. Throws NotEnoughTokens when the balance is short. */
+export async function charge(uid: string, n: number) {
+  const a = await getAccount(uid);
+  if (balance(a) < n) throw new NotEnoughTokens(`トークンが足りません（必要: ${n} / 残り: ${balance(a)}）`);
+  const fromPlan = Math.min(a.tokens, n);
+  a.tokens -= fromPlan;
+  a.extra -= n - fromPlan;
+  await persist();
+  return a;
+}
+
+/** Gives back tokens for a job that failed. They return as `extra` so they never expire. */
+export async function refund(uid: string, n: number) {
+  const a = await getAccount(uid);
+  a.extra += n;
+  await persist();
+}
+
+export async function update(uid: string, fn: (a: Account) => void) {
+  const a = await getAccount(uid);
+  fn(a);
+  await persist();
+  return a;
+}
+
+export async function findByCustomer(customerId: string) {
+  return [...(await load()).values()].find((a) => a.customerId === customerId);
+}

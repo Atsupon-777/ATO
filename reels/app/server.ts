@@ -1,6 +1,8 @@
-// ATO Reels web app: serves the editor and runs generation/render jobs.
+// Reels Studio web app: serves the editor and runs generation/render jobs.
 //   node app/server.ts            (PORT=3000 by default)
 // Jobs live in public/jobs/<id>/ (job.json + media), so a restart keeps history.
+// Login (FIREBASE_PROJECT_ID) and billing (STRIPE_SECRET_KEY) switch on from the environment; see deploy/README.md.
+import { createHash } from 'node:crypto';
 import { createReadStream, createWriteStream } from 'node:fs';
 import { mkdir, readFile, readdir, stat, writeFile } from 'node:fs/promises';
 import http from 'node:http';
@@ -17,6 +19,9 @@ import { renderTemplate } from '../server/render.ts';
 import { buildSaasProps } from '../server/saas.ts';
 import { buildTalkProps } from '../server/talk.ts';
 import { isLang, type Lang } from '../src/lang.ts';
+import { authEnabled, LOCAL_USER, verifyIdToken, webConfig, type User } from '../server/auth.ts';
+import { NotEnoughTokens, balance, charge, getAccount, refund, TOPUP_TOKENS, PLAN_TOKENS, FREE_TOKENS } from '../server/accounts.ts';
+import { billingEnabled, checkout, isPurchase, portal, webhook } from '../server/billing.ts';
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const publicDir = path.join(root, 'public');
@@ -48,7 +53,14 @@ type Job = {
   error?: string;
   /** 5-pass edit: latest version number of each pass (for rolling back). */
   versions?: Record<number, number>;
+  /** Who made it (Firebase uid; "local" when login is off). */
+  owner?: string;
+  /** Tokens this job took. */
+  tokens?: number;
 };
+
+/** Tokens each kind of reel takes: own footage only 2, AI photo or effects 5, with AI video 12. */
+const tokensFor = (t: Template, input: Record<string, any>) => (t === 'ProductShine' ? (input.video ? 12 : 5) : t === 'EffectsReel' || t === 'FivePass' || t === 'SaaSPromo' ? 5 : 2);
 
 const jobs = new Map<string, Job>();
 
@@ -70,14 +82,19 @@ async function loadJobs() {
   }
 }
 
-/** Uploaded files are referenced by name; resolve them inside uploads/ only. */
-const upload = (name: unknown) => {
+/** Each user's uploads sit in their own folder, named by a hash of their id. */
+const userDir = (u: User) => createHash('sha256').update(u.uid).digest('hex').slice(0, 16);
+
+/** Uploaded files are referenced by name; resolve them inside the user's own uploads folder only. */
+const uploadOf = (user: User) => (name: unknown) => {
   if (typeof name !== 'string' || !name) return undefined;
-  const f = path.join(uploadsDir, path.basename(name));
-  return f;
+  return path.join(uploadsDir, userDir(user), path.basename(name));
 };
 
-async function startJob(template: Template, input: Record<string, any>) {
+async function startJob(template: Template, input: Record<string, any>, user: User) {
+  const cost = tokensFor(template, input);
+  await charge(user.uid, cost);
+  const upload = uploadOf(user);
   const id = `job-${Date.now().toString(36)}${Math.random().toString(36).slice(2, 6)}`;
   await mkdir(path.join(jobsDir, id), { recursive: true });
   const job: Job = {
@@ -86,6 +103,8 @@ async function startJob(template: Template, input: Record<string, any>) {
     title: String(input.name || input.title || template),
     createdAt: new Date().toISOString(),
     status: 'generating',
+    owner: user.uid,
+    tokens: cost,
   };
   jobs.set(id, job);
   await save(job);
@@ -175,6 +194,9 @@ async function startJob(template: Template, input: Record<string, any>) {
       console.error(e);
       job.status = 'error';
       job.error = e instanceof Error ? e.message : String(e);
+      // Nothing was made, so the tokens go back.
+      await refund(user.uid, cost).catch(console.error);
+      job.tokens = 0;
     }
     await save(job);
   })();
@@ -292,6 +314,42 @@ const buildApp = () =>
     })
     .then((r) => r.outputFiles[0].text);
 
+/** Requests from this machine are the renderer fetching job media; they need no login. */
+const isLocal = (req: http.IncomingMessage) => /^(::1|127\.0\.0\.1|::ffff:127\.0\.0\.1)$/.test(req.socket.remoteAddress ?? '') && !req.headers['x-forwarded-for'];
+
+const cookie = (req: http.IncomingMessage, name: string) =>
+  req.headers.cookie
+    ?.split(';')
+    .map((c) => c.trim().split('='))
+    .find(([k]) => k === name)?.[1];
+
+/** The signed-in user from the Authorization header, or from the session cookie for <video> and <img> requests. */
+const verified = new Map<string, { user: User; until: number }>();
+async function userOf(req: http.IncomingMessage): Promise<User | null> {
+  if (!authEnabled) return LOCAL_USER;
+  const token = req.headers.authorization?.replace(/^Bearer /, '') || cookie(req, 'reels_session');
+  if (!token) return null;
+  const hit = verified.get(token);
+  if (hit && hit.until > Date.now()) return hit.user;
+  try {
+    const user = await verifyIdToken(token);
+    if (verified.size > 5000) verified.clear();
+    verified.set(token, { user, until: Date.now() + 5 * 60_000 });
+    return user;
+  } catch {
+    return null;
+  }
+}
+
+const originOf = (req: http.IncomingMessage) =>
+  process.env.PUBLIC_URL || `${req.headers['x-forwarded-proto'] ?? 'http'}://${req.headers['x-forwarded-host'] ?? req.headers.host}`;
+
+const readRaw = async (req: http.IncomingMessage) => {
+  const chunks: Buffer[] = [];
+  for await (const c of req) chunks.push(c as Buffer);
+  return Buffer.concat(chunks);
+};
+
 const server = http.createServer(async (req, res) => {
   const url = new URL(req.url ?? '/', ORIGIN);
   const p = decodeURIComponent(url.pathname);
@@ -303,28 +361,62 @@ const server = http.createServer(async (req, res) => {
       appJs ??= buildApp();
       return res.writeHead(200, { 'Content-Type': types['.js'] }).end(await appJs);
     }
+    if (/^\/legal\/[\w-]+\.html$/.test(p)) return sendFile(req, res, path.join(webDir, p));
+    if (p === '/api/config') return json(res, 200, { firebase: webConfig(), billing: billingEnabled, topupTokens: TOPUP_TOKENS, freeTokens: FREE_TOKENS, planTokens: PLAN_TOKENS });
+    if (p === '/api/stripe/webhook' && req.method === 'POST') {
+      try {
+        return json(res, 200, await webhook(await readRaw(req), req.headers['stripe-signature'] as string | undefined));
+      } catch (e) {
+        console.error('stripe webhook', e);
+        return json(res, 400, { error: e instanceof Error ? e.message : String(e) });
+      }
+    }
+
+    // Everything below belongs to a signed-in user (or to the renderer on this machine).
+    const local = isLocal(req);
+    const user = await userOf(req);
+    if (p.startsWith('/api/') && !user) return json(res, 401, { error: 'ログインしてください' });
+
+    if (p === '/api/me') {
+      const a = await getAccount(user!.uid, user!.email);
+      return json(res, 200, { email: a.email, plan: a.plan, tokens: a.tokens, extra: a.extra, balance: balance(a), billing: billingEnabled, subscribed: Boolean(a.subscriptionId), auth: authEnabled });
+    }
+    if (p === '/api/billing/checkout' && req.method === 'POST') {
+      const { what } = await readBody(req);
+      if (!isPurchase(what)) return json(res, 400, { error: 'unknown plan' });
+      return json(res, 200, { url: await checkout(await getAccount(user!.uid, user!.email), what, originOf(req)) });
+    }
+    if (p === '/api/billing/portal' && req.method === 'POST') {
+      return json(res, 200, { url: await portal(await getAccount(user!.uid, user!.email), originOf(req)) });
+    }
     if (p === '/api/upload' && req.method === 'POST') {
       const name = url.searchParams.get('name') ?? 'file';
       if (!okUpload.test(name)) return json(res, 400, { error: 'JPG / PNG / WebP / MP4 / MOV のみ対応しています' });
       if (Number(req.headers['content-length'] ?? 0) > MAX_UPLOAD) return json(res, 413, { error: 'ファイルが大きすぎます (300MBまで)' });
       const file = `${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 8)}${path.extname(name).toLowerCase()}`;
-      await pipeline(req, createWriteStream(path.join(uploadsDir, file)));
-      return json(res, 200, { file, url: `/uploads/${file}` });
+      const dir = path.join(uploadsDir, userDir(user!));
+      await mkdir(dir, { recursive: true });
+      await pipeline(req, createWriteStream(path.join(dir, file)));
+      return json(res, 200, { file, url: `/uploads/${userDir(user!)}/${file}` });
     }
     if (p === '/api/jobs' && req.method === 'GET') {
-      const list = [...jobs.values()].sort((a, b) => b.createdAt.localeCompare(a.createdAt));
+      const list = [...jobs.values()].filter((j) => (j.owner ?? LOCAL_USER.uid) === user!.uid).sort((a, b) => b.createdAt.localeCompare(a.createdAt));
       return json(res, 200, list.map(({ props, ...j }) => ({ ...j, thumb: thumbOf(j.template, props) })));
     }
     if (p === '/api/jobs' && req.method === 'POST') {
       const body = await readBody(req);
       if (!(body.template in schemas)) return json(res, 400, { error: 'unknown template' });
-      const job = await startJob(body.template, body.input ?? {});
-      return json(res, 200, job);
+      try {
+        return json(res, 200, await startJob(body.template, body.input ?? {}, user!));
+      } catch (e) {
+        if (e instanceof NotEnoughTokens) return json(res, 402, { error: e.message, code: 'tokens' });
+        throw e;
+      }
     }
     const m = p.match(/^\/api\/jobs\/([\w-]+)(\/props|\/render|\/pass|\/restore)?$/);
     if (m) {
       const job = jobs.get(m[1]);
-      if (!job) return json(res, 404, { error: 'job not found' });
+      if (!job || (job.owner ?? LOCAL_USER.uid) !== user!.uid) return json(res, 404, { error: 'job not found' });
       if (!m[2] && req.method === 'GET') return json(res, 200, job);
       if (m[2] === '/props' && req.method === 'PUT') {
         const parsed = schemas[job.template].safeParse((await readBody(req)).props);
@@ -377,10 +469,16 @@ const server = http.createServer(async (req, res) => {
         return json(res, 200, job);
       }
     }
-    // Media and fonts from public/ (jobs, uploads, samples, fonts).
+    // Media and fonts from public/ (jobs, uploads, samples, fonts). A user's jobs and uploads are theirs only.
     const file = path.join(publicDir, path.normalize(p).replace(/^(\.\.[/\\])+/, ''));
     if (!file.startsWith(publicDir)) return res.writeHead(403).end();
     if (/^\/jobs\/.*\/(job|usage|plan)\.json$/.test(p)) return res.writeHead(404).end();
+    if (!local) {
+      const jm = p.match(/^\/jobs\/([\w-]+)\//);
+      if (jm && (!user || (jobs.get(jm[1])?.owner ?? LOCAL_USER.uid) !== user.uid)) return res.writeHead(404).end();
+      const um = p.match(/^\/uploads\/([^/]+)\//);
+      if (p.startsWith('/uploads/') && (!user || !um || um[1] !== userDir(user))) return res.writeHead(404).end();
+    }
     return sendFile(req, res, file);
   } catch (e) {
     console.error(e);
@@ -392,4 +490,4 @@ const thumbOf = (t: Template, props?: Record<string, any>) =>
   !props ? undefined : t === 'ProductShine' ? props.photo : t === 'SaaSPromo' ? props.desktop : undefined;
 
 await loadJobs();
-server.listen(PORT, () => console.log(`ATO Reels app on ${ORIGIN}`));
+server.listen(PORT, () => console.log(`Reels Studio on ${ORIGIN} (login ${authEnabled ? 'on' : 'off'}, billing ${billingEnabled ? 'on' : 'off'})`));

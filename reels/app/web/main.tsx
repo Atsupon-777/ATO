@@ -20,6 +20,7 @@ import fivePassSample from '../../props/fivepass-demo.json';
 
 import { LANG_NAMES, langs, type Lang } from '../../src/lang';
 import { lang, setLang, tr } from './i18n';
+import { authHeader, config as appConfig, resetPassword, signInEmail, signInGoogle, signOut, signUpEmail, startAuth, useAuth } from './auth';
 
 // 億 only reads naturally in Japanese and Chinese; other languages get a compact number ("96.3B").
 function mixCount() {
@@ -117,6 +118,7 @@ type Job = {
   error?: string;
   thumb?: string;
   versions?: Record<number, number>;
+  tokens?: number;
 };
 
 // Static preview build (no server): jobs come from window.ATO_DEMO, edits stay in memory,
@@ -142,15 +144,16 @@ const demoApi = async (url: string, init?: RequestInit): Promise<any> => {
 
 const api = async <T,>(url: string, init?: RequestInit): Promise<T> => {
   if (DEMO) return demoApi(url, init);
-  const r = await fetch(url, { ...init, headers: { 'Content-Type': 'application/json', ...(init?.headers ?? {}) } });
+  const r = await fetch(url, { ...init, headers: { 'Content-Type': 'application/json', ...authHeader(), ...(init?.headers ?? {}) } });
   const j = await r.json();
+  if (r.status === 402 && j.code === 'tokens') throw new Error(tr("トークンが足りません。アカウントのページでプランを選ぶか、トークンを追加してください。"));
   if (!r.ok) throw new Error(j.error ?? r.statusText);
   return j;
 };
 
 const uploadFile = async (f: File) => {
   if (DEMO) return { file: f.name, url: URL.createObjectURL(f) };
-  const r = await fetch(`/api/upload?name=${encodeURIComponent(f.name)}`, { method: 'POST', body: f });
+  const r = await fetch(`/api/upload?name=${encodeURIComponent(f.name)}`, { method: 'POST', body: f, headers: authHeader() });
   const j = await r.json();
   if (!r.ok) throw new Error(j.error);
   return j as { file: string; url: string };
@@ -1943,42 +1946,69 @@ const FeedItem: React.FC<{ job: Job; onEdit: () => void }> = ({ job, onEdit }) =
 };
 
 const PLANS = [
-  { name: tr("スターター"), price: tr("9,800円"), tokens: 60, note: tr("週3投稿の目安") },
-  { name: tr("スタンダード"), price: tr("29,800円"), tokens: 200, note: tr("毎日投稿の目安") },
-  { name: tr("プロ"), price: tr("79,800円"), tokens: 600, note: tr("複数ブランド・優先書き出し") },
-];
+  { id: 'starter', name: tr("スターター"), price: tr("9,800円"), tokens: 60, note: tr("週3投稿の目安") },
+  { id: 'standard', name: tr("スタンダード"), price: tr("29,800円"), tokens: 200, note: tr("毎日投稿の目安") },
+  { id: 'pro', name: tr("プロ"), price: tr("79,800円"), tokens: 600, note: tr("複数ブランド・優先書き出し") },
+] as const;
 
 const FAQ = [
   { q: tr("トークンとは？"), a: tr("リールを1本作るときに使う単位です。自分の素材だけなら2、AIで写真やエフェクトを作ると5、AI動画を入れると12使います。") },
   { q: tr("同じテンプレートでも毎回ちがう動画になりますか？"), a: tr("はい。ミックスはカットごとにエフェクト・字幕・カメラ・切り替えを組み合わせるので、シャッフルするたびに別の組み合わせになります。") },
   { q: tr("書き出した動画は商用で使えますか？"), a: tr("使えます。インスタのリール、TikTok、YouTubeショート、広告にそのまま使える縦型MP4です。") },
   { q: tr("書き出した後でも直せますか？"), a: tr("直せます。字幕・色・カットの演出を変えて、何度でも書き出し直せます。書き出し直しにトークンはかかりません。") },
-  { q: tr("解約はいつでもできますか？"), a: tr("できます（課金の接続後に設定から手続きできます）。") },
+  { q: tr("解約はいつでもできますか？"), a: tr("できます。アカウントの「お支払い・解約の管理」から、いつでも手続きできます。") },
 ];
 
-const jobTokens = (j: Job) => (j.template === 'ProductShine' ? (j.props?.clip ? 12 : 5) : j.template === 'EffectsReel' || j.template === 'FivePass' ? 5 : 2);
+const jobTokens = (j: Job) => j.tokens ?? (j.template === 'ProductShine' ? (j.props?.clip ? 12 : 5) : j.template === 'EffectsReel' || j.template === 'FivePass' ? 5 : 2);
+
+type Me = { email?: string; plan: 'free' | 'starter' | 'standard' | 'pro'; tokens: number; extra: number; balance: number; billing: boolean; subscribed: boolean; auth: boolean };
+const PLAN_NAMES: Record<Me['plan'], string> = { free: tr("無料"), starter: tr("スターター"), standard: tr("スタンダード"), pro: tr("プロ") };
 
 const Account: React.FC<{ go: (h: string) => void }> = ({ go }) => {
   const [jobs, setJobs] = useState<Job[]>([]);
+  const [me, setMe] = useState<Me | null>(null);
+  const [busy, setBusy] = useState('');
+  const [err, setErr] = useState('');
   useEffect(() => {
     api<Job[]>('/api/jobs').then(async (list) => setJobs(await Promise.all(list.map((j) => api<Job>(`/api/jobs/${j.id}`).catch(() => j)))));
+    if (!DEMO) api<Me>('/api/me').then(setMe).catch(() => null);
   }, []);
   const made = jobs.filter((j) => j.props);
   const used = made.reduce((a, j) => a + jobTokens(j), 0);
+  const paid = new URLSearchParams(location.hash.split('?')[1] ?? '').get('paid');
+  // Stripe pages: checkout for a plan or a top-up, the portal for changing plan, card or cancelling.
+  const open = async (what: string) => {
+    setBusy(what);
+    setErr('');
+    try {
+      const { url } = await api<{ url: string }>(what === 'portal' ? '/api/billing/portal' : '/api/billing/checkout', { method: 'POST', body: JSON.stringify({ what }) });
+      location.href = url;
+    } catch (e: any) {
+      setErr(e.message);
+      setBusy('');
+    }
+  };
+  const billing = !!me?.billing;
   return (
     <>
       <Crumbs items={[{ label: tr("ホーム"), href: '#/' }, { label: tr("アカウント") }]} />
       <div className="profile">
         <div className="avatar">◎</div>
-        <div>
-          <div className="name">{tr("マイアカウント")}</div>
-          <div className="cost">{tr("β版・課金はまだつながっていません")}</div>
+        <div style={{ flex: 1, minWidth: 0 }}>
+          <div className="name">{me?.email ?? tr("マイアカウント")}</div>
+          <div className="cost">{me ? tr("プラン: {0}", PLAN_NAMES[me.plan]) : tr("β版・課金はまだつながっていません")}</div>
         </div>
+        {me?.auth ? (
+          <button className="btn ghost small" onClick={() => signOut()}>
+            {tr("ログアウト")}
+          </button>
+        ) : null}
       </div>
+      {paid ? <div className="okmsg">{tr("お支払いありがとうございます。トークンは数秒で反映されます。")}</div> : null}
       <div className="stats3">
         <div>
-          <b><CountUp to={made.length} /></b>
-          <span>{tr("作ったリール")}</span>
+          <b><CountUp to={me ? me.balance : made.length} /></b>
+          <span>{me ? tr("残りのトークン") : tr("作ったリール")}</span>
         </div>
         <div>
           <b><CountUp to={used} /></b>
@@ -1991,23 +2021,49 @@ const Account: React.FC<{ go: (h: string) => void }> = ({ go }) => {
       </div>
       <h2>{tr("プラン")}</h2>
       <div className="plans">
-        {PLANS.map((p) => (
-          <div key={p.name} className="plan">
-            <div className="name">{p.name}</div>
-            <div className="price">
-              {p.price}
-              <small>{tr("/月")}</small>
+        {PLANS.map((p) => {
+          const current = me?.plan === p.id;
+          return (
+            <div key={p.id} className={`plan ${current ? 'on' : ''}`}>
+              <div className="name">{p.name}</div>
+              <div className="price">
+                {p.price}
+                <small>{tr("/月")}</small>
+              </div>
+              <div className="cost">
+                {tr("毎月")}{' '}{p.tokens}{tr("トークン ・")}{' '}{p.note}
+              </div>
+              {!billing ? (
+                <button className="btn ghost small" disabled title={tr("課金の接続後に選べます")}>
+                  {tr("準備中")}
+                </button>
+              ) : current ? (
+                <button className="btn ghost small" disabled>
+                  {tr("利用中")}
+                </button>
+              ) : (
+                <button className="btn small" disabled={!!busy} onClick={() => open(me!.subscribed ? 'portal' : p.id)}>
+                  {busy === p.id ? tr("移動中…") : me!.subscribed ? tr("このプランに変更") : tr("このプランにする")}
+                </button>
+              )}
             </div>
-            <div className="cost">
-              {tr("毎月")}{' '}{p.tokens}{tr("トークン ・")}{' '}{p.note}
-            </div>
-            <button className="btn ghost small" disabled title={tr("課金の接続後に選べます")}>
-              {tr("準備中")}
-            </button>
-          </div>
-        ))}
+          );
+        })}
       </div>
       <p className="cost">{tr("消費トークン: 自分の素材だけ 2 ／ AI写真・エフェクト 5 ／ AI動画あり 12")}</p>
+      {billing ? (
+        <div className="row" style={{ flexWrap: 'wrap', gap: 8, marginTop: 8 }}>
+          <button className="btn ghost small" disabled={!!busy} onClick={() => open('topup')}>
+            {tr("トークンを{0}追加する", appConfig?.topupTokens ?? 30)}
+          </button>
+          {me?.subscribed ? (
+            <button className="btn ghost small" disabled={!!busy} onClick={() => open('portal')}>
+              {tr("お支払い・解約の管理")}
+            </button>
+          ) : null}
+        </div>
+      ) : null}
+      {err ? <div className="err">{err}</div> : null}
       <h2 style={{ marginTop: 24 }}>{tr("言語")}</h2>
       <div className="langgrid">
         {langs.map((l) => (
@@ -2018,6 +2074,11 @@ const Account: React.FC<{ go: (h: string) => void }> = ({ go }) => {
       </div>
       <h2 style={{ marginTop: 24 }}>{tr("よくある質問")}</h2>
       <Accordion items={FAQ} />
+      <p className="legal">
+        <a href="/legal/terms.html" target="_blank" rel="noreferrer">{tr("利用規約")}</a>
+        <a href="/legal/privacy.html" target="_blank" rel="noreferrer">{tr("プライバシーポリシー")}</a>
+        <a href="/legal/tokushoho.html" target="_blank" rel="noreferrer">{tr("特定商取引法に基づく表記")}</a>
+      </p>
       <h2 style={{ marginTop: 24 }}>{tr("履歴")}</h2>
       <History onOpen={(id) => go(`#/job/${id}`)} />
     </>
@@ -2173,4 +2234,89 @@ const App = () => {
   );
 };
 
-createRoot(document.getElementById('root')!).render(<App />);
+/** Shown instead of the app while login is on and nobody is signed in. */
+const SignIn: React.FC = () => {
+  const [mode, setMode] = useState<'in' | 'up'>('in');
+  const [email, setEmail] = useState('');
+  const [pw, setPw] = useState('');
+  const [msg, setMsg] = useState('');
+  const [busy, setBusy] = useState(false);
+  const run = (fn: () => Promise<unknown>) => async () => {
+    setBusy(true);
+    setMsg('');
+    try {
+      await fn();
+    } catch (e: any) {
+      const code = String(e?.code ?? '');
+      setMsg(
+        code.includes('invalid-credential') || code.includes('wrong-password') || code.includes('user-not-found')
+          ? tr("メールアドレスかパスワードが違います。")
+          : code.includes('email-already-in-use')
+            ? tr("このメールアドレスはすでに登録されています。ログインしてください。")
+            : code.includes('weak-password')
+              ? tr("パスワードは6文字以上にしてください。")
+              : code.includes('popup-closed')
+                ? ''
+                : tr("うまくいきませんでした。もう一度お試しください。"),
+      );
+    }
+    setBusy(false);
+  };
+  return (
+    <div className="signin">
+      <div className="logo">
+        <span className="mark" aria-hidden>▶</span> Reels <span>Studio</span>
+      </div>
+      <h1>{tr("編集しない、動画編集アプリ。")}</h1>
+      <p className="sub">{tr("素材を入れるだけで、AIが編集まで仕上げます。あなたは出てきた案から選ぶだけ。")}</p>
+      <button className="btn google" disabled={busy} onClick={run(signInGoogle)}>
+        <b>G</b> {tr("Googleで続ける")}
+      </button>
+      <div className="or">{tr("またはメールで")}</div>
+      <input className="inp" type="email" autoComplete="email" placeholder={tr("メールアドレス")} value={email} onChange={(e) => setEmail(e.target.value)} />
+      <input className="inp" type="password" autoComplete={mode === 'in' ? 'current-password' : 'new-password'} placeholder={tr("パスワード（6文字以上）")} value={pw} onChange={(e) => setPw(e.target.value)} />
+      <button className="btn" disabled={busy || !email || pw.length < 6} onClick={run(() => (mode === 'in' ? signInEmail(email, pw) : signUpEmail(email, pw)))}>
+        {mode === 'in' ? tr("ログイン") : tr("新規登録")}
+      </button>
+      <div className="row" style={{ justifyContent: 'space-between' }}>
+        <button className="linkbtn" onClick={() => (setMode(mode === 'in' ? 'up' : 'in'), setMsg(''))}>
+          {mode === 'in' ? tr("はじめての方は新規登録") : tr("登録済みの方はログイン")}
+        </button>
+        {mode === 'in' ? (
+          <button className="linkbtn" disabled={!email} onClick={run(async () => (await resetPassword(email), setMsg(tr("パスワード再設定のメールを送りました。"))))}>
+            {tr("パスワードを忘れた")}
+          </button>
+        ) : null}
+      </div>
+      {msg ? <div className="cost">{msg}</div> : null}
+      <p className="cost">{tr("登録すると{0}トークン分を無料で試せます。", appConfig?.freeTokens ?? 10)}</p>
+      <p className="legal">
+        <a href="/legal/terms.html" target="_blank" rel="noreferrer">{tr("利用規約")}</a>
+        <a href="/legal/privacy.html" target="_blank" rel="noreferrer">{tr("プライバシーポリシー")}</a>
+        <a href="/legal/tokushoho.html" target="_blank" rel="noreferrer">{tr("特定商取引法に基づく表記")}</a>
+      </p>
+      <label className="langbtn" style={{ justifySelf: 'center' }}>
+        <Globe />
+        <select value={lang} onChange={(e) => setLang(e.target.value as Lang)} aria-label={tr("言語")}>
+          {langs.map((l) => (
+            <option key={l} value={l}>
+              {LANG_NAMES[l].native}
+            </option>
+          ))}
+        </select>
+      </label>
+    </div>
+  );
+};
+
+/** Login gate: the app itself once signed in (or when login is off, or in the static preview). */
+const Root = () => {
+  const auth = useAuth();
+  if (DEMO) return <App />;
+  if (!auth.ready) return null;
+  if (auth.enabled && !auth.signedIn) return <SignIn />;
+  return <App key={auth.email ?? ''} />;
+};
+
+if (!DEMO) startAuth();
+createRoot(document.getElementById('root')!).render(<Root />);
