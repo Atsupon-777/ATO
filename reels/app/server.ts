@@ -134,7 +134,7 @@ async function startJob(template: Template, input: Record<string, any>) {
         if (!video) throw new Error('動画をアップロードしてください');
         const prefer = (Array.isArray(input.effects) ? input.effects : []).filter((e: string) => (effectIds as readonly string[]).includes(e));
         const recipe = typeof input.recipe === 'string' ? input.recipe : undefined;
-        const brief = { video, jobId: id, prefer, recipe, lang, onStep };
+        const brief = { video, jobId: id, prefer, recipe, lang: isLang(input.lang) ? input.lang : undefined, onStep };
         const res = await buildEffectsProps(brief);
         // A sub-type picked in the gallery fixes one style axis (caption, camera, transition, grade or texture) on every cut.
         const lock = input.lock && typeof input.lock === 'object' ? input.lock : null;
