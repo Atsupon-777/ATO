@@ -17,9 +17,11 @@ def enc(inp, key, ss=None, t=None):
     subprocess.run(['ffmpeg', '-y', '-loglevel', 'error', '-ss', str((t or 6) * 0.5), '-i', str(out / f'{key}.mp4'),
                     '-frames:v', '1', '-q:v', '4', str(out / f'{key}.jpg')], check=True)
 
-enc(src / 'matcha-product-dynamic.mp4', 'ProductShine')
-enc(src / 'ato-saas-promo.mp4', 'SaaSPromo')
-enc(src / 'talk-captions-ja.mp4', 'TalkCaptions')
+# Base templates: brand-free samples rendered per language (lang/<Template>.<lang>.mp4).
+# Japanese is the default key; other languages become <key>.<lang>, which the app picks by UI language.
+for f in sorted((src / 'lang').glob('*.mp4')):
+    tpl, lang = f.stem.split('.')
+    enc(f, tpl if lang == 'ja' else f'{tpl}.{lang}')
 # Prefer the black-background renders (no person in frame) when the effects thread made them.
 fx17 = src / 'effects-17-black.mp4' if (src / 'effects-17-black.mp4').exists() else src / 'effects-17-test.mp4'
 enc(fx17, 'EffectsReel')
@@ -38,6 +40,12 @@ for f in sorted(src.glob('effects-mix-*.mp4')):
         mixes[mid] = f
 for mid, f in mixes.items():
     enc(f, 'mix-' + mid)
+# Sub-types (caption styles, camera moves, transitions, grades, textures): one long render per
+# language from scripts/make-subtypes.ts plus a clip list, sliced into one sample per option.
+for f in sorted(src.glob('subtypes-*.mp4')):
+    lang = f.stem.split('-')[1]
+    for key, c in json.load(open(f.with_suffix('.json'))).items():
+        enc(f, key if lang == 'ja' else f'{key}.{lang}', ss=c['start'], t=c['dur'])
 # The app hides gallery items that have no real render yet.
 json.dump(sorted(p.stem for p in out.glob('*.mp4')), open(out / 'index.json', 'w'))
 print('done')

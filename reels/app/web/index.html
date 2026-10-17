@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1" />
-<title>ATO Reels</title>
+<title>Reels Studio</title>
 <link id="reels-fonts" rel="stylesheet" href="/fonts/fonts.css" />
 <style>
   :root {
@@ -306,6 +306,14 @@
   @media (prefers-reduced-motion: reduce) {
     *, *::before, *::after { animation-duration: .01ms !important; animation-delay: 0s !important; animation-iteration-count: 1 !important; transition-duration: .01ms !important; scroll-behavior: auto !important; }
   }
+
+  .langbtn { display: inline-flex; align-items: center; gap: 6px; background: var(--panel); border: 1px solid var(--line); color: var(--ink); border-radius: 999px; padding: 6px 12px; font: inherit; font-size: 12px; cursor: pointer; transition: border-color .2s, transform .15s; }
+  .langbtn:hover { border-color: var(--accent); }
+  .langbtn:active { transform: scale(.96); }
+  .logo .mark { display: inline-grid; place-items: center; width: 26px; height: 26px; border-radius: 8px; background: var(--accent); color: var(--accent-ink); font-size: 12px; margin-right: 6px; vertical-align: 2px; }
+  .listrow.on { border-color: var(--accent); }
+  .listrow .check { margin-left: auto; color: var(--accent); font-weight: 900; }
+  .langgrid { display: flex; flex-wrap: wrap; gap: 8px; }
 </style>
 </head>
 <body>

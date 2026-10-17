@@ -8,7 +8,7 @@ import path from 'node:path';
 import { pipeline } from 'node:stream/promises';
 import { fileURLToPath } from 'node:url';
 import * as esbuild from 'esbuild';
-import { effectIds, effectsReelSchema, productShineSchema, saasPromoSchema, talkCaptionsSchema } from '../src/schemas.ts';
+import { effectIds, effectsReelSchema, productShineSchema, saasPromoSchema, talkCaptionsSchema, type EffectsReelProps } from '../src/schemas.ts';
 import { buildEffectsProps } from '../server/effects.ts';
 import { buildProductReel, STYLES, type Style } from '../server/product.ts';
 import { renderTemplate } from '../server/render.ts';
@@ -136,6 +136,13 @@ async function startJob(template: Template, input: Record<string, any>) {
         const recipe = typeof input.recipe === 'string' ? input.recipe : undefined;
         const brief = { video, jobId: id, prefer, recipe, lang, onStep };
         const res = await buildEffectsProps(brief);
+        // A sub-type picked in the gallery fixes one style axis (caption, camera, transition, grade or texture) on every cut.
+        const lock = input.lock && typeof input.lock === 'object' ? input.lock : null;
+        if (lock) {
+          const props = res.props as EffectsReelProps;
+          for (const s of props.segments) s.style = { ...(s.style ?? {}), ...lock };
+          res.props = effectsReelSchema.parse(props);
+        }
         job.props = res.props;
         job.usage = res.usage;
         job.title = String(res.title || job.title);
