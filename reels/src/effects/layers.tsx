@@ -158,6 +158,8 @@ export const Sandwich: React.FC<{
 );
 
 export const FONT_FAMILY = { display: fonts.display, sansJP: fonts.sansJP, serif: fonts.serif, mincho: fonts.minchoJP };
+/** Caption heights the editor offers (fraction of the frame). */
+const CAPTION_Y = { top: 0.16, middle: 0.46, bottom: 0.72 } as const;
 const LEGACY: Record<string, CaptionStyle> = { bold: 'pop', spaced: 'spaced', upper: 'upper' };
 const EMOJI = ['🔥', '✨', '👀', '🚀', '💡', '🙌', '📈', '😳'];
 
@@ -178,6 +180,7 @@ export const Caption: React.FC<{
   const { fps, durationInFrames } = useVideoConfig();
   const s = useSource();
   if (!text) return null;
+  if (s.style.captionPos) y = CAPTION_Y[s.style.captionPos];
   const look: CaptionStyle = s.style.caption ?? LEGACY[variant];
   const family = s.style.font ? FONT_FAMILY[s.style.font] : look === 'script' ? fonts.serif : fonts.display;
   if (look === 'keyword') {

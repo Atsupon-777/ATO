@@ -428,5 +428,14 @@
  "AIに作り直してもらう": "La IA crea otras nuevas",
  "おまかせ": "Automático",
  "編集しない、動画編集アプリ。": "La app de edición de vídeo que edita por ti.",
- "素材を入れるだけで、AIが編集まで仕上げます。あなたは出てきた案から選ぶだけ。": "Sube tu material y la IA termina la edición. Tú solo eliges entre lo que crea."
+ "素材を入れるだけで、AIが編集まで仕上げます。あなたは出てきた案から選ぶだけ。": "Sube tu material y la IA termina la edición. Tú solo eliges entre lo que crea.",
+ "カットごとに選ぶ": "Elige para cada corte",
+ "カットを選ぶと、そのカットに入っている要素が並びます。変えたいものをタップするだけです。": "Elige un corte para ver todo lo que tiene. Solo toca lo que quieras cambiar.",
+ "テロップの位置": "Posición del texto",
+ "上": "Arriba",
+ "中央": "Centro",
+ "下": "Abajo",
+ "飾り": "Adornos",
+ "文字の間違いを直す": "Corregir un error",
+ "エフェクト": "Efecto"
 }

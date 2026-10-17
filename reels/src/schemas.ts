@@ -146,6 +146,8 @@ export const beatStyleSchema = z.object({
   texture: z.enum(textures).optional(),
   accents: z.array(z.enum(accents)).max(accents.length).optional(),
   font: z.enum(fontChoices).optional(),
+  /** Where the caption sits; unset keeps the spot the effect lays out for it. */
+  captionPos: z.enum(['top', 'middle', 'bottom']).optional(),
   /** Accent colour for this beat; falls back to the reel palette. */
   color: zColor().optional(),
 });

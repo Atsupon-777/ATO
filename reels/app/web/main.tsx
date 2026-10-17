@@ -1005,45 +1005,125 @@ const LookPicker: React.FC<PanelProps<EffectsReelProps>> = ({ p, update }) => {
 const LookOption: React.FC<{ k: string; name: string; on: boolean; onPick: () => void }> = ({ k, name, on, onPick }) => {
   const [hover, setHover] = useState(false);
   const has = showcaseList?.has(k);
+  // keep the current choice in view inside its row, without scrolling the page
+  const ref = useRef<HTMLButtonElement>(null);
+  useEffect(() => {
+    const el = ref.current, row = el?.parentElement;
+    if (!on || !el || !row) return;
+    const x = el.offsetLeft - row.offsetLeft;
+    if (x < row.scrollLeft || x + el.offsetWidth > row.scrollLeft + row.clientWidth) row.scrollTo({ left: x - 8, behavior: 'smooth' });
+  }, [on]);
   return (
-    <button className={`lookopt ${on ? 'on' : ''}`} onClick={onPick} onMouseEnter={() => setHover(true)} onMouseLeave={() => setHover(false)}>
+    <button ref={ref} className={`lookopt ${on ? 'on' : ''}`} onClick={onPick} onMouseEnter={() => setHover(true)} onMouseLeave={() => setHover(false)}>
       <div className="lookthumb">{has ? hover ? <ShowVideo k={k} /> : <img src={showcase(k).poster} alt="" loading="lazy" /> : <span>{name}</span>}</div>
       <span>{name}</span>
     </button>
   );
 };
 
-const BeatStyleEditor: React.FC<{ seg: EffectsReelProps['segments'][number]; hasMatte: boolean; onChange: (s: BeatStyle) => void }> = ({ seg, hasMatte, onChange }) => {
+/**
+ * The AI already knows what is in every cut, so each element is a choice, not an edit:
+ * tap a cut, then pick its effect, caption look, caption position, camera and transition from real renders.
+ */
+const CutPicker: React.FC<PanelProps<EffectsReelProps> & { playerRef: React.RefObject<PlayerRef | null>; startFrame: (i: number) => number }> = ({ p, update, playerRef, startFrame }) => {
+  useShowcaseKeys();
+  const [i, setI] = useState(0);
+  const seg = p.segments[Math.min(i, p.segments.length - 1)];
+  const set = (fn: (p: EffectsReelProps) => void) => mut(update, fn)();
   const st = seg.style ?? {};
-  const set = (patch: Partial<BeatStyle>) => onChange({ ...st, ...patch });
+  const setStyle = (patch: Partial<BeatStyle>) => set((x) => void (x.segments[i].style = { ...(x.segments[i].style ?? {}), ...patch }));
+  const open = (k: number) => (setI(k), playerRef.current?.seekTo(startFrame(k)));
   const on = new Set(st.accents ?? []);
+  const row = (label: string, prefix: string, axis: 'caption' | 'camera' | 'transition', values: readonly string[]) => (
+    <div className="cutrow">
+      <div className="cutlabel">
+        {label} <b>{lbl(axis, st[axis])}</b>
+      </div>
+      <div className="lookopts">
+        {values.map((v) => (
+          <LookOption key={v} k={`${prefix}-${v}`} name={lbl(axis, v)} on={st[axis] === v} onPick={() => setStyle({ [axis]: v })} />
+        ))}
+      </div>
+    </div>
+  );
   return (
-    <div className="beatstyle">
-      <div className="grid3s">
-        <Select label={tr("字幕")} axis="caption" options={captionStyles} value={st.caption} onChange={(v) => set({ caption: v as never })} />
-        <Select label={tr("カメラ")} axis="camera" options={cameraMoves} value={st.camera} onChange={(v) => set({ camera: v as never })} />
-        <Select label={tr("入りの切り替え")} axis="transition" options={transitions} value={st.transition} onChange={(v) => set({ transition: v as never })} />
+    <div className="panel">
+      <h2>{tr("カットごとに選ぶ")}</h2>
+      <p className="cost" style={{ marginTop: -4 }}>{tr("カットを選ぶと、そのカットに入っている要素が並びます。変えたいものをタップするだけです。")}</p>
+      {!p.matte ? <p className="cost">{tr("人物の切り抜きがないため、「人物の後ろ」に出る系のエフェクトは前面に重なって表示されます。")}</p> : null}
+      <div className="cutstrip">
+        {p.segments.map((c, k) => (
+          <button key={k} className={`cutchip ${k === i ? 'on' : ''}`} onClick={() => open(k)}>
+            <b>{String(k + 1).padStart(2, '0')}</b>
+            <small>{c.start.toFixed(1)}s</small>
+            <span>{EFFECT_NAMES[c.effect].replace(/^\d+\s*/, '').replace(/\s*[（(].*[）)]/, '')}</span>
+          </button>
+        ))}
       </div>
-      <div className="accentchips">
-        {accents.map((a) => {
-          const disabled = !hasMatte && (a === 'outline' || a === 'glow');
-          return (
-            <button
-              key={a}
-              disabled={disabled}
-              title={disabled ? tr("人物の切り抜きがある動画で使えます") : undefined}
-              className={`fchip ${on.has(a) ? 'on' : ''}`}
-              onClick={() => {
-                const next = new Set(on);
-                next.has(a) ? next.delete(a) : next.add(a);
-                set({ accents: [...next] as never });
-              }}
-            >
-              {lbl('accent', a)}
+      {seg.caption ? <div className="cutline">“{seg.caption}”</div> : null}
+      <div className="cutrow">
+        <div className="cutlabel">
+          {tr("エフェクト")} <b>{EFFECT_NAMES[seg.effect].replace(/^\d+\s*/, '').replace(/\s*[（(].*[）)]/, '')}</b>
+        </div>
+        <div className="lookopts">
+          {effectIds.map((fx) => (
+            <LookOption key={fx} k={fx} name={EFFECT_NAMES[fx].replace(/^\d+\s*/, '').replace(/\s*[（(].*[）)]/, '')} on={seg.effect === fx} onPick={() => set((x) => void (x.segments[i].effect = fx))} />
+          ))}
+        </div>
+      </div>
+      {row(tr("字幕"), 'cap', 'caption', captionStyles)}
+      <div className="cutrow">
+        <div className="cutlabel">{tr("テロップの位置")}</div>
+        <div className="posopts">
+          {([undefined, 'top', 'middle', 'bottom'] as const).map((v) => (
+            <button key={v ?? 'auto'} className={`posopt ${st.captionPos === v ? 'on' : ''}`} onClick={() => setStyle({ captionPos: v })}>
+              <div className="posframe">{v ? <i style={{ top: { top: '14%', middle: '44%', bottom: '70%' }[v] }} /> : <em>AI</em>}</div>
+              <span>{v ? { top: tr("上"), middle: tr("中央"), bottom: tr("下") }[v] : tr("おまかせ")}</span>
             </button>
-          );
-        })}
+          ))}
+        </div>
       </div>
+      {row(tr("カメラ"), 'cam', 'camera', cameraMoves)}
+      {row(tr("入りの切り替え"), 'tr', 'transition', transitions)}
+      <div className="cutrow">
+        <div className="cutlabel">{tr("飾り")}</div>
+        <div className="accentchips">
+          {accents.map((a) => {
+            const disabled = !p.matte && (a === 'outline' || a === 'glow');
+            return (
+              <button
+                key={a}
+                disabled={disabled}
+                title={disabled ? tr("人物の切り抜きがある動画で使えます") : undefined}
+                className={`fchip ${on.has(a) ? 'on' : ''}`}
+                onClick={() => {
+                  const next = new Set(on);
+                  next.has(a) ? next.delete(a) : next.add(a);
+                  setStyle({ accents: [...next] as never });
+                }}
+              >
+                {lbl('accent', a)}
+              </button>
+            );
+          })}
+        </div>
+      </div>
+      <details className="fold">
+        <summary>{tr("文字の間違いを直す")}</summary>
+        <div style={{ display: 'grid', gap: 8, marginTop: 10 }}>
+              <Field label={tr("字幕")} max={60} value={seg.caption ?? ''} onChange={(v) => set((x) => void (x.segments[i].caption = v))} />
+              <div className="grid2">
+                <Field label={tr("強調する言葉（空白区切り）")} value={seg.emphasis.join(' ')} onChange={(v) => set((x) => void (x.segments[i].emphasis = v.split(/\s+/).filter(Boolean)))} />
+                <Field label={tr("エフェクトの文字")} max={40} value={seg.text ?? ''} onChange={(v) => set((x) => void (x.segments[i].text = v || undefined))} />
+              </div>
+              <Field
+                label={tr("項目（1行に1つ：チェックリスト・見出し・カードなど）")}
+                multiline
+                value={seg.items.join('\n')}
+                onChange={(v) => set((x) => void (x.segments[i].items = v.split('\n').filter((l) => l.trim()).slice(0, 12)))}
+              />
+        </div>
+      </details>
     </div>
   );
 };
@@ -1056,40 +1136,7 @@ const EffectsPanel: React.FC<PanelProps<EffectsReelProps> & { playerRef: React.R
     <>
       <LookPicker p={p} update={update} />
       <MixPanel p={p} update={update} />
-      <div className="panel">
-        <h2>{tr("カットごとの演出")}</h2>
-        {!p.matte ? <p className="cost">{tr("人物の切り抜きがないため、「人物の後ろ」に出る系のエフェクトは前面に重なって表示されます。")}</p> : null}
-        <div style={{ display: 'grid', gap: 18 }}>
-          {p.segments.map((seg, i) => (
-            <div key={i} style={{ display: 'grid', gap: 8, paddingBottom: 14, borderBottom: '1px solid var(--line, #e5e5e5)' }}>
-              <div className="row" style={{ justifyContent: 'space-between' }}>
-                <select className="sel" style={{ flex: 1, minWidth: 0 }} value={seg.effect} onChange={(e) => set((x) => void (x.segments[i].effect = e.target.value as never))}>
-                  {effectIds.map((id) => (
-                    <option key={id} value={id}>
-                      {EFFECT_NAMES[id]}
-                    </option>
-                  ))}
-                </select>
-                <button className="btn ghost small" onClick={() => playerRef.current?.seekTo(startFrame(i))}>
-                  {seg.start.toFixed(1)}–{seg.end.toFixed(1)}{tr("秒 ▶")}
-                </button>
-              </div>
-              <BeatStyleEditor seg={seg} hasMatte={!!p.matte} onChange={(st) => set((x) => void (x.segments[i].style = st))} />
-              <Field label={tr("字幕")} max={60} value={seg.caption ?? ''} onChange={(v) => set((x) => void (x.segments[i].caption = v))} />
-              <div className="grid2">
-                <Field label={tr("強調する言葉（空白区切り）")} value={seg.emphasis.join(' ')} onChange={(v) => set((x) => void (x.segments[i].emphasis = v.split(/\s+/).filter(Boolean)))} />
-                <Field label={tr("エフェクトの文字")} max={40} value={seg.text ?? ''} onChange={(v) => set((x) => void (x.segments[i].text = v || undefined))} />
-              </div>
-              <Field
-                label={tr("項目（1行に1つ：チェックリスト・見出し・カードなど）")}
-                multiline
-                value={seg.items.join('\n')}
-                onChange={(v) => set((x) => void (x.segments[i].items = v.split('\n').filter((l) => l.trim()).slice(0, 12)))}
-              />
-            </div>
-          ))}
-        </div>
-      </div>
+      <CutPicker p={p} update={update} playerRef={playerRef} startFrame={startFrame} />
       <div className="panel">
         <h2>{tr("色")}</h2>
         <Colors value={p.palette} labels={{ accent: tr("アクセント"), ink: tr("文字"), paper: tr("紙") }} onChange={(v) => set((x) => void (x.palette = v as any))} />

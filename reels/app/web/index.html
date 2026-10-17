@@ -116,6 +116,28 @@
   .lookopt.on .lookthumb { border-color: var(--accent); }
   .lookopt.on > span { color: var(--accent); font-weight: 700; }
 
+  .cutstrip { display: flex; gap: 8px; overflow-x: auto; padding: 2px 2px 10px; margin-bottom: 4px; }
+  .cutchip { flex: none; display: grid; gap: 2px; min-width: 96px; max-width: 120px; text-align: left; border: 1px solid var(--line); background: var(--panel2); color: var(--ink); border-radius: 10px; padding: 8px 10px; cursor: pointer; font: inherit; }
+  .cutchip b { font-size: 15px; }
+  .cutchip small { color: var(--mute); font-size: 11px; }
+  .cutchip span { font-size: 11px; color: var(--mute); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .cutchip.on { border-color: var(--accent); box-shadow: 0 0 0 1px var(--accent) inset; }
+  .cutchip.on span { color: var(--accent); }
+  .cutline { font-size: 13px; color: var(--mute); margin: 4px 0 6px; }
+  .cutrow { display: grid; gap: 8px; padding: 12px 0; border-top: 1px solid var(--line); }
+  .cutlabel { font-size: 13px; color: var(--mute); }
+  .cutlabel b { color: var(--ink); margin-left: 6px; }
+  .posopts { display: flex; gap: 10px; }
+  .posopt { display: grid; gap: 6px; background: none; border: 0; color: var(--ink); cursor: pointer; padding: 0; font: inherit; font-size: 12px; text-align: center; }
+  .posframe { position: relative; width: 54px; aspect-ratio: 9 / 16; border-radius: 8px; border: 2px solid var(--line); background: var(--panel2); display: grid; place-items: center; }
+  .posframe i { position: absolute; left: 18%; right: 18%; height: 12%; border-radius: 3px; background: var(--mute); }
+  .posframe em { font-style: normal; font-weight: 800; color: var(--accent); }
+  .posopt.on .posframe { border-color: var(--accent); }
+  .posopt.on .posframe i { background: var(--accent); }
+  .posopt.on > span { color: var(--accent); font-weight: 700; }
+  details.fold { border-top: 1px solid var(--line); padding-top: 12px; }
+  details.fold summary { cursor: pointer; font-size: 13px; color: var(--mute); }
+
   /* ---- gallery: chips, grid of templates, preview sheet ---- */
   .hero h1 { font-size: 26px; }
   .chipbar { display: flex; gap: 8px; overflow-x: auto; padding: 4px 0 14px; margin-bottom: 8px; scrollbar-width: none; }

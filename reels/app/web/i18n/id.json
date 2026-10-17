@@ -428,5 +428,14 @@
  "AIに作り直してもらう": "Minta AI membuat yang baru",
  "おまかせ": "Otomatis",
  "編集しない、動画編集アプリ。": "Aplikasi edit video yang mengedit untuk Anda.",
- "素材を入れるだけで、AIが編集まで仕上げます。あなたは出てきた案から選ぶだけ。": "Masukkan materi Anda dan AI menyelesaikan editannya. Anda tinggal memilih dari hasilnya."
+ "素材を入れるだけで、AIが編集まで仕上げます。あなたは出てきた案から選ぶだけ。": "Masukkan materi Anda dan AI menyelesaikan editannya. Anda tinggal memilih dari hasilnya.",
+ "カットごとに選ぶ": "Pilih untuk tiap potongan",
+ "カットを選ぶと、そのカットに入っている要素が並びます。変えたいものをタップするだけです。": "Pilih potongan untuk melihat semua elemennya. Cukup ketuk yang ingin diubah.",
+ "テロップの位置": "Posisi teks",
+ "上": "Atas",
+ "中央": "Tengah",
+ "下": "Bawah",
+ "飾り": "Hiasan",
+ "文字の間違いを直す": "Perbaiki salah ketik",
+ "エフェクト": "Efek"
 }

@@ -428,5 +428,14 @@
  "AIに作り直してもらう": "L'IA en propose d'autres",
  "おまかせ": "Auto",
  "編集しない、動画編集アプリ。": "L'appli de montage vidéo qui monte à votre place.",
- "素材を入れるだけで、AIが編集まで仕上げます。あなたは出てきた案から選ぶだけ。": "Ajoutez vos images et l'IA termine le montage. Vous n'avez qu'à choisir parmi ses propositions."
+ "素材を入れるだけで、AIが編集まで仕上げます。あなたは出てきた案から選ぶだけ。": "Ajoutez vos images et l'IA termine le montage. Vous n'avez qu'à choisir parmi ses propositions.",
+ "カットごとに選ぶ": "Choisir pour chaque plan",
+ "カットを選ぶと、そのカットに入っている要素が並びます。変えたいものをタップするだけです。": "Choisissez un plan pour voir tout ce qu'il contient. Touchez simplement ce que vous voulez changer.",
+ "テロップの位置": "Position du sous-titre",
+ "上": "Haut",
+ "中央": "Milieu",
+ "下": "Bas",
+ "飾り": "Accents",
+ "文字の間違いを直す": "Corriger une faute",
+ "エフェクト": "Effet"
 }
