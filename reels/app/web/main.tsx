@@ -1,4 +1,5 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { createPortal } from 'react-dom';
 import { createRoot } from 'react-dom/client';
 import { Player, Thumbnail, type PlayerRef } from '@remotion/player';
 import { accentColors, accents, cameraMoves, captionStyles, combinationCount, fontChoices, grades, textures, transitions } from '../../src/effects/axes';
@@ -267,6 +268,12 @@ const STYLE_OPTIONS = [
   { id: 'natural', name: 'ナチュラル', note: '木目・木漏れ日' },
 ];
 
+const newJobCrumbs = (template: TemplateId, fx?: EffectId, mix?: string) => {
+  const it = CATALOG.find((c) => c.key === (fx ?? (mix ? `mix-${mix}` : template)));
+  const g = GROUPS.find((x) => x.id === it?.group);
+  return [{ label: 'ホーム', href: '#/' }, ...(g ? [{ label: g.name, href: `#/?g=${g.id}` }] : []), { label: it?.name ?? TEMPLATES[template].name, href: '#/' }, { label: '素材を入れる' }];
+};
+
 const NewJob: React.FC<{ template: TemplateId; fx?: EffectId; mixArg?: string; onStarted: (job: Job) => void; onBack: () => void }> = ({ template, fx, mixArg, onStarted, onBack }) => {
   const [input, setInput] = useState<Record<string, any>>({ style: 'luxury', cta: '詳しくはプロフィールへ', effects: fx ? [fx] : [], recipe: mixArg ?? 'all' });
   const [err, setErr] = useState('');
@@ -297,7 +304,7 @@ const NewJob: React.FC<{ template: TemplateId; fx?: EffectId; mixArg?: string; o
         <p className="cost" style={{ textAlign: 'center' }}>このテンプレートで実際に作った見本</p>
       </div>
       <div>
-        <button className="btn ghost small" onClick={onBack}>← テンプレート一覧</button>
+        <Crumbs items={newJobCrumbs(template, fx, mixArg)} />
         <h1 style={{ marginTop: 16 }}>{t.name}</h1>
         <p className="sub">{t.desc}</p>
         <div className="form">
@@ -470,6 +477,8 @@ const Editor: React.FC<{ id: string }> = ({ id }) => {
   const [saved, setSaved] = useState(true);
   const playerRef = useRef<PlayerRef | null>(null);
   const dirty = useRef(false);
+  const side = useRef<HTMLDivElement>(null);
+  usePanelAccordion(side);
 
   useEffect(() => {
     if (job?.props && !props) setProps(job.props);
@@ -549,13 +558,14 @@ const Editor: React.FC<{ id: string }> = ({ id }) => {
         {job.error ? <p className="err">{job.error}</p> : null}
         {saveErr ? <p className="err">{saveErr}</p> : null}
       </div>
-      <div>
+      <div ref={side}>
+        <Crumbs items={[{ label: 'リール', href: '#/reels' }, { label: t.name, href: '#/reels' }, { label: job.title }]} />
         <div className="row" style={{ justifyContent: 'space-between', marginBottom: 16 }}>
           <div>
             <span className="tag">{t.name}</span>
             <h1>{job.title}</h1>
           </div>
-          <span className="pill">{saved ? '保存済み' : '保存中…'}</span>
+          <span className={`pill save ${saved ? '' : 'busy'}`}>{saved ? '保存済み' : '保存中…'}</span>
         </div>
         <Cost job={job} />
         <div style={{ height: 16 }} />
@@ -689,7 +699,9 @@ const MixPanel: React.FC<PanelProps<EffectsReelProps>> = ({ p, update }) => {
       x.segments.forEach((s) => (s.style = { ...(s.style ?? {}), ...patch }));
       return x;
     });
-  const shuffle = (id = p.recipe) =>
+  const [spin, setSpin] = useState(0);
+  const shuffle = (id = p.recipe) => (
+    setSpin((n) => n + 1),
     update((x) => {
       const looks = rollStyles(recipeById(id), x.segments.length, Math.floor(Math.random() * 1e5), { hasMatte: !!x.matte });
       x.recipe = id;
@@ -698,13 +710,14 @@ const MixPanel: React.FC<PanelProps<EffectsReelProps>> = ({ p, update }) => {
         s.style = looks[i].style;
       });
       return x;
-    });
+    })
+  );
   return (
     <div className="panel">
       <h2>
         ミックス
         <button className="btn small" onClick={() => shuffle()}>
-          🎲 シャッフル
+          <span key={spin} className={spin ? 'dice' : ''}>🎲</span> シャッフル
         </button>
       </h2>
       <p className="cost" style={{ marginTop: -4 }}>
@@ -1084,6 +1097,214 @@ const History: React.FC<{ onOpen: (id: string) => void }> = ({ onOpen }) => {
   );
 };
 
+// ---------- motion & navigation parts ----------
+
+const reduceMotion = () => matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+/** Runs `change`, then animates the element from its old height to its new one. */
+const animateHeight = (el: HTMLElement, change: () => void) => {
+  const from = el.getBoundingClientRect().height;
+  change();
+  if (reduceMotion()) return;
+  const to = el.getBoundingClientRect().height;
+  el.style.overflow = 'hidden';
+  el.animate([{ height: `${from}px` }, { height: `${to}px` }], { duration: 300, easing: 'cubic-bezier(.2,.8,.2,1)' }).onfinish = () => (el.style.overflow = '');
+};
+
+/** Makes every `.panel > h2` inside `root` a header that folds its panel open and shut. */
+const usePanelAccordion = (root: React.RefObject<HTMLElement | null>) => {
+  useEffect(() => {
+    root.current?.querySelectorAll<HTMLElement>('.panel > h2:not([role])').forEach((h) => {
+      h.setAttribute('role', 'button');
+      h.tabIndex = 0;
+      h.setAttribute('aria-expanded', 'true');
+    });
+  });
+  // Listens on document because the panels mount after the first render (the job loads first).
+  useEffect(() => {
+    const toggle = (e: Event) => {
+      const t = e.target as HTMLElement;
+      const h = t.closest<HTMLElement>('.panel > h2[role=button]');
+      if (!h || !root.current?.contains(h)) return;
+      if (t.closest('button, input, select, a')) return;
+      if (e instanceof KeyboardEvent && e.key !== 'Enter' && e.key !== ' ') return;
+      e.preventDefault();
+      const panel = h.parentElement!;
+      animateHeight(panel, () => panel.classList.toggle('shut'));
+      h.setAttribute('aria-expanded', String(!panel.classList.contains('shut')));
+    };
+    document.addEventListener('click', toggle);
+    document.addEventListener('keydown', toggle);
+    return () => (document.removeEventListener('click', toggle), document.removeEventListener('keydown', toggle));
+  }, []);
+};
+
+const Crumbs: React.FC<{ items: { label: string; href?: string }[] }> = ({ items }) => (
+  <nav className="crumbs" aria-label="現在地">
+    <ol>
+      {items.map((c, i) => (
+        <li key={i}>{c.href && i < items.length - 1 ? <a href={c.href}>{c.label}</a> : <span aria-current={i === items.length - 1 ? 'page' : undefined}>{c.label}</span>}</li>
+      ))}
+    </ol>
+  </nav>
+);
+
+const Accordion: React.FC<{ items: { q: string; a: React.ReactNode }[] }> = ({ items }) => {
+  const [open, setOpen] = useState<number | null>(null);
+  return (
+    <div className="accordion">
+      {items.map((it, i) => (
+        <div key={i} className={`acc ${open === i ? 'open' : ''}`}>
+          <button className="acchead" aria-expanded={open === i} onClick={() => setOpen(open === i ? null : i)}>
+            {it.q}
+            <span className="chev" aria-hidden />
+          </button>
+          <div className="accbody">
+            <div>
+              <p>{it.a}</p>
+            </div>
+          </div>
+        </div>
+      ))}
+    </div>
+  );
+};
+
+/** Bottom sheet (phone) / dialog (desktop) that animates out before it unmounts; drag the handle down to close. */
+const Sheet: React.FC<{ onClose: () => void; className?: string; children: (close: () => void) => React.ReactNode }> = ({ onClose, className = '', children }) => {
+  const [closing, setClosing] = useState(false);
+  const box = useRef<HTMLDivElement>(null);
+  const drag = useRef<{ y: number; dy: number } | null>(null);
+  const close = () => {
+    if (reduceMotion()) return onClose();
+    setClosing(true);
+    setTimeout(onClose, 220);
+  };
+  useEffect(() => {
+    const f = (e: KeyboardEvent) => e.key === 'Escape' && close();
+    addEventListener('keydown', f);
+    return () => removeEventListener('keydown', f);
+  }, []);
+  const onDown = (e: React.PointerEvent) => {
+    drag.current = { y: e.clientY, dy: 0 };
+    (e.target as HTMLElement).setPointerCapture(e.pointerId);
+    box.current!.style.transition = 'none';
+  };
+  const onMove = (e: React.PointerEvent) => {
+    if (!drag.current) return;
+    drag.current.dy = Math.max(0, e.clientY - drag.current.y);
+    box.current!.style.transform = `translateY(${drag.current.dy}px)`;
+  };
+  const onUp = () => {
+    const dy = drag.current?.dy ?? 0;
+    drag.current = null;
+    box.current!.style.transition = '';
+    box.current!.style.transform = '';
+    if (dy > 90) close();
+  };
+  // Portal to <body> so a transformed ancestor (page transition) never traps the fixed overlay.
+  return createPortal(
+    <div className={`sheet ${closing ? 'closing' : ''}`} onClick={close}>
+      <div ref={box} className={`sheetbox ${className}`} onClick={(e) => e.stopPropagation()}>
+        <div className="grab" onPointerDown={onDown} onPointerMove={onMove} onPointerUp={onUp} onPointerCancel={onUp} aria-hidden>
+          <span />
+        </div>
+        {children(close)}
+      </div>
+    </div>,
+    document.body,
+  );
+};
+
+/** Counts up to `to` when it first appears. */
+const CountUp: React.FC<{ to: number; format?: (n: number) => string }> = ({ to, format = (n) => String(n) }) => {
+  const [n, setN] = useState(reduceMotion() ? to : 0);
+  useEffect(() => {
+    if (reduceMotion()) return setN(to);
+    let raf = 0;
+    const t0 = performance.now();
+    const tick = (t: number) => {
+      const k = Math.min(1, (t - t0) / 900);
+      setN(Math.round(to * (1 - Math.pow(1 - k, 3))));
+      if (k < 1) raf = requestAnimationFrame(tick);
+    };
+    raf = requestAnimationFrame(tick);
+    return () => cancelAnimationFrame(raf);
+  }, [to]);
+  return <>{format(n)}</>;
+};
+
+/** Snap carousel: the centred slide plays its real render, the rest show posters. Advances by itself until touched. */
+const Carousel: React.FC<{ items: CatalogItem[]; onOpen: (it: CatalogItem) => void }> = ({ items, onOpen }) => {
+  const track = useRef<HTMLDivElement>(null);
+  const [active, setActive] = useState(0);
+  const paused = useRef(0);
+  const to = (i: number) => {
+    const el = track.current?.children[i] as HTMLElement | undefined;
+    if (!el || !track.current) return;
+    track.current.scrollTo({ left: el.offsetLeft - (track.current.clientWidth - el.clientWidth) / 2, behavior: reduceMotion() ? 'auto' : 'smooth' });
+  };
+  useEffect(() => {
+    const t = track.current!;
+    let raf = 0;
+    const onScroll = () => {
+      cancelAnimationFrame(raf);
+      raf = requestAnimationFrame(() => {
+        const mid = t.scrollLeft + t.clientWidth / 2;
+        let best = 0;
+        [...t.children].forEach((c, i) => {
+          const el = c as HTMLElement;
+          const best0 = t.children[best] as HTMLElement;
+          if (Math.abs(el.offsetLeft + el.clientWidth / 2 - mid) < Math.abs(best0.offsetLeft + best0.clientWidth / 2 - mid)) best = i;
+        });
+        setActive(best);
+      });
+    };
+    t.addEventListener('scroll', onScroll, { passive: true });
+    return () => t.removeEventListener('scroll', onScroll);
+  }, [items.length]);
+  useEffect(() => {
+    if (reduceMotion()) return;
+    const id = setInterval(() => {
+      if (Date.now() - paused.current < 8000 || document.hidden) return;
+      setActive((a) => {
+        const n = (a + 1) % items.length;
+        to(n);
+        return n;
+      });
+    }, 4500);
+    return () => clearInterval(id);
+  }, [items.length]);
+  const hold = () => (paused.current = Date.now());
+  return (
+    <div className="carousel" onPointerDown={hold} onMouseEnter={hold} onWheel={hold}>
+      <div className="ctrack" ref={track}>
+        {items.map((it, i) => (
+          <button key={it.key} className={`cslide ${i === active ? 'on' : ''}`} onClick={() => (i === active ? onOpen(it) : (hold(), to(i)))}>
+            {i === active ? <ShowVideo k={it.key} /> : <img src={showcase(it.key).poster} alt="" loading="lazy" />}
+            <div className="ccap">
+              <span className="tag">{GROUPS.find((g) => g.id === it.group)!.name}</span>
+              <b>{it.name}</b>
+              <small>{it.desc}</small>
+            </div>
+          </button>
+        ))}
+      </div>
+      <button className="carr prev" aria-label="前へ" onClick={() => (hold(), to(Math.max(0, active - 1)))}>
+        ‹
+      </button>
+      <button className="carr next" aria-label="次へ" onClick={() => (hold(), to(Math.min(items.length - 1, active + 1)))}>
+        ›
+      </button>
+      <div className="dots">
+        {items.map((it, i) => (
+          <button key={it.key} className={i === active ? 'on' : ''} aria-label={it.name} onClick={() => (hold(), to(i))} />
+        ))}
+      </div>
+    </div>
+  );
+};
+
 // ---------- catalog: base templates + each effect as its own pattern ----------
 
 type Group = 'base' | 'mix' | 'behind' | 'camera' | 'ui' | 'craft';
@@ -1151,12 +1372,12 @@ const ShowVideo: React.FC<{ k: string; controls?: boolean }> = ({ k, controls })
 };
 
 /** Poster in the grid; plays while hovered (desktop). Tap opens the full preview. */
-const TemplateCard: React.FC<{ it: CatalogItem; onOpen: () => void }> = ({ it, onOpen }) => {
+const TemplateCard: React.FC<{ it: CatalogItem; onOpen: () => void; i?: number }> = ({ it, onOpen, i = 0 }) => {
   const [hover, setHover] = useState(false);
   return (
-    <button className="tcard" onClick={onOpen} onMouseEnter={() => setHover(true)} onMouseLeave={() => setHover(false)}>
+    <button className="tcard" style={{ "--i": Math.min(i, 11) } as React.CSSProperties} onClick={onOpen} onMouseEnter={() => setHover(true)} onMouseLeave={() => setHover(false)}>
       <div className="tthumb">
-        {hover ? <ShowVideo k={it.key} /> : <img src={showcase(it.key).poster} alt="" loading="lazy" />}
+        {hover ? <ShowVideo k={it.key} /> : <img src={showcase(it.key).poster} alt="" loading="lazy" onLoad={(e) => e.currentTarget.classList.add("loaded")} />}
         <span className="tplay" aria-hidden>
           ▶
         </span>
@@ -1167,15 +1388,10 @@ const TemplateCard: React.FC<{ it: CatalogItem; onOpen: () => void }> = ({ it, o
   );
 };
 
-const PreviewSheet: React.FC<{ it: CatalogItem; onClose: () => void; onUse: () => void }> = ({ it, onClose, onUse }) => {
-  useEffect(() => {
-    const f = (e: KeyboardEvent) => e.key === 'Escape' && onClose();
-    addEventListener('keydown', f);
-    return () => removeEventListener('keydown', f);
-  }, []);
-  return (
-    <div className="sheet" onClick={onClose}>
-      <div className="sheetbox" onClick={(e) => e.stopPropagation()}>
+const PreviewSheet: React.FC<{ it: CatalogItem; onClose: () => void; onUse: () => void }> = ({ it, onClose, onUse }) => (
+  <Sheet onClose={onClose}>
+    {(close) => (
+      <>
         <div className="sheetplayer">
           <ShowVideo k={it.key} controls />
         </div>
@@ -1194,15 +1410,15 @@ const PreviewSheet: React.FC<{ it: CatalogItem; onClose: () => void; onUse: () =
             <button className="btn" onClick={onUse}>
               このテンプレートで作る
             </button>
-            <button className="btn ghost" onClick={onClose}>
+            <button className="btn ghost" onClick={close}>
               閉じる
             </button>
           </div>
         </div>
-      </div>
-    </div>
-  );
-};
+      </>
+    )}
+  </Sheet>
+);
 
 const useCatalogPicker = (go: (h: string) => void) => {
   const [open, setOpen] = useState<CatalogItem | null>(null);
@@ -1228,14 +1444,18 @@ const useShowcaseKeys = () => {
 
 const Grid: React.FC<{ items: CatalogItem[]; onOpen: (it: CatalogItem) => void }> = ({ items, onOpen }) => (
   <div className="tgrid">
-    {items.map((it) => (
-      <TemplateCard key={it.key} it={it} onOpen={() => onOpen(it)} />
+    {items.map((it, i) => (
+      <TemplateCard key={it.key} it={it} i={i} onOpen={() => onOpen(it)} />
     ))}
   </div>
 );
 
-const Home: React.FC<{ go: (h: string) => void }> = ({ go }) => {
-  const [group, setGroup] = useState<Group | 'all'>('all');
+const Home: React.FC<{ go: (h: string) => void; initialGroup?: string }> = ({ go, initialGroup }) => {
+  const [group, setGroupState] = useState<Group | 'all'>(GROUPS.some((g) => g.id === initialGroup) ? (initialGroup as Group) : 'all');
+  const setGroup = (g: Group | 'all') => {
+    setGroupState(g);
+    history.replaceState(null, '', g === 'all' ? '#/' : `#/?g=${g}`);
+  };
   const { setOpen, sheet } = useCatalogPicker(go);
   const keys = useShowcaseKeys();
   const catalog = keys ? CATALOG.filter((c) => keys.has(c.key)) : CATALOG.filter((c) => c.group !== 'mix');
@@ -1246,6 +1466,9 @@ const Home: React.FC<{ go: (h: string) => void }> = ({ go }) => {
         <h1>何を作りますか？</h1>
         <p className="sub">テンプレートかエフェクトを選んで素材を入れるだけ。AIが構成・コピー・演出まで作ります。</p>
       </div>
+      {group === 'all' && catalog.some((c) => c.group === 'mix' || c.group === 'base') ? (
+        <Carousel items={catalog.filter((c) => c.group === 'mix' || c.group === 'base')} onOpen={setOpen} />
+      ) : null}
       <div className="chipbar" role="tablist">
         <button className={`fchip ${group === 'all' ? 'on' : ''}`} onClick={() => setGroup('all')}>
           すべて <small>{catalog.length}</small>
@@ -1257,7 +1480,7 @@ const Home: React.FC<{ go: (h: string) => void }> = ({ go }) => {
         ))}
       </div>
       {shown.map((g) => (
-        <section key={g.id} className="tsection">
+        <section key={`${group}-${g.id}`} className="tsection">
           <div className="thead">
             <h2>{g.name}</h2>
             <span className="cost">{g.note}</span>
@@ -1282,6 +1505,7 @@ const Search: React.FC<{ go: (h: string) => void }> = ({ go }) => {
   const ideas = ['ミックス', 'ズーム', 'グラフ', 'スマホ', '文字', '落書き', '商品', '字幕'];
   return (
     <>
+      <Crumbs items={[{ label: 'ホーム', href: '#/' }, { label: '検索' }]} />
       <div className="searchbox">
         <span aria-hidden>⌕</span>
         <input id="q" type="search" placeholder="テンプレートやエフェクトを検索" value={q} onChange={(e) => setQ(e.target.value)} autoFocus />
@@ -1377,6 +1601,14 @@ const PLANS = [
   { name: 'プロ', price: '79,800円', tokens: 600, note: '複数ブランド・優先書き出し' },
 ];
 
+const FAQ = [
+  { q: 'トークンとは？', a: 'リールを1本作るときに使う単位です。自分の素材だけなら2、AIで写真やエフェクトを作ると5、AI動画を入れると12使います。' },
+  { q: '同じテンプレートでも毎回ちがう動画になりますか？', a: 'はい。ミックスはカットごとにエフェクト・字幕・カメラ・切り替えを組み合わせるので、シャッフルするたびに別の組み合わせになります。' },
+  { q: '書き出した動画は商用で使えますか？', a: '使えます。インスタのリール、TikTok、YouTubeショート、広告にそのまま使える縦型MP4です。' },
+  { q: '書き出した後でも直せますか？', a: '直せます。字幕・色・カットの演出を変えて、何度でも書き出し直せます。書き出し直しにトークンはかかりません。' },
+  { q: '解約はいつでもできますか？', a: 'できます（課金の接続後に設定から手続きできます）。' },
+];
+
 const jobTokens = (j: Job) => (j.template === 'ProductShine' ? (j.props?.clip ? 12 : 5) : j.template === 'EffectsReel' ? 5 : 2);
 
 const Account: React.FC<{ go: (h: string) => void }> = ({ go }) => {
@@ -1389,6 +1621,7 @@ const Account: React.FC<{ go: (h: string) => void }> = ({ go }) => {
   const cost = jobs.reduce((a, j) => a + (j.usage?.totalUsd ?? 0), 0);
   return (
     <>
+      <Crumbs items={[{ label: 'ホーム', href: '#/' }, { label: 'アカウント' }]} />
       <div className="profile">
         <div className="avatar">A</div>
         <div>
@@ -1398,15 +1631,15 @@ const Account: React.FC<{ go: (h: string) => void }> = ({ go }) => {
       </div>
       <div className="stats3">
         <div>
-          <b>{made.length}</b>
+          <b><CountUp to={made.length} /></b>
           <span>作ったリール</span>
         </div>
         <div>
-          <b>{used}</b>
+          <b><CountUp to={used} /></b>
           <span>使ったトークン</span>
         </div>
         <div>
-          <b>{Math.round(cost * 150).toLocaleString()}円</b>
+          <b><CountUp to={Math.round(cost * 150)} format={(n) => `${n.toLocaleString()}円`} /></b>
           <span>AIの原価</span>
         </div>
       </div>
@@ -1429,6 +1662,8 @@ const Account: React.FC<{ go: (h: string) => void }> = ({ go }) => {
         ))}
       </div>
       <p className="cost">消費トークン: 自分の素材だけ 2 ／ AI写真・エフェクト 5 ／ AI動画あり 12</p>
+      <h2 style={{ marginTop: 24 }}>よくある質問</h2>
+      <Accordion items={FAQ} />
       <h2 style={{ marginTop: 24 }}>履歴</h2>
       <History onOpen={(id) => go(`#/job/${id}`)} />
     </>
@@ -1436,8 +1671,9 @@ const Account: React.FC<{ go: (h: string) => void }> = ({ go }) => {
 };
 
 const CreateSheet: React.FC<{ go: (h: string) => void; onClose: () => void }> = ({ go, onClose }) => (
-  <div className="sheet" onClick={onClose}>
-    <div className="sheetbox list" onClick={(e) => e.stopPropagation()}>
+  <Sheet onClose={onClose} className="list">
+    {() => (
+      <>
       <h2>新しく作る</h2>
       {CATALOG.filter((c) => !c.effect).map((c) => (
         <button key={c.key} className="listrow" onClick={() => (onClose(), go(`#/new/${c.template}`))}>
@@ -1449,8 +1685,9 @@ const CreateSheet: React.FC<{ go: (h: string) => void; onClose: () => void }> = 
         <span className="tag">17種</span>
         <b>エフェクトから選ぶ</b>
       </button>
-    </div>
-  </div>
+      </>
+    )}
+  </Sheet>
 );
 
 const Icon: React.FC<{ name: 'home' | 'reels' | 'plus' | 'search' | 'me' }> = ({ name }) => {
@@ -1499,6 +1736,7 @@ const App = () => {
   const [creating, setCreating] = useState(false);
   const go = (h: string) => (location.hash = h);
   const [, route, arg, arg2] = hash.split('?')[0].split('/');
+  const query = new URLSearchParams(hash.split('?')[1] ?? '');
   const tab = route === 'reels' || route === 'job' ? 'reels' : route === 'search' ? 'search' : route === 'me' ? 'me' : route === 'new' ? 'new' : 'home';
   const tabs = [
     { id: 'home', label: 'ホーム', icon: 'home', onClick: () => go('#/') },
@@ -1524,6 +1762,7 @@ const App = () => {
         <span className="pill">β版</span>
       </div>
       <main className={route === 'reels' ? 'wide' : ''}>
+        <div className="page" key={`${route ?? ''}/${arg ?? ''}`}>
         {route === 'new' && arg in TEMPLATES ? (
           <NewJob key={hash} template={arg as TemplateId} fx={effectIds.includes(arg2 as EffectId) ? (arg2 as EffectId) : undefined} mixArg={arg2?.startsWith('mix-') ? arg2.slice(4) : undefined} onBack={() => history.back()} onStarted={(j) => go(`#/job/${j.id}`)} />
         ) : route === 'job' && arg ? (
@@ -1535,10 +1774,12 @@ const App = () => {
         ) : route === 'search' ? (
           <Search go={go} />
         ) : (
-          <Home go={go} />
+          <Home go={go} initialGroup={query.get('g') ?? undefined} />
         )}
+        </div>
       </main>
-      <nav className="tabbar" aria-label="メニュー">
+      <nav className="tabbar" aria-label="メニュー" style={{ '--tab': tabs.findIndex((t) => t.id === tab) } as React.CSSProperties}>
+        <span className="tabglow" aria-hidden />
         {tabs.map((t) => (
           <button key={t.id} className={`${tab === t.id ? 'on' : ''} ${t.id === 'new' ? 'make' : ''}`} onClick={t.onClick} aria-label={t.label}>
             <Icon name={t.icon} />
