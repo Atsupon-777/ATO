@@ -8,7 +8,9 @@ import path from 'node:path';
 import { pipeline } from 'node:stream/promises';
 import { fileURLToPath } from 'node:url';
 import * as esbuild from 'esbuild';
-import { effectIds, effectsReelSchema, productShineSchema, saasPromoSchema, talkCaptionsSchema, type EffectsReelProps } from '../src/schemas.ts';
+import { effectIds, effectsReelSchema, productShineSchema, saasPromoSchema, talkCaptionsSchema, fivePassSchema, type EffectsReelProps } from '../src/schemas.ts';
+import { pass1, restoreVersion, runPass } from '../server/fivepass.ts';
+import { loudnorm } from '../server/loudnorm.ts';
 import { buildEffectsProps } from '../server/effects.ts';
 import { buildProductReel, STYLES, type Style } from '../server/product.ts';
 import { renderTemplate } from '../server/render.ts';
@@ -28,6 +30,7 @@ const schemas = {
   SaaSPromo: saasPromoSchema,
   TalkCaptions: talkCaptionsSchema,
   EffectsReel: effectsReelSchema,
+  FivePass: fivePassSchema,
 };
 type Template = keyof typeof schemas;
 
@@ -43,6 +46,8 @@ type Job = {
   usage?: { totalUsd: number; lines: unknown[] };
   video?: string;
   error?: string;
+  /** 5-pass edit: latest version number of each pass (for rolling back). */
+  versions?: Record<number, number>;
 };
 
 const jobs = new Map<string, Job>();
@@ -129,6 +134,15 @@ async function startJob(template: Template, input: Record<string, any>) {
         });
         job.props = res.props;
         job.usage = res.usage;
+      } else if (template === 'FivePass') {
+        // Director mode: only pass 1 (transcript) runs now; the editor runs passes 2-5 one at a time.
+        const video = upload(input.video);
+        if (!video) throw new Error('動画をアップロードしてください');
+        const res = await pass1({ video, jobId: id, lang: isLang(input.lang) ? input.lang : undefined });
+        job.props = res.props;
+        job.usage = res.usage;
+        job.versions = { 1: res.version };
+        job.title = res.props.words.slice(0, 6).map((w) => w.text).join(isLang(res.props.lang) && ['ja', 'zh'].includes(res.props.lang) ? '' : ' ').slice(0, 24) || job.title;
       } else if (template === 'EffectsReel') {
         const video = upload(input.video);
         if (!video) throw new Error('動画をアップロードしてください');
@@ -187,6 +201,8 @@ function startRender(job: Job) {
       await renderTemplate(job.template, absolutize(job.props) as Record<string, unknown>, out, (p) => {
         job.renderProgress = p;
       });
+      // The 5-pass edit carries cue sounds and music, so it is normalised to -14 LUFS for Instagram.
+      if (job.template === 'FivePass') await loudnorm(out);
       job.video = `jobs/${job.id}/${path.basename(out)}`;
       job.status = 'done';
     } catch (e) {
@@ -305,7 +321,7 @@ const server = http.createServer(async (req, res) => {
       const job = await startJob(body.template, body.input ?? {});
       return json(res, 200, job);
     }
-    const m = p.match(/^\/api\/jobs\/([\w-]+)(\/props|\/render)?$/);
+    const m = p.match(/^\/api\/jobs\/([\w-]+)(\/props|\/render|\/pass|\/restore)?$/);
     if (m) {
       const job = jobs.get(m[1]);
       if (!job) return json(res, 404, { error: 'job not found' });
@@ -314,8 +330,43 @@ const server = http.createServer(async (req, res) => {
         const parsed = schemas[job.template].safeParse((await readBody(req)).props);
         if (!parsed.success) return json(res, 400, { error: parsed.error.issues.map((i) => `${i.path.join('.')}: ${i.message}`).join('\n') });
         job.props = parsed.data as Record<string, unknown>;
+        // The 5-pass server reads its own props file, so edits made in the editor must land there too.
+        if (job.template === 'FivePass') await writeFile(path.join(jobsDir, job.id, 'fivepass.json'), JSON.stringify(job.props, null, 2));
         if (job.status === 'done' || job.status === 'error') job.status = 'ready';
         job.error = undefined;
+        await save(job);
+        return json(res, 200, job);
+      }
+      if (m[2] === '/pass' && req.method === 'POST') {
+        if (job.template !== 'FivePass') return json(res, 400, { error: 'not a 5-pass job' });
+        if (job.status === 'generating' || job.status === 'rendering') return json(res, 409, { error: '処理中です' });
+        const { pass, note } = await readBody(req);
+        const n = Number(pass);
+        if (!(n >= 2 && n <= 5)) return json(res, 400, { error: 'pass must be 2-5' });
+        job.status = 'generating';
+        job.step = { n: 1, total: 1, label: `pass ${n}` };
+        job.error = undefined;
+        await save(job);
+        (async () => {
+          try {
+            const r = await runPass(n, { jobId: job.id, note: typeof note === 'string' && note.trim() ? note.trim().slice(0, 500) : undefined });
+            job.props = r.props;
+            job.versions = { ...(job.versions ?? {}), [n]: r.version };
+          } catch (e) {
+            console.error(e);
+            job.error = e instanceof Error ? e.message : String(e);
+          }
+          job.status = 'ready';
+          job.step = undefined;
+          await save(job);
+        })();
+        return json(res, 200, job);
+      }
+      if (m[2] === '/restore' && req.method === 'POST') {
+        if (job.template !== 'FivePass') return json(res, 400, { error: 'not a 5-pass job' });
+        const { pass, version } = await readBody(req);
+        job.props = (await restoreVersion(job.id, Number(pass), Number(version))) as Record<string, unknown>;
+        job.status = 'ready';
         await save(job);
         return json(res, 200, job);
       }

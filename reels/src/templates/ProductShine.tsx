@@ -316,7 +316,9 @@ const Motion: React.FC<ProductShineProps> = (p) => {
   const slide = second ? 0 : interpolate(frame, [0, half], [-4, 4], { ...clamp, easing: easeInOut });
   const punch = 1 + beatHit(frame, beat * 2, 6) * 0.05;
   const out = progress(frame, durationInFrames - 8, durationInFrames);
-  const chars = [...p.tagline];
+  const words = p.tagline.split(/(\s+)/).filter(Boolean);
+  const spaced = words.length > 1;
+  let n = 0;
   return (
     <AbsoluteFill style={{ background: p.palette.base, overflow: 'hidden' }}>
       <AbsoluteFill
@@ -340,21 +342,31 @@ const Motion: React.FC<ProductShineProps> = (p) => {
           padding: '0 60px',
           fontFamily: fonts.minchoJP,
           fontWeight: 800,
-          fontSize: 76,
-          letterSpacing: '0.1em',
+          fontSize: spaced ? 64 : 76,
+          letterSpacing: spaced ? '0.02em' : '0.1em',
           color: '#FBF6EC',
           textShadow: '0 4px 30px rgba(0,0,0,0.6)',
           opacity: 1 - out,
         }}
       >
-        {chars.map((ch, i) => {
-          const t = progress(frame, 8 + i * 1.5, 20 + i * 1.5, easeOutExpo);
-          return (
-            <span key={i} style={{ display: 'inline-block', opacity: t, transform: `translateY(${(1 - t) * 50}px) scale(${1.4 - t * 0.4})`, filter: `blur(${(1 - t) * 8}px)` }}>
-              {ch}
+        {/* Letters animate one by one, but each word stays on one line so spaced languages wrap between words. */}
+        {words.map((w, wi) =>
+          /^\s+$/.test(w) ? (
+            <span key={wi} style={{ width: '0.35em' }} />
+          ) : (
+            <span key={wi} style={{ display: 'inline-flex', whiteSpace: 'nowrap' }}>
+              {[...w].map((ch) => {
+                const i = n++;
+                const t = progress(frame, 8 + i * 1.5, 20 + i * 1.5, easeOutExpo);
+                return (
+                  <span key={i} style={{ display: 'inline-block', opacity: t, transform: `translateY(${(1 - t) * 50}px) scale(${1.4 - t * 0.4})`, filter: `blur(${(1 - t) * 8}px)` }}>
+                    {ch}
+                  </span>
+                );
+              })}
             </span>
-          );
-        })}
+          ),
+        )}
       </div>
     </AbsoluteFill>
   );

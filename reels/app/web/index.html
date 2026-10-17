@@ -315,6 +315,27 @@
   .sheetbox.list .listrow { display: flex; align-items: center; gap: 12px; }
   .listrow .check { margin-left: auto; color: var(--accent); font-weight: 900; }
   .langgrid { display: flex; flex-wrap: wrap; gap: 8px; }
+
+  /* 5-pass edit */
+  .stepper { list-style: none; display: flex; gap: 4px; padding: 0; margin: 0 0 16px; }
+  .stepper li { flex: 1; display: grid; justify-items: center; gap: 6px; position: relative; color: var(--mute); font-size: 11px; text-align: center; }
+  .stepper li + li::before { content: ''; position: absolute; top: 16px; right: 50%; width: 100%; height: 2px; background: var(--line); z-index: 0; }
+  .stepper li.done::before, .stepper li.cur::before, .stepper li.run::before { background: var(--accent); }
+  .stepper .dot { position: relative; z-index: 1; width: 34px; height: 34px; border-radius: 50%; display: grid; place-items: center; font-weight: 800; font-size: 12px; background: var(--panel2); border: 2px solid var(--line); color: var(--mute); transition: background .3s, border-color .3s, color .3s, transform .3s var(--spring); }
+  .stepper li.done .dot { background: var(--accent); border-color: var(--accent); color: var(--accent-ink); }
+  .stepper li.cur .dot { border-color: var(--accent); color: var(--ink); transform: scale(1.12); }
+  .stepper li.run .dot { border-color: var(--accent); animation: pulse 1s infinite; }
+  .stepper li.cur .lbl, .stepper li.run .lbl { color: var(--ink); font-weight: 700; }
+  .passhead { display: flex; align-items: center; gap: 10px; margin-bottom: 4px; }
+  .passhead b { font-size: 18px; }
+  .passrun { display: flex; align-items: center; gap: 10px; padding: 14px; border-radius: 12px; background: var(--panel2); }
+  .spin { width: 18px; height: 18px; border-radius: 50%; border: 2px solid var(--line); border-top-color: var(--accent); animation: spin .8s linear infinite; }
+  @keyframes spin { to { transform: rotate(360deg); } }
+  .versions { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; margin-top: 12px; }
+  .notes { list-style: none; padding: 0; margin: 10px 0 0; display: grid; gap: 6px; font-size: 13px; color: var(--mute); }
+  .wordedit { display: flex; flex-wrap: wrap; gap: 4px; max-height: 260px; overflow-y: auto; }
+  .wordedit .word { background: var(--panel2); border: 1px solid var(--line); border-radius: 6px; color: var(--ink); font: inherit; font-size: 13px; padding: 3px 5px; min-width: 0; }
+  .wordedit .word:focus { outline: none; border-color: var(--accent); }
 </style>
 </head>
 <body>

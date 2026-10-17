@@ -40,6 +40,8 @@ for f in sorted(src.glob('effects-mix-*.mp4')):
         mixes[mid] = f
 for mid, f in mixes.items():
     enc(f, 'mix-' + mid)
+if (src / 'fivepass-demo-ja.mp4').exists():
+    enc(src / 'fivepass-demo-ja.mp4', 'FivePass')
 # Sub-types (caption styles, camera moves, transitions, grades, textures): one long render per
 # language from scripts/make-subtypes.ts plus a clip list, sliced into one sample per option.
 for f in sorted(src.glob('subtypes-*.mp4')):

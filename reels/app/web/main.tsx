@@ -8,13 +8,15 @@ import { ProductShine, productShineBeats } from '../../src/templates/ProductShin
 import { SaaSPromo, saasPromoBeats } from '../../src/templates/SaaSPromo';
 import { TalkCaptions, talkCaptionsDuration } from '../../src/templates/TalkCaptions';
 import { EffectsReel, effectsReelDuration } from '../../src/templates/EffectsReel';
+import { FivePass, fivePassDuration } from '../../src/templates/FivePass';
 import { FPS, beatFrames } from '../../src/lib/timing';
 import { keepSegments, paginate, placeWords } from '../../src/lib/edit';
-import { effectIds, type BeatStyle, type EffectId, type EffectsReelProps, type ProductShineProps, type SaaSPromoProps, type TalkCaptionsProps } from '../../src/schemas';
+import { effectIds, type BeatStyle, type EffectId, type EffectsReelProps, type FivePassProps, type ProductShineProps, type SaaSPromoProps, type TalkCaptionsProps } from '../../src/schemas';
 import productSample from '../../props/product-watch.json';
 import saasSample from '../../props/saas-sample.json';
 import talkSample from '../../props/talk-sample.json';
 import effectsSample from '../../props/effects-demo.json';
+import fivePassSample from '../../props/fivepass-demo.json';
 
 import { LANG_NAMES, langs, type Lang } from '../../src/lang';
 import { lang, setLang, tr } from './i18n';
@@ -27,7 +29,7 @@ function mixCount() {
     : tr("約{0}通り", new Intl.NumberFormat(lang, { notation: 'compact', maximumFractionDigits: 1 }).format(n));
 }
 
-type TemplateId = 'ProductShine' | 'SaaSPromo' | 'TalkCaptions' | 'EffectsReel';
+type TemplateId = 'ProductShine' | 'SaaSPromo' | 'TalkCaptions' | 'EffectsReel' | 'FivePass';
 
 const TEMPLATES: Record<
   TemplateId,
@@ -64,6 +66,14 @@ const TEMPLATES: Record<
     component: EffectsReel,
     frames: (p) => effectsReelDuration(p, FPS),
     sample: effectsSample,
+  },
+  FivePass: {
+    name: tr("5パス編集"),
+    tag: tr("動画から"),
+    desc: tr("プロの編集者と同じ5つの工程（文字起こし・切り抜き・字幕・演出・音）を1つずつ進めます。工程ごとに止めて確認し、ひとこと書いて作り直したり、前の版に戻したりできます。"),
+    component: FivePass,
+    frames: (p) => fivePassDuration(p, FPS),
+    sample: fivePassSample,
   },
 };
 
@@ -106,6 +116,7 @@ type Job = {
   video?: string;
   error?: string;
   thumb?: string;
+  versions?: Record<number, number>;
 };
 
 // Static preview build (no server): jobs come from window.ATO_DEMO, edits stay in memory,
@@ -147,7 +158,7 @@ const uploadFile = async (f: File) => {
 
 // Tokens per reel, from the pricing plan (A: own material 2, B: AI photo 5, C: AI video 12).
 const tokensFor = (t: TemplateId, input: Record<string, any>) =>
-  t === 'ProductShine' ? (input.video ? 12 : 5) : t === 'EffectsReel' ? 5 : 2;
+  t === 'ProductShine' ? (input.video ? 12 : 5) : t === 'EffectsReel' || t === 'FivePass' ? 5 : 2;
 
 const STEP_LABELS: Record<string, string> = {
   'cut-out': tr("商品を切り抜き"),
@@ -292,7 +303,7 @@ const newJobCrumbs = (template: TemplateId, fx?: EffectId, mix?: string, lockKey
 
 /** Language the AI writes the video's copy and captions in. Talk videos can keep the spoken language. */
 const VideoLang: React.FC<{ template: TemplateId; value: string; onChange: (v: string) => void }> = ({ template, value, onChange }) => {
-  const talk = template === 'TalkCaptions' || template === 'EffectsReel';
+  const talk = template === 'TalkCaptions' || template === 'EffectsReel' || template === 'FivePass';
   return (
     <div className="field">
       <label>{talk ? tr("字幕の言語") : tr("動画の言語")}</label>
@@ -311,7 +322,7 @@ const VideoLang: React.FC<{ template: TemplateId; value: string; onChange: (v: s
 
 const NewJob: React.FC<{ template: TemplateId; fx?: EffectId; mixArg?: string; lockKey?: string; onStarted: (job: Job) => void; onBack: () => void }> = ({ template, fx, mixArg, lockKey, onStarted, onBack }) => {
   const lockItem = CATALOG.find((c) => c.key === lockKey);
-  const [input, setInput] = useState<Record<string, any>>({ lang: template === 'TalkCaptions' || template === 'EffectsReel' ? '' : lang, style: 'luxury', cta: tr("詳しくはプロフィールへ"), effects: fx ? [fx] : [], recipe: mixArg ?? 'all', lock: lockItem?.lock ? { [lockItem.lock.axis]: lockItem.lock.value } : undefined });
+  const [input, setInput] = useState<Record<string, any>>({ lang: template === 'TalkCaptions' || template === 'EffectsReel' || template === 'FivePass' ? '' : lang, style: 'luxury', cta: tr("詳しくはプロフィールへ"), effects: fx ? [fx] : [], recipe: mixArg ?? 'all', lock: lockItem?.lock ? { [lockItem.lock.axis]: lockItem.lock.value } : undefined });
   const [err, setErr] = useState('');
   const [busy, setBusy] = useState(false);
   const set = (k: string) => (v: any) => setInput((s) => ({ ...s, [k]: v }));
@@ -413,7 +424,9 @@ const NewJob: React.FC<{ template: TemplateId; fx?: EffectId; mixArg?: string; l
               <Drop label={tr("トーク動画")} hint={tr("3分以内のMP4 / MOV。縦でも横でもOK")} accept="video/*" value={input.video} onChange={set('video')} />
               {template === 'EffectsReel' ? <MixPicker value={input.recipe} onChange={set('recipe')} /> : null}
               <p className="cost">
-                {template === 'EffectsReel'
+                {template === 'FivePass'
+                  ? tr("まず文字起こしだけを行います。そのあと編集画面で、切り抜き → 字幕 → 演出 → 音を1工程ずつ確認しながら進めます。")
+                  : template === 'EffectsReel'
                   ? tr("文字起こし → 人物の切り抜き → 話の内容に合わせて、選んだミックスの中でカットごとにエフェクト・字幕・カメラ・切り替えを組み合わせます。")
                   : tr("文字起こし → 無音・言い淀み（えー、あの）のカット → 単語ごとのテロップまで自動で行います。")}
               </p>
@@ -507,6 +520,27 @@ const Editor: React.FC<{ id: string }> = ({ id }) => {
   useEffect(() => {
     if (job?.props && !props) setProps(job.props);
   }, [job?.props]);
+  // 5-pass edit: each pass (or rollback) replaces the props on the server.
+  useEffect(() => {
+    if (job?.template === 'FivePass' && job.status === 'ready' && job.props) setProps(job.props);
+  }, [job?.status, job?.props?.pass, JSON.stringify(job?.versions)]);
+  const runPass = async (pass: number, note?: string) => {
+    try {
+      setJob(await api<Job>(`/api/jobs/${id}/pass`, { method: 'POST', body: JSON.stringify({ pass, note }) }));
+      refreshJob();
+    } catch (e: any) {
+      setSaveErr(e.message);
+    }
+  };
+  const restore = async (pass: number, version: number) => {
+    try {
+      const j = await api<Job>(`/api/jobs/${id}/restore`, { method: 'POST', body: JSON.stringify({ pass, version }) });
+      setJob(j);
+      setProps(j.props);
+    } catch (e: any) {
+      setSaveErr(e.message);
+    }
+  };
 
   // Save edits shortly after the user stops typing.
   useEffect(() => {
@@ -531,7 +565,7 @@ const Editor: React.FC<{ id: string }> = ({ id }) => {
   }, []);
 
   if (!job) return <p className="sub">{tr("読み込み中…")}</p>;
-  if (job.status === 'generating') return <Generating job={job} />;
+  if (job.status === 'generating' && !(job.template === 'FivePass' && props)) return <Generating job={job} />;
   if (job.status === 'error' && !job.props)
     return (
       <div style={{ maxWidth: 520, margin: '40px auto' }}>
@@ -567,7 +601,7 @@ const Editor: React.FC<{ id: string }> = ({ id }) => {
             </div>
           ) : (
             <>
-              <button className="btn" disabled={!saved || !!DEMO} onClick={render} title={DEMO ? DEMO_BLOCKED : undefined}>
+              <button className="btn" disabled={!saved || !!DEMO || (job.template === 'FivePass' && props.pass < 5)} onClick={render} title={DEMO ? DEMO_BLOCKED : job.template === 'FivePass' && props.pass < 5 ? tr("5つの工程が終わると書き出せます") : undefined}>
                 {tr("MP4を書き出す")}
               </button>
               {job.status === 'done' && job.video ? (
@@ -599,11 +633,144 @@ const Editor: React.FC<{ id: string }> = ({ id }) => {
           <SaasPanel p={props} update={update} />
         ) : job.template === 'EffectsReel' ? (
           <EffectsPanel p={props} update={update} playerRef={playerRef} />
+        ) : job.template === 'FivePass' ? (
+          <FivePassPanel job={job} p={props} update={update} onRun={runPass} onRestore={restore} />
         ) : (
           <TalkPanel p={props} update={update} playerRef={playerRef} />
         )}
       </div>
     </div>
+  );
+};
+
+// ---------- 5-pass edit (director mode) ----------
+
+const PASSES = [
+  { name: tr("文字起こし"), what: tr("話した言葉とその時間をすべて拾います。言葉は下で直せます。") },
+  { name: tr("切り抜き"), what: tr("人物をふちのやわらかい切り抜きにして、背景と分けます。") },
+  { name: tr("字幕"), what: tr("1〜3語ずつ、大事な言葉を大きく見せる字幕を付けます。") },
+  { name: tr("演出"), what: tr("話の流れに合わせて、カードや数字のシーンを差し込みます。") },
+  { name: tr("音"), what: tr("効果音を置き、音量をそろえて書き出せる状態にします。") },
+];
+
+const FivePassPanel: React.FC<{ job: Job; p: FivePassProps; update: PanelProps<FivePassProps>['update']; onRun: (pass: number, note?: string) => void; onRestore: (pass: number, version: number) => void }> = ({
+  job,
+  p,
+  update,
+  onRun,
+  onRestore,
+}) => {
+  const [note, setNote] = useState('');
+  const [wordsEdited, setWordsEdited] = useState(false);
+  const running = job.status === 'generating';
+  const runningPass = running ? Number(job.step?.label.replace('pass ', '')) : 0;
+  const cur = p.pass;
+  const latest = job.versions?.[cur] ?? 1;
+  const notes = p.notes.filter((n) => n.pass === cur);
+  const go = (pass: number, withNote?: string) => {
+    onRun(pass, withNote);
+    setNote('');
+    setWordsEdited(false);
+  };
+  return (
+    <>
+      <div className="panel">
+        <ol className="stepper">
+          {PASSES.map((ps, i) => {
+            const n = i + 1;
+            const state = runningPass === n ? 'run' : n < cur ? 'done' : n === cur ? 'cur' : '';
+            return (
+              <li key={n} className={state}>
+                <span className="dot">{state === 'done' ? '✓' : String(n).padStart(2, '0')}</span>
+                <span className="lbl">{ps.name}</span>
+              </li>
+            );
+          })}
+        </ol>
+        <div className="passhead">
+          <span className="tag">PASS {String(cur).padStart(2, '0')} / 05</span>
+          <b>{PASSES[cur - 1].name}</b>
+        </div>
+        <p className="cost">{PASSES[cur - 1].what}</p>
+        {running ? (
+          <div className="passrun">
+            <span className="spin" aria-hidden />
+            {tr("パス{0}（{1}）を実行しています…", String(runningPass).padStart(2, '0'), PASSES[runningPass - 1]?.name ?? '')}
+          </div>
+        ) : (
+          <>
+            {cur > 1 ? (
+              <div className="field">
+                <label>{tr("直してほしいこと（このパスを作り直すときにAIへ伝えます）")}</label>
+                <textarea className="input" rows={2} value={note} maxLength={500} onChange={(e) => setNote(e.target.value)} placeholder={tr("例: 字幕をもっと大きく、2語ずつに")} />
+              </div>
+            ) : null}
+            <div className="row">
+              {cur > 1 ? (
+                <button className="btn ghost" disabled={!!DEMO} onClick={() => go(cur, note)}>
+                  {tr("このパスを作り直す")}
+                </button>
+              ) : null}
+              {cur < 5 ? (
+                <button className="btn" disabled={!!DEMO} onClick={() => go(cur + 1)}>
+                  {tr("次のパスへ")} → {PASSES[cur].name}
+                </button>
+              ) : (
+                <span className="cost ok">{tr("5つの工程が終わりました。上の「MP4を書き出す」で書き出せます。")}</span>
+              )}
+            </div>
+            {latest > 1 ? (
+              <div className="versions">
+                <span className="cost">{tr("このパスの版")}</span>
+                {Array.from({ length: latest }, (_, i) => i + 1).map((v) => (
+                  <button key={v} className="fchip" disabled={!!DEMO} onClick={() => onRestore(cur, v)} title={tr("この版に戻す")}>
+                    v{v}
+                  </button>
+                ))}
+              </div>
+            ) : null}
+            {notes.length ? (
+              <ul className="notes">
+                {notes.map((n, i) => (
+                  <li key={i}>
+                    <span className="tag">v{n.version}</span> {n.text}
+                  </li>
+                ))}
+              </ul>
+            ) : null}
+            {DEMO ? <p className="warn">{DEMO_BLOCKED}</p> : null}
+          </>
+        )}
+      </div>
+      <div className="panel">
+        <h2>{tr("話した言葉")}</h2>
+        <p className="cost">{tr("聞き間違いはここで直せます。直したあとは、字幕から先を作り直すと反映されます。")}</p>
+        <div className="wordedit">
+          {p.words.map((w, i) => (
+            <input
+              key={i}
+              className="word"
+              value={w.text}
+              size={Math.max(2, [...w.text].length + 1)}
+              title={`${w.start.toFixed(1)}s`}
+              onChange={(e) => {
+                const v = e.target.value;
+                setWordsEdited(true);
+                update((x) => void (x.words[i].text = v));
+              }}
+            />
+          ))}
+        </div>
+        {wordsEdited && cur >= 3 && !running ? (
+          <div className="warn" style={{ marginTop: 10 }}>
+            {tr("言葉を直しました。字幕・演出・音（03〜05）を作り直しますか？")}{' '}
+            <button className="btn small" onClick={() => go(3)}>
+              {tr("03から作り直す")}
+            </button>
+          </div>
+        ) : null}
+      </div>
+    </>
   );
 };
 
@@ -1396,6 +1563,7 @@ const CATALOG: CatalogItem[] = [
   { key: 'SaaSPromo', template: 'SaaSPromo', name: TEMPLATES.SaaSPromo.name, desc: TEMPLATES.SaaSPromo.desc, group: 'base' },
   { key: 'TalkCaptions', template: 'TalkCaptions', name: TEMPLATES.TalkCaptions.name, desc: TEMPLATES.TalkCaptions.desc, group: 'base' },
   { key: 'EffectsReel', template: 'EffectsReel', name: tr("エフェクトおまかせ"), desc: TEMPLATES.EffectsReel.desc, group: 'base' },
+  { key: 'FivePass', template: 'FivePass', name: TEMPLATES.FivePass.name, desc: TEMPLATES.FivePass.desc, group: 'base' },
   ...recipes.map((r) => ({ key: `mix-${r.id}`, template: 'EffectsReel' as TemplateId, mix: r.id, name: tr(r.name), desc: tr(r.desc), group: 'mix' as Group })),
   ...effectIds.map((fx) => ({
     key: fx,
@@ -1673,7 +1841,7 @@ const FAQ = [
   { q: tr("解約はいつでもできますか？"), a: tr("できます（課金の接続後に設定から手続きできます）。") },
 ];
 
-const jobTokens = (j: Job) => (j.template === 'ProductShine' ? (j.props?.clip ? 12 : 5) : j.template === 'EffectsReel' ? 5 : 2);
+const jobTokens = (j: Job) => (j.template === 'ProductShine' ? (j.props?.clip ? 12 : 5) : j.template === 'EffectsReel' || j.template === 'FivePass' ? 5 : 2);
 
 const Account: React.FC<{ go: (h: string) => void }> = ({ go }) => {
   const [jobs, setJobs] = useState<Job[]>([]);
@@ -1746,14 +1914,14 @@ const CreateSheet: React.FC<{ go: (h: string) => void; onClose: () => void }> = 
     {() => (
       <>
       <h2>{tr("新しく作る")}</h2>
-      {CATALOG.filter((c) => !c.effect).map((c) => (
+      {CATALOG.filter((c) => c.group === 'base').map((c) => (
         <button key={c.key} className="listrow" onClick={() => (onClose(), go(`#/new/${c.template}`))}>
           <span className="tag">{TEMPLATES[c.template].tag}</span>
           <b>{c.name}</b>
         </button>
       ))}
       <button className="listrow" onClick={() => (onClose(), go('#/'))}>
-        <span className="tag">{tr("19種")}</span>
+        <span className="tag">{tr("{0}種", effectIds.length)}</span>
         <b>{tr("エフェクトから選ぶ")}</b>
       </button>
       </>
