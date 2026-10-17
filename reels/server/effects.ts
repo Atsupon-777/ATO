@@ -33,6 +33,9 @@ export const EFFECT_GUIDE: Record<(typeof effectIds)[number], string> = {
   glassType: 'extruded glass letters on the wall behind the speaker; text = 1 word (max 8 letters). Good for a keyword.',
   kineticType: 'kinetic typography: the line itself slams in word by word, huge, stacking like a poster (behind the speaker if matted); text = up to 8 words (else the caption is used), emphasis = words in accent colour. Good for a punchline or hook.',
   infographic: 'animated infographic: a ring counts up to values[0] percent, then labelled bars grow; text = title, caption = what the percentage means, items = bar labels (2-4), values = [percent, bar values...]. Good for stats, comparisons, results.',
+  notifications: 'phone notification cards stack up at the top, then the key word appears big; items = 2-4 short notification lines (may start with an emoji), text = 1 key word. Good for overthinking, mental noise, too many tasks.',
+  tiles: 'rounded icon tiles in a row get ticked one by one; items = 2-4 short examples the speaker lists, each starting with a fitting emoji ("🚶 Walk"), text = optional small label. Good when the speaker gives concrete examples.',
+  sourceCard: 'a SOURCE card shows the institution or study the speaker names and counts their number up; text = the name exactly as said (never invent one), values = [the number], items = [unit like "x" or "%", optional short detail]. Only when a source is actually named.',
 };
 
 
@@ -52,10 +55,10 @@ export const langRule = (spoken: string, lang?: Lang) =>
 
 /** What each style axis option looks like, so the planner can pick by meaning. */
 export const STYLE_GUIDE = {
-  caption: 'pop=bold word pop, blur=sharpen from blur, spaced=small tracked caps, upper=bold caps, script=gold italic serif, outline=hollow letters, box=words on black tags, highlighter=marker swipe on key words, typewriter=types on, stack=one word per line with huge key word, bounce=words drop and bounce, neon=glowing letters',
+  caption: 'pop=bold word pop, blur=sharpen from blur, spaced=small tracked caps, upper=bold caps, script=gold italic serif, outline=hollow letters, box=words on black tags, highlighter=marker swipe on key words, typewriter=types on, stack=one word per line with huge key word, bounce=words drop and bounce, neon=glowing letters, keyword=1-3 words at a time in small sans with the one emphasised word big gradient italic serif',
   camera: 'still, push=slow push in, pull=slow pull out, drift=sideways drift, punch=punch-in on the beat, shake=impact shake, tilt=dutch tilt settles, spinIn=rotates in, handheld=subtle wobble, rack=blur into focus, dollyIn=camera travels toward the speaker (stronger than push, with depth), panLeft/panRight=camera turns sideways, tiltUp/tiltDown=camera tilts vertically, tracking=camera moves sideways with the speaker while the wall slides past, crane=camera rises and looks down, orbitCam=camera circles the speaker in 3D, dollyZoom=Hitchcock zoom, wall stretches while the speaker keeps size (dramatic)',
   transition: 'how the beat arrives: cut, zoomBlur, whipLeft, whipUp, flash, glitch, slide, dip=from black, iris=circle wipe, split=halves close, spin, blurDissolve',
-  accents: 'extra overlays, any number: sparkles, outline=boiling outline around the person, arrows=hand-drawn arrows, underline=marker under key words, emoji=emoji pops after the line, beatFlash=white flash on the beat, letterbox=cinema bars, progress=progress bar, stickers=round stickers, glow=glow around the person',
+  accents: 'extra overlays, any number: sparkles, outline=boiling outline around the person, arrows=hand-drawn arrows, underline=marker under key words, emoji=emoji pops after the line, beatFlash=white flash on the beat, letterbox=cinema bars, progress=progress bar, stickers=round stickers, glow=glow around the person, echo=fading copies of the key word stack above it (keyword captions only)',
 };
 
 /** The plan's JSON shape, with every axis limited to what the chosen mix allows. */
@@ -170,7 +173,7 @@ export async function buildEffectsProps(brief: {
         'for the whole reel so it feels like one video.',
         `Mix: ${recipe.name} — ${recipe.desc}`,
         'start/end are seconds from the transcript; beats must be in order and not overlap. caption = the words spoken in that beat',
-        `(max ${fit(outLang, 60)} characters). ${langRule(talk.language, brief.lang)} Leave values empty unless the effect is chartGrow or infographic.`,
+        `(max ${fit(outLang, 60)} characters). ${langRule(talk.language, brief.lang)} Leave values empty unless the effect is chartGrow, infographic or sourceCard.`,
         ...(brief.prefer?.length
           ? [`The user chose these effects: ${brief.prefer.join(', ')}. Use every one of them at a moment where it fits.`]
           : []),

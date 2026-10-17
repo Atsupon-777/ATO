@@ -15,6 +15,7 @@ export const captionStyles = [
   'stack', // one word per line, emphasised words much bigger
   'bounce', // words drop in and bounce
   'neon', // glowing coloured letters
+  'keyword', // 1-3 words at a time: small sans, the key word big italic serif in a peach-pink-lavender gradient
 ] as const;
 
 export const cameraMoves = [
@@ -67,6 +68,7 @@ export const grades = [
   'neon',
   'sepia',
   'night',
+  'midnight', // dark plum, soft glow (the 5-pass edit look)
 ] as const;
 
 export const textures = ['none', 'grain', 'lightLeak', 'vignette', 'halftone', 'scanlines', 'dust', 'paper'] as const;
@@ -82,6 +84,7 @@ export const accents = [
   'progress', // a progress bar along the top
   'stickers', // a couple of sticker shapes
   'glow', // soft glow behind the person (needs matte)
+  'echo', // fading copies of the key word stack above it
 ] as const;
 
 export const fontChoices = ['display', 'sansJP', 'serif', 'mincho'] as const;

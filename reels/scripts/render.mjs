@@ -1,5 +1,6 @@
 // Usage: node scripts/render.mjs <CompositionId> [props.json] [out.mp4]
 // Renders a template with the given props (defaults to the composition's sample props).
+// LOUDNORM=-14 normalises the finished file's loudness (two-pass, see server/loudnorm.ts).
 import { bundle } from '@remotion/bundler';
 import { renderMedia, selectComposition } from '@remotion/renderer';
 import { readFile } from 'node:fs/promises';
@@ -26,4 +27,9 @@ await renderMedia({
   browserExecutable,
   onProgress: ({ progress }) => process.stdout.write(`\r${id} ${(progress * 100).toFixed(0)}%`),
 });
+if (process.env.LOUDNORM) {
+  const { loudnorm } = await import('../server/loudnorm.ts');
+  const r = await loudnorm(out, Number(process.env.LOUDNORM));
+  console.log(`\nloudness ${r.before} → ${r.target} LUFS`);
+}
 console.log(`\n${out} (${composition.durationInFrames} frames) in ${((Date.now() - started) / 1000).toFixed(1)}s`);

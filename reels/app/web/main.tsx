@@ -88,6 +88,9 @@ const EFFECT_NAMES: Record<(typeof effectIds)[number], string> = {
   glassType: tr("17 ガラス文字"),
   kineticType: tr("18 キネティック・タイポ"),
   infographic: tr("19 インフォグラフィック"),
+  notifications: tr("20 通知の積み重ね"),
+  tiles: tr("21 チェック付きタイル"),
+  sourceCard: tr("22 出典カード"),
 };
 
 type Job = {
@@ -667,12 +670,12 @@ const ProductPanel: React.FC<PanelProps<ProductShineProps>> = ({ p, update }) =>
 // ---------- effect mixing: labels, mix picker, per-beat style ----------
 
 const AXIS_LABELS: Record<string, Record<string, string>> = {
-  caption: { pop: tr("ポップ"), blur: tr("ぼかしから"), spaced: tr("字間ひろめ"), upper: tr("大文字"), script: tr("筆記体ゴールド"), outline: tr("袋文字"), box: tr("黒帯"), highlighter: tr("マーカー"), typewriter: tr("タイプ"), stack: tr("縦積み"), bounce: tr("バウンド"), neon: tr("ネオン") },
+  caption: { pop: tr("ポップ"), blur: tr("ぼかしから"), spaced: tr("字間ひろめ"), upper: tr("大文字"), script: tr("筆記体ゴールド"), outline: tr("袋文字"), box: tr("黒帯"), highlighter: tr("マーカー"), typewriter: tr("タイプ"), stack: tr("縦積み"), bounce: tr("バウンド"), neon: tr("ネオン"), keyword: tr("キーワード強調") },
   camera: { still: tr("固定"), push: tr("ゆっくり寄る"), pull: tr("ゆっくり引く"), drift: tr("横に流れる"), punch: tr("パンチイン"), shake: tr("衝撃ゆれ"), tilt: tr("傾き"), spinIn: tr("回転イン"), handheld: tr("手持ち風"), rack: tr("ピント送り"), dollyIn: tr("ドリーイン"), panLeft: tr("パン（左へ）"), panRight: tr("パン（右へ）"), tiltUp: tr("ティルトアップ"), tiltDown: tr("ティルトダウン"), tracking: tr("トラッキング"), crane: tr("クレーン"), orbitCam: tr("オービット（カメラ周回）"), dollyZoom: tr("ドリーズーム") },
   transition: { cut: tr("カット"), zoomBlur: tr("ズームブラー"), whipLeft: tr("横スワイプ"), whipUp: tr("縦スワイプ"), flash: tr("フラッシュ"), glitch: tr("グリッチ"), slide: tr("スライド"), dip: tr("暗転"), iris: tr("丸ワイプ"), split: tr("左右から閉じる"), spin: tr("回転"), blurDissolve: tr("ぼかしディゾルブ") },
-  grade: { natural: tr("ナチュラル"), warm: tr("あたたかい"), cool: tr("クール"), mono: tr("モノクロ"), film: tr("フィルム"), tealOrange: tr("ティール＆オレンジ"), pastel: tr("パステル"), punchy: tr("くっきり"), faded: tr("色あせ"), neon: tr("ネオン"), sepia: tr("セピア"), night: tr("ナイト") },
+  grade: { natural: tr("ナチュラル"), warm: tr("あたたかい"), cool: tr("クール"), mono: tr("モノクロ"), film: tr("フィルム"), tealOrange: tr("ティール＆オレンジ"), pastel: tr("パステル"), punchy: tr("くっきり"), faded: tr("色あせ"), neon: tr("ネオン"), sepia: tr("セピア"), night: tr("ナイト"), midnight: tr("ミッドナイト") },
   texture: { none: tr("なし"), grain: tr("フィルム粒子"), lightLeak: tr("光漏れ"), vignette: tr("周辺減光"), halftone: tr("網点"), scanlines: tr("走査線"), dust: tr("ほこり"), paper: tr("紙") },
-  accent: { sparkles: tr("キラキラ"), outline: tr("人物の白フチ"), arrows: tr("手描き矢印"), underline: tr("下線"), emoji: tr("絵文字"), beatFlash: tr("ビートで光る"), letterbox: tr("シネマ帯"), progress: tr("進行バー"), stickers: tr("ステッカー"), glow: tr("人物の後光") },
+  accent: { sparkles: tr("キラキラ"), outline: tr("人物の白フチ"), arrows: tr("手描き矢印"), underline: tr("下線"), emoji: tr("絵文字"), beatFlash: tr("ビートで光る"), letterbox: tr("シネマ帯"), progress: tr("進行バー"), stickers: tr("ステッカー"), glow: tr("人物の後光"), echo: tr("エコー") },
   font: { display: tr("太ゴシック（欧文）"), sansJP: tr("ゴシック"), serif: tr("セリフ"), mincho: tr("明朝") },
 };
 const lbl = (axis: string, v?: string) => (v ? AXIS_LABELS[axis]?.[v] ?? v : '—');
@@ -1347,7 +1350,7 @@ const GROUPS: { id: Group; name: string; note: string }[] = [
 const EFFECT_GROUP: Record<EffectId, Group> = {
   orbit: 'behind', couchWall: 'behind', headlineWall: 'behind', chartGrow: 'behind', coverStory: 'behind', glassType: 'behind', kineticType: 'behind',
   frameBreak: 'camera', digitalZoom: 'camera', zoomThrough: 'camera', pullBack: 'camera', vertigo: 'camera',
-  uiWorld: 'ui', phoneMockup: 'ui', checklist: 'ui', greenScreen: 'ui', infographic: 'ui',
+  uiWorld: 'ui', phoneMockup: 'ui', checklist: 'ui', greenScreen: 'ui', infographic: 'ui', notifications: 'ui', tiles: 'ui', sourceCard: 'ui',
   paperCut: 'craft', doodleBoil: 'craft',
 };
 
@@ -1371,6 +1374,9 @@ const EFFECT_DESC: Record<EffectId, string> = {
   glassType: tr("立体のガラス文字が後ろで光る"),
   kineticType: tr("話す言葉が1語ずつ大きく飛び込み、ポスターのように積み上がる"),
   infographic: tr("数字がカウントアップし、円グラフと棒グラフが伸びる"),
+  notifications: tr("スマホの通知が1枚ずつ積み重なり、キーワードが大きく出る"),
+  tiles: tr("アイコンのタイルが並び、1つずつチェックが付く"),
+  sourceCard: tr("「出典」カードに名前が出て、数字がカウントアップ"),
 };
 
 type CatalogItem = { key: string; template: TemplateId; effect?: EffectId; mix?: string; lock?: { axis: LockAxis; value: string }; name: string; desc: string; group: Group };

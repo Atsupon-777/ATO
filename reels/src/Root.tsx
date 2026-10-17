@@ -4,6 +4,8 @@ import { FPS, beatFrames } from './lib/timing';
 import { ProductShine, productShineBeats } from './templates/ProductShine';
 import {
   effectsReelSchema,
+  fivePassSchema,
+  type FivePassProps,
   productShineSchema,
   saasPromoSchema,
   talkCaptionsSchema,
@@ -17,6 +19,8 @@ import { TalkCaptions, talkCaptionsDuration } from './templates/TalkCaptions';
 import talkSample from '../props/talk-sample.json';
 import { EffectsReel, effectsReelDuration } from './templates/EffectsReel';
 import effectsDemo from '../props/effects-demo.json';
+import { FivePass, fivePassDuration } from './templates/FivePass';
+import fivePassDemo from '../props/fivepass-demo.json';
 
 export const RemotionRoot: React.FC = () => (
   <>
@@ -67,6 +71,17 @@ export const RemotionRoot: React.FC = () => (
       height={1920}
       durationInFrames={effectsReelDuration(effectsDemo as EffectsReelProps, FPS)}
       calculateMetadata={({ props }) => ({ durationInFrames: effectsReelDuration(props, FPS) })}
+    />
+    <Composition
+      id="FivePass"
+      component={FivePass}
+      schema={fivePassSchema}
+      defaultProps={fivePassDemo as FivePassProps}
+      fps={FPS}
+      width={1080}
+      height={1920}
+      durationInFrames={fivePassDuration(fivePassDemo as FivePassProps, FPS)}
+      calculateMetadata={({ props }) => ({ durationInFrames: fivePassDuration(props, FPS) })}
     />
   </>
 );

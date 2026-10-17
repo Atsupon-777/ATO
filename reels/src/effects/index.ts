@@ -6,6 +6,7 @@ import { DigitalZoom, FrameBreak, PullBack, Vertigo, ZoomThrough } from './Camer
 import { Checklist, GreenScreen, PhoneMockup, UiWorld } from './Ui';
 import { DoodleBoil, PaperCut } from './Craft';
 import { Infographic, KineticType } from './Motion';
+import { Notifications, Source, Tiles } from './Cards';
 
 /** Effect id → component. Order and names follow notes/video-effects.md (01–17, then additions). */
 export const effects: Record<EffectId, React.FC<EffectProps>> = {
@@ -28,6 +29,9 @@ export const effects: Record<EffectId, React.FC<EffectProps>> = {
   glassType: GlassType,
   kineticType: KineticType,
   infographic: Infographic,
+  notifications: Notifications,
+  tiles: Tiles,
+  sourceCard: Source,
 };
 
 /** Whether an effect only reads correctly with a person matte (it still renders without one). */
@@ -51,4 +55,7 @@ export const needsMatte: Record<EffectId, boolean> = {
   glassType: true,
   kineticType: false,
   infographic: false,
+  notifications: false,
+  tiles: false,
+  sourceCard: false,
 };

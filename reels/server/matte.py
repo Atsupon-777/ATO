@@ -1,6 +1,6 @@
 """Cuts the person out of every frame of a video and writes a transparent WebM (VP9 + alpha).
 
-Usage: python3 matte.py <input video> <output.webm> [--model u2net_human_seg] [--height 960] [--fps 30]
+Usage: python3 matte.py <input video> <output.webm> [--model u2net_human_seg] [--height 960] [--fps 30] [--feather 2.5]
 The output has the same aspect ratio and frame rate as the render, so the EffectsReel template can
 stack it exactly on top of the original footage (background → graphics → person).
 Requires: pip install "rembg[cpu]" and ffmpeg. The model downloads on first run.
@@ -12,7 +12,7 @@ import sys
 import tempfile
 from pathlib import Path
 
-from PIL import Image
+from PIL import Image, ImageFilter
 from rembg import new_session, remove
 
 
@@ -24,6 +24,8 @@ def main() -> None:
     ap.add_argument("--model", default="u2net_human_seg")
     ap.add_argument("--height", type=int, default=960)
     ap.add_argument("--fps", type=int, default=30)
+    # soft edge: pull the mask in a pixel, then blur it, so there is no hard cut-out line (0 = hard edge)
+    ap.add_argument("--feather", type=float, default=2.5)
     a = ap.parse_args()
 
     session = new_session(a.model)
@@ -39,7 +41,11 @@ def main() -> None:
         files = sorted(frames.glob("*.png"))
         for i, f in enumerate(files):
             img = Image.open(f).convert("RGB")
-            remove(img, session=session, post_process_mask=True).save(cut / f.name)
+            out = remove(img, session=session, post_process_mask=True)
+            if a.feather > 0:
+                alpha = out.getchannel("A").filter(ImageFilter.MinFilter(3)).filter(ImageFilter.GaussianBlur(a.feather))
+                out.putalpha(alpha)
+            out.save(cut / f.name)
             if i % 30 == 0:
                 print(f"matte {i}/{len(files)}", file=sys.stderr, flush=True)
         subprocess.run(

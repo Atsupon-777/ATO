@@ -132,6 +132,9 @@ export const effectIds = [
   'glassType',
   'kineticType',
   'infographic',
+  'notifications',
+  'tiles',
+  'sourceCard',
 ] as const;
 
 /** Per-beat look on top of the scene effect: one pick per axis plus any accents (src/effects/axes.ts). */
@@ -187,3 +190,44 @@ export type EffectSegment = z.infer<typeof effectSegmentSchema>;
 export type BeatStyle = z.infer<typeof beatStyleSchema>;
 export type EffectsReelProps = z.infer<typeof effectsReelSchema>;
 export type EffectId = (typeof effectIds)[number];
+
+/**
+ * 5-pass edit (@zeeuiux method): one talking video finished in five passes, each filling more of these
+ * props. All timing comes from `words` (pass 1). Times are seconds in the source video.
+ */
+export const fivePassSchema = z.object({
+  video: z.string(),
+  /** Person cut-out with soft edges (pass 2). */
+  matte: z.string().optional(),
+  focusX: z.number().min(0).max(1),
+  /** Length of the source in seconds. */
+  duration: z.number().positive(),
+  /** How far the edit has got (1-5); the preview shows only what that pass has added. */
+  pass: z.number().int().min(1).max(5),
+  /** Pass 1: every spoken word with its time. */
+  words: z.array(z.object({ text: z.string(), start: z.number(), end: z.number() })),
+  /** Pass 3: 1-3 words at a time; `key` is the one big word, `echo` stacks fading copies of it. */
+  captions: z.array(z.object({ start: z.number(), end: z.number(), text: z.string(), key: z.string().optional(), echo: z.boolean().default(false) })).default([]),
+  /** Pass 4: one scene per idea, starting on the word that triggers it. */
+  scenes: z
+    .array(
+      z.object({
+        type: z.enum(effectIds),
+        trigger: z.string().optional(),
+        start: z.number(),
+        end: z.number(),
+        items: z.array(z.string()).max(6).default([]),
+        text: z.string().optional(),
+        value: z.number().optional(),
+        place: z.enum(['top', 'bottom']).default('top'),
+      }),
+    )
+    .default([]),
+  /** Pass 5: cue sounds. */
+  sfx: z.array(z.object({ kind: z.enum(['whoosh', 'tap', 'chime']), at: z.number() })).default([]),
+  style: z.enum(['midnight']).default('midnight'),
+  lang: z.enum(langs).optional(),
+  /** Director notes per pass and version, kept so a pass can be redone or rolled back. */
+  notes: z.array(z.object({ pass: z.number().int(), version: z.number().int(), text: z.string() })).default([]),
+});
+export type FivePassProps = z.infer<typeof fivePassSchema>;

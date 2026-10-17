@@ -5,6 +5,7 @@ import { fonts } from '../lib/fonts';
 import { pop, progress } from '../lib/timing';
 import type { BeatStyle, EffectSegment } from '../schemas';
 import type { CaptionStyle, Grade } from './axes';
+import { KeywordCaptions, chunkLine } from './Keyword';
 
 /**
  * Every effect is built from the same few layers:
@@ -43,6 +44,8 @@ export type EffectProps = { seg: EffectSegment };
  * Splits a line into the units captions reveal one by one: spaces where the language uses them,
  * otherwise (Japanese, Chinese) dictionary words, with punctuation kept on the word before it.
  */
+const PARTICLE = /^(は|が|を|に|で|と|も|の|へ|や|か|ね|よ|な|って|から|まで|より|けど|的|了|吗|呢|吧)[、。！？,.!?]*$/;
+
 export const splitWords = (text: string): string[] => {
   const t = text.trim();
   if (!t) return [];
@@ -52,10 +55,11 @@ export const splitWords = (text: string): string[] => {
     if (!s.isWordLike && out.length) out[out.length - 1] += s.segment;
     else out.push(s.segment);
   }
-  // very short pieces read better joined with the next one
+  // particles and lone kana endings stay with the word before them; prefixes such as お, ご join the next word
   return out.reduce<string[]>((acc, w) => {
     const last = acc[acc.length - 1];
-    if (last !== undefined && [...last].length < 2) acc[acc.length - 1] = last + w;
+    if (last !== undefined && (PARTICLE.test(w) || /^[\u3041-\u3096ー][、。！？]*$/.test(w) && !/^[おご]/.test(w))) acc[acc.length - 1] = last + w;
+    else if (last !== undefined && [...last].length < 2 && !PARTICLE.test(last)) acc[acc.length - 1] = last + w;
     else acc.push(w);
     return acc;
   }, []);
@@ -88,6 +92,10 @@ export const GRADES: Record<Grade, { filter: string; overlay?: { background: str
   neon: { filter: 'contrast(1.15) saturate(1.4) hue-rotate(-18deg)', overlay: { background: 'linear-gradient(135deg, #7A2BFF, #00D1FF)', blend: 'soft-light', opacity: 0.6 } },
   sepia: { filter: 'sepia(0.75) contrast(1.05)' },
   night: { filter: 'brightness(0.82) contrast(1.15) saturate(0.85) hue-rotate(14deg)', overlay: { background: '#0B1A3A', blend: 'soft-light', opacity: 0.6 } },
+  midnight: {
+    filter: 'brightness(0.78) contrast(1.1) saturate(0.82)',
+    overlay: { background: 'radial-gradient(120% 70% at 50% 28%, #3A2448 0%, #1A1220 55%, #0B0A0D 100%)', blend: 'soft-light', opacity: 0.85 },
+  },
 };
 
 const GradeOverlay: React.FC = () => {
@@ -172,6 +180,13 @@ export const Caption: React.FC<{
   if (!text) return null;
   const look: CaptionStyle = s.style.caption ?? LEGACY[variant];
   const family = s.style.font ? FONT_FAMILY[s.style.font] : look === 'script' ? fonts.serif : fonts.display;
+  if (look === 'keyword') {
+    const span = (over ?? (durationInFrames / fps) * 0.8) * fps;
+    const chunks = chunkLine(text, emphasis, 0, span).map((c) => ({ ...c, echo: Boolean(c.key) && s.style.accents?.includes('echo') }));
+    // the last chunk stays up until the beat ends
+    if (chunks.length) chunks[chunks.length - 1].end = durationInFrames;
+    return <KeywordCaptions chunks={chunks} y={y + 0.04} sansFamily={s.style.font && s.style.font !== 'serif' ? FONT_FAMILY[s.style.font] : fonts.display} />;
+  }
   const words = splitWords(text);
   const span = (over ?? (durationInFrames / fps) * 0.7) * fps;
   const step = span / Math.max(1, words.length);
