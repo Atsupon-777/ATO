@@ -39,6 +39,12 @@ export const useSource = () => {
 
 export type EffectProps = { seg: EffectSegment };
 
+/**
+ * Extra transforms a camera move gives the two depth layers, on top of moving the whole frame:
+ * the wall (bg) and the person (fg) shift by different amounts, which reads as real parallax.
+ */
+export const DepthContext = createContext<{ bg?: string; fg?: string }>({});
+
 const cover = (focusX: number): React.CSSProperties => ({
   width: '100%',
   height: '100%',
@@ -71,9 +77,12 @@ const GradeOverlay: React.FC = () => {
 export const Footage: React.FC<{ style?: React.CSSProperties; muted?: boolean }> = ({ style }) => {
   const s = useSource();
   const grade = GRADES[s.style.grade ?? 'natural'].filter;
+  const { bg } = useContext(DepthContext);
   return (
     <AbsoluteFill style={style}>
-      <OffthreadVideo src={asset(s.video)} trimBefore={s.trimBefore} muted style={{ ...cover(s.focusX), filter: grade || undefined }} />
+      <AbsoluteFill style={{ transform: bg }}>
+        <OffthreadVideo src={asset(s.video)} trimBefore={s.trimBefore} muted style={{ ...cover(s.focusX), filter: grade || undefined }} />
+      </AbsoluteFill>
       <GradeOverlay />
     </AbsoluteFill>
   );
@@ -82,6 +91,7 @@ export const Footage: React.FC<{ style?: React.CSSProperties; muted?: boolean }>
 /** The cut-out person, frame-aligned with Footage. `filter` lets effects add outlines or sticker borders. */
 export const Subject: React.FC<{ style?: React.CSSProperties; filter?: string }> = ({ style, filter }) => {
   const s = useSource();
+  const { fg } = useContext(DepthContext);
   if (!s.matte) return null;
   // An outline filter replaces the person with their outline, so grade and glow only apply to the plain cut-out.
   const plain = !filter;
@@ -89,6 +99,7 @@ export const Subject: React.FC<{ style?: React.CSSProperties; filter?: string }>
   const grade = plain ? GRADES[s.style.grade ?? 'natural'].filter : '';
   return (
     <AbsoluteFill style={style}>
+      <AbsoluteFill style={{ transform: fg }}>
       <OffthreadVideo
         src={asset(s.matte)}
         trimBefore={s.trimBefore}
@@ -96,6 +107,7 @@ export const Subject: React.FC<{ style?: React.CSSProperties; filter?: string }>
         muted
         style={{ ...cover(s.focusX), filter: [filter, grade, glow].filter(Boolean).join(' ') || undefined }}
       />
+      </AbsoluteFill>
     </AbsoluteFill>
   );
 };
@@ -115,7 +127,7 @@ export const Sandwich: React.FC<{
   </AbsoluteFill>
 );
 
-const FONT_FAMILY = { display: fonts.display, sansJP: fonts.sansJP, serif: fonts.serif, mincho: fonts.minchoJP };
+export const FONT_FAMILY = { display: fonts.display, sansJP: fonts.sansJP, serif: fonts.serif, mincho: fonts.minchoJP };
 const LEGACY: Record<string, CaptionStyle> = { bold: 'pop', spaced: 'spaced', upper: 'upper' };
 const EMOJI = ['🔥', '✨', '👀', '🚀', '💡', '🙌', '📈', '😳'];
 

@@ -28,6 +28,15 @@ export const cameraMoves = [
   'spinIn', // rotates in and settles
   'handheld', // constant subtle handheld wobble
   'rack', // starts soft and racks into focus
+  'dollyIn', // the camera travels toward the speaker; the person grows faster than the wall
+  'panLeft', // camera turns left: the frame slides right to left
+  'panRight',
+  'tiltUp', // camera tilts up from below
+  'tiltDown',
+  'tracking', // camera travels sideways with the speaker: the wall slides past, the person stays put
+  'crane', // camera rises and looks down a little
+  'orbitCam', // camera circles around the speaker in 3D
+  'dollyZoom', // Hitchcock zoom: the wall stretches away while the person keeps their size
 ] as const;
 
 export const transitions = [

@@ -49,7 +49,7 @@ const TEMPLATES: Record<
   EffectsReel: {
     name: 'トーク＋動画エフェクト',
     tag: '動画から',
-    desc: '話している動画を、カットごとに違うエフェクト・字幕・カメラ・切り替えで仕上げます。17種のエフェクトと演出の掛け合わせで、1カットあたり約962億通り。ミックスを選ぶと全体の雰囲気がそろいます。',
+    desc: '話している動画を、カットごとに違うエフェクト・字幕・カメラ・切り替えで仕上げます。19種のエフェクトと演出の掛け合わせで、1カットあたり約2,044億通り。ミックスを選ぶと全体の雰囲気がそろいます。',
     component: EffectsReel,
     frames: (p) => effectsReelDuration(p, FPS),
     sample: effectsSample,
@@ -75,6 +75,8 @@ const EFFECT_NAMES: Record<(typeof effectIds)[number], string> = {
   vertigo: '15 めまいズーム',
   coverStory: '16 雑誌の表紙',
   glassType: '17 ガラス文字',
+  kineticType: '18 キネティック・タイポ',
+  infographic: '19 インフォグラフィック',
 };
 
 type Job = {
@@ -647,7 +649,7 @@ const ProductPanel: React.FC<PanelProps<ProductShineProps>> = ({ p, update }) =>
 
 const AXIS_LABELS: Record<string, Record<string, string>> = {
   caption: { pop: 'ポップ', blur: 'ぼかしから', spaced: '字間ひろめ', upper: '大文字', script: '筆記体ゴールド', outline: '袋文字', box: '黒帯', highlighter: 'マーカー', typewriter: 'タイプ', stack: '縦積み', bounce: 'バウンド', neon: 'ネオン' },
-  camera: { still: '固定', push: 'ゆっくり寄る', pull: 'ゆっくり引く', drift: '横に流れる', punch: 'パンチイン', shake: '衝撃ゆれ', tilt: '傾き', spinIn: '回転イン', handheld: '手持ち風', rack: 'ピント送り' },
+  camera: { still: '固定', push: 'ゆっくり寄る', pull: 'ゆっくり引く', drift: '横に流れる', punch: 'パンチイン', shake: '衝撃ゆれ', tilt: '傾き', spinIn: '回転イン', handheld: '手持ち風', rack: 'ピント送り', dollyIn: 'ドリーイン', panLeft: 'パン（左へ）', panRight: 'パン（右へ）', tiltUp: 'ティルトアップ', tiltDown: 'ティルトダウン', tracking: 'トラッキング', crane: 'クレーン', orbitCam: 'オービット（カメラ周回）', dollyZoom: 'ドリーズーム' },
   transition: { cut: 'カット', zoomBlur: 'ズームブラー', whipLeft: '横スワイプ', whipUp: '縦スワイプ', flash: 'フラッシュ', glitch: 'グリッチ', slide: 'スライド', dip: '暗転', iris: '丸ワイプ', split: '左右から閉じる', spin: '回転', blurDissolve: 'ぼかしディゾルブ' },
   grade: { natural: 'ナチュラル', warm: 'あたたかい', cool: 'クール', mono: 'モノクロ', film: 'フィルム', tealOrange: 'ティール＆オレンジ', pastel: 'パステル', punchy: 'くっきり', faded: '色あせ', neon: 'ネオン', sepia: 'セピア', night: 'ナイト' },
   texture: { none: 'なし', grain: 'フィルム粒子', lightLeak: '光漏れ', vignette: '周辺減光', halftone: '網点', scanlines: '走査線', dust: 'ほこり', paper: '紙' },
@@ -656,7 +658,7 @@ const AXIS_LABELS: Record<string, Record<string, string>> = {
 };
 const lbl = (axis: string, v?: string) => (v ? AXIS_LABELS[axis]?.[v] ?? v : '—');
 
-/** 約963億通り: scenes × every style axis × accent subsets (src/effects/axes.ts). */
+/** 約2,044億通り: scenes × every style axis × accent subsets (src/effects/axes.ts). */
 const MIX_COUNT = `約${Math.floor(combinationCount(effectIds.length) / 1e8).toLocaleString()}億通り`;
 
 const MixPicker: React.FC<{ value: string; onChange: (id: string) => void }> = ({ value, onChange }) => (
@@ -1318,9 +1320,9 @@ const GROUPS: { id: Group; name: string; note: string }[] = [
 ];
 
 const EFFECT_GROUP: Record<EffectId, Group> = {
-  orbit: 'behind', couchWall: 'behind', headlineWall: 'behind', chartGrow: 'behind', coverStory: 'behind', glassType: 'behind',
+  orbit: 'behind', couchWall: 'behind', headlineWall: 'behind', chartGrow: 'behind', coverStory: 'behind', glassType: 'behind', kineticType: 'behind',
   frameBreak: 'camera', digitalZoom: 'camera', zoomThrough: 'camera', pullBack: 'camera', vertigo: 'camera',
-  uiWorld: 'ui', phoneMockup: 'ui', checklist: 'ui', greenScreen: 'ui',
+  uiWorld: 'ui', phoneMockup: 'ui', checklist: 'ui', greenScreen: 'ui', infographic: 'ui',
   paperCut: 'craft', doodleBoil: 'craft',
 };
 
@@ -1342,6 +1344,8 @@ const EFFECT_DESC: Record<EffectId, string> = {
   vertigo: '人物はそのまま背景だけが伸びるめまいズーム',
   coverStory: '雑誌の表紙のように大きな文字が頭の後ろに',
   glassType: '立体のガラス文字が後ろで光る',
+  kineticType: '話す言葉が1語ずつ大きく飛び込み、ポスターのように積み上がる',
+  infographic: '数字がカウントアップし、円グラフと棒グラフが伸びる',
 };
 
 type CatalogItem = { key: string; template: TemplateId; effect?: EffectId; mix?: string; name: string; desc: string; group: Group };
@@ -1682,7 +1686,7 @@ const CreateSheet: React.FC<{ go: (h: string) => void; onClose: () => void }> = 
         </button>
       ))}
       <button className="listrow" onClick={() => (onClose(), go('#/'))}>
-        <span className="tag">17種</span>
+        <span className="tag">19種</span>
         <b>エフェクトから選ぶ</b>
       </button>
       </>

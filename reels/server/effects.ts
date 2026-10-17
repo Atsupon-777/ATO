@@ -30,12 +30,14 @@ export const EFFECT_GUIDE: Record<(typeof effectIds)[number], string> = {
   vertigo: 'dolly zoom: background stretches, speaker stays. Good for a dramatic realisation.',
   coverStory: 'magazine-cover serif title behind the speaker\'s head; text = 1 word title, items = [issue line]. Good for introducing a topic.',
   glassType: 'extruded glass letters on the wall behind the speaker; text = 1 word (max 8 letters). Good for a keyword.',
+  kineticType: 'kinetic typography: the line itself slams in word by word, huge, stacking like a poster (behind the speaker if matted); text = up to 8 words (else the caption is used), emphasis = words in accent colour. Good for a punchline or hook.',
+  infographic: 'animated infographic: a ring counts up to values[0] percent, then labelled bars grow; text = title, caption = what the percentage means, items = bar labels (2-4), values = [percent, bar values...]. Good for stats, comparisons, results.',
 };
 
 /** What each style axis option looks like, so the planner can pick by meaning. */
 export const STYLE_GUIDE = {
   caption: 'pop=bold word pop, blur=sharpen from blur, spaced=small tracked caps, upper=bold caps, script=gold italic serif, outline=hollow letters, box=words on black tags, highlighter=marker swipe on key words, typewriter=types on, stack=one word per line with huge key word, bounce=words drop and bounce, neon=glowing letters',
-  camera: 'still, push=slow push in, pull=slow pull out, drift=sideways drift, punch=punch-in on the beat, shake=impact shake, tilt=dutch tilt settles, spinIn=rotates in, handheld=subtle wobble, rack=blur into focus',
+  camera: 'still, push=slow push in, pull=slow pull out, drift=sideways drift, punch=punch-in on the beat, shake=impact shake, tilt=dutch tilt settles, spinIn=rotates in, handheld=subtle wobble, rack=blur into focus, dollyIn=camera travels toward the speaker (stronger than push, with depth), panLeft/panRight=camera turns sideways, tiltUp/tiltDown=camera tilts vertically, tracking=camera moves sideways with the speaker while the wall slides past, crane=camera rises and looks down, orbitCam=camera circles the speaker in 3D, dollyZoom=Hitchcock zoom, wall stretches while the speaker keeps size (dramatic)',
   transition: 'how the beat arrives: cut, zoomBlur, whipLeft, whipUp, flash, glitch, slide, dip=from black, iris=circle wipe, split=halves close, spin, blurDissolve',
   accents: 'extra overlays, any number: sparkles, outline=boiling outline around the person, arrows=hand-drawn arrows, underline=marker under key words, emoji=emoji pops after the line, beatFlash=white flash on the beat, letterbox=cinema bars, progress=progress bar, stickers=round stickers, glow=glow around the person',
 };

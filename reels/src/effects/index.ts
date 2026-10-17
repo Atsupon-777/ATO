@@ -5,8 +5,9 @@ import { ChartGrow, CouchWall, CoverStory, GlassType, HeadlineWall, Orbit } from
 import { DigitalZoom, FrameBreak, PullBack, Vertigo, ZoomThrough } from './Camera';
 import { Checklist, GreenScreen, PhoneMockup, UiWorld } from './Ui';
 import { DoodleBoil, PaperCut } from './Craft';
+import { Infographic, KineticType } from './Motion';
 
-/** Effect id → component. Order and names follow notes/video-effects.md (01–17). */
+/** Effect id → component. Order and names follow notes/video-effects.md (01–17, then additions). */
 export const effects: Record<EffectId, React.FC<EffectProps>> = {
   orbit: Orbit,
   couchWall: CouchWall,
@@ -25,6 +26,8 @@ export const effects: Record<EffectId, React.FC<EffectProps>> = {
   vertigo: Vertigo,
   coverStory: CoverStory,
   glassType: GlassType,
+  kineticType: KineticType,
+  infographic: Infographic,
 };
 
 /** Whether an effect only reads correctly with a person matte (it still renders without one). */
@@ -46,4 +49,6 @@ export const needsMatte: Record<EffectId, boolean> = {
   vertigo: true,
   coverStory: true,
   glassType: true,
+  kineticType: false,
+  infographic: false,
 };

@@ -7,7 +7,7 @@ import { fonts } from '../lib/fonts';
 import { clamp, easeInOut, easeOutExpo, pop, progress } from '../lib/timing';
 import type { CameraMove, Texture, Transition } from './axes';
 import { Filters } from './Craft';
-import { Subject, Vignette, rand, useSource } from './layers';
+import { DepthContext, Subject, Vignette, rand, useSource } from './layers';
 
 const TRANSITION_FRAMES = 9;
 
@@ -16,8 +16,13 @@ export const CameraMotion: React.FC<{ move?: CameraMove; children: React.ReactNo
   const frame = useCurrentFrame();
   const { durationInFrames } = useVideoConfig();
   const t = frame / Math.max(1, durationInFrames - 1);
+  const src = useSource();
   let transform = '';
   let filter: string | undefined;
+  // parallax: extra shift for the wall (bg) and the person (fg); only visible with a matte
+  let bg: string | undefined;
+  let fg: string | undefined;
+  const e = easeInOut(t);
   switch (move) {
     case 'push':
       transform = `scale(${1 + 0.09 * easeInOut(t)})`;
@@ -53,10 +58,56 @@ export const CameraMotion: React.FC<{ move?: CameraMove; children: React.ReactNo
       filter = `blur(${interpolate(frame, [0, 14], [10, 0], clamp)}px)`;
       transform = `scale(${1.03 - 0.03 * progress(frame, 0, 14)})`;
       break;
+    case 'dollyIn':
+      transform = `scale(${1.02 + 0.16 * e})`;
+      fg = `scale(${1 + 0.07 * e})`;
+      break;
+    case 'panLeft':
+    case 'panRight': {
+      const dir = move === 'panLeft' ? 1 : -1;
+      transform = `scale(1.16) translateX(${dir * interpolate(e, [0, 1], [70, -70])}px)`;
+      fg = `translateX(${dir * interpolate(e, [0, 1], [18, -18])}px)`;
+      break;
+    }
+    case 'tiltUp':
+    case 'tiltDown': {
+      const dir = move === 'tiltUp' ? -1 : 1;
+      transform = `scale(1.16) translateY(${dir * interpolate(e, [0, 1], [110, -110])}px)`;
+      fg = `translateY(${dir * interpolate(e, [0, 1], [20, -20])}px)`;
+      break;
+    }
+    case 'tracking':
+      // the camera follows the speaker: the wall slides by, the person barely moves
+      transform = `scale(1.14)`;
+      bg = `scale(1.08) translateX(${interpolate(e, [0, 1], [90, -90])}px)`;
+      fg = `translateX(${interpolate(e, [0, 1], [10, -10])}px)`;
+      break;
+    case 'crane':
+      transform = `perspective(1800px) translateY(${interpolate(e, [0, 1], [120, -60])}px) rotateX(${interpolate(e, [0, 1], [-4, 7])}deg) scale(${1.18 + 0.05 * e})`;
+      fg = `translateY(${interpolate(e, [0, 1], [24, -12])}px)`;
+      break;
+    case 'orbitCam':
+      transform = `perspective(1600px) rotateY(${interpolate(e, [0, 1], [-14, 14])}deg) scale(1.24) translateX(${interpolate(e, [0, 1], [50, -50])}px)`;
+      bg = `translateX(${interpolate(e, [0, 1], [60, -60])}px)`;
+      fg = `translateX(${interpolate(e, [0, 1], [-25, 25])}px)`;
+      break;
+    case 'dollyZoom': {
+      // the wall zooms in while the person is held at the same size (counter-scaled)
+      const z = 1 + (src.matte ? 0.32 : 0.2) * e;
+      transform = `scale(${z})`;
+      fg = `scale(${1 / z})`;
+      bg = `scale(${1 + 0.08 * e})`;
+      if (!src.matte) transform = `scale(${z}) perspective(1200px) rotateX(${1.5 * e}deg)`;
+      break;
+    }
     default:
       break;
   }
-  return <AbsoluteFill style={{ transform: transform || undefined, filter }}>{children}</AbsoluteFill>;
+  return (
+    <AbsoluteFill style={{ transform: transform || undefined, filter }}>
+      <DepthContext.Provider value={{ bg, fg }}>{children}</DepthContext.Provider>
+    </AbsoluteFill>
+  );
 };
 
 /** How the beat arrives. Beats play back to back, so transitions come in from black or from motion. */
