@@ -295,8 +295,8 @@ const STYLE_OPTIONS = [
   { id: 'natural', name: tr("ナチュラル"), note: tr("木目・木漏れ日") },
 ];
 
-const newJobCrumbs = (template: TemplateId, fx?: EffectId, mix?: string, lockKey?: string) => {
-  const it = CATALOG.find((c) => c.key === (lockKey ?? fx ?? (mix ? `mix-${mix}` : template)));
+const newJobCrumbs = (template: TemplateId, fx?: EffectId, mix?: string) => {
+  const it = CATALOG.find((c) => c.key === (fx ?? (mix ? `mix-${mix}` : template)));
   const g = GROUPS.find((x) => x.id === it?.group);
   return [{ label: tr("ホーム"), href: '#/' }, ...(g ? [{ label: g.name, href: `#/?g=${g.id}` }] : []), { label: it?.name ?? TEMPLATES[template].name, href: '#/' }, { label: tr("素材を入れる") }];
 };
@@ -320,9 +320,8 @@ const VideoLang: React.FC<{ template: TemplateId; value: string; onChange: (v: s
   );
 };
 
-const NewJob: React.FC<{ template: TemplateId; fx?: EffectId; mixArg?: string; lockKey?: string; onStarted: (job: Job) => void; onBack: () => void }> = ({ template, fx, mixArg, lockKey, onStarted, onBack }) => {
-  const lockItem = CATALOG.find((c) => c.key === lockKey);
-  const [input, setInput] = useState<Record<string, any>>({ lang: template === 'TalkCaptions' || template === 'EffectsReel' || template === 'FivePass' ? '' : lang, style: 'luxury', cta: tr("詳しくはプロフィールへ"), effects: fx ? [fx] : [], recipe: mixArg ?? 'all', lock: lockItem?.lock ? { [lockItem.lock.axis]: lockItem.lock.value } : undefined });
+const NewJob: React.FC<{ template: TemplateId; fx?: EffectId; mixArg?: string; onStarted: (job: Job) => void; onBack: () => void }> = ({ template, fx, mixArg, onStarted, onBack }) => {
+  const [input, setInput] = useState<Record<string, any>>({ lang: template === 'TalkCaptions' || template === 'EffectsReel' || template === 'FivePass' ? '' : lang, style: 'luxury', cta: tr("詳しくはプロフィールへ"), effects: fx ? [fx] : [], recipe: mixArg ?? 'all' });
   const [err, setErr] = useState('');
   const [busy, setBusy] = useState(false);
   const set = (k: string) => (v: any) => setInput((s) => ({ ...s, [k]: v }));
@@ -345,13 +344,13 @@ const NewJob: React.FC<{ template: TemplateId; fx?: EffectId; mixArg?: string; l
       <div className="stage">
         <div className="player">
           <div style={{ aspectRatio: '9 / 16' }}>
-            <ShowVideo k={lockKey ?? fx ?? (mixArg ? `mix-${mixArg}` : template)} controls />
+            <ShowVideo k={fx ?? (mixArg ? `mix-${mixArg}` : template)} controls />
           </div>
         </div>
         <p className="cost" style={{ textAlign: 'center' }}>{tr("このテンプレートで実際に作った見本")}</p>
       </div>
       <div>
-        <Crumbs items={newJobCrumbs(template, fx, mixArg, lockKey)} />
+        <Crumbs items={newJobCrumbs(template, fx, mixArg)} />
         <h1 style={{ marginTop: 16 }}>{t.name}</h1>
         <p className="sub">{t.desc}</p>
         <div className="form">
@@ -916,9 +915,7 @@ const MixPanel: React.FC<PanelProps<EffectsReelProps>> = ({ p, update }) => {
         {tr("各カットは「エフェクト × 字幕 × カメラ × 切り替え × 色味 × 質感 × 飾り」の掛け合わせです（1カットあたり{0}）。シャッフルすると、いまのミックスの中で全カットの組み合わせを引き直します。文字の内容はそのままです。", MIX_COUNT)}
       </p>
       <MixPicker value={recipe.id} onChange={(id) => shuffle(id)} />
-      <div className="grid4" style={{ marginTop: 12 }}>
-        <Select label={tr("色味（全体）")} axis="grade" options={grades} value={first.grade} onChange={(v) => setAll({ grade: v as never })} />
-        <Select label={tr("質感（全体）")} axis="texture" options={textures} value={first.texture} onChange={(v) => setAll({ texture: v as never })} />
+      <div className="grid2" style={{ marginTop: 12 }}>
         <Select label={tr("フォント（全体）")} axis="font" options={fontChoices} value={first.font} onChange={(v) => setAll({ font: v as never })} />
         <div className="field">
           <label>{tr("差し色（全体）")}</label>
@@ -930,6 +927,89 @@ const MixPanel: React.FC<PanelProps<EffectsReelProps>> = ({ p, update }) => {
         </div>
       </div>
     </div>
+  );
+};
+
+/**
+ * The AI makes the reel first; the user only chooses. Three more AI takes of the whole look,
+ * then caption / camera / transition / grade / texture options shown as real renders, applied to every cut.
+ */
+const LookPicker: React.FC<PanelProps<EffectsReelProps>> = ({ p, update }) => {
+  useShowcaseKeys();
+  type Look = { effect: EffectsReelProps['segments'][number]['effect']; style?: BeatStyle };
+  const [first] = useState<Look[]>(() => p.segments.map((s) => ({ effect: s.effect, style: s.style })));
+  const [seed, setSeed] = useState(() => Math.floor(Math.random() * 1e5));
+  const takes = useMemo(
+    () => [first, ...[1, 2, 3].map((k) => rollStyles(recipeById(p.recipe), p.segments.length, seed + k * 7919, { hasMatte: !!p.matte }).map((l) => ({ effect: l.scene, style: l.style })))],
+    [first, seed, p.recipe, p.segments.length, p.matte],
+  );
+  const [take, setTake] = useState(0);
+  const [axis, setAxis] = useState<LockAxis>('caption');
+  const lock = LOCKS.find((l) => l.axis === axis)!;
+  const vals = new Set(p.segments.map((s) => s.style?.[axis]));
+  const current = vals.size === 1 ? [...vals][0] : undefined;
+  const pickTake = (k: number) => {
+    setTake(k);
+    update((x) => {
+      x.segments.forEach((s, i) => {
+        const l = takes[k][i];
+        if (l) (s.effect = l.effect), (s.style = l.style);
+      });
+      return x;
+    });
+  };
+  // "Auto" puts back what the chosen take had on each cut.
+  const pickValue = (v?: string) =>
+    update((x) => {
+      x.segments.forEach((s, i) => (s.style = { ...(s.style ?? {}), [axis]: v ?? takes[take][i]?.style?.[axis] }));
+      return x;
+    });
+  return (
+    <div className="panel">
+      <h2>{tr("仕上がりを選ぶ")}</h2>
+      <p className="cost" style={{ marginTop: -4 }}>{tr("AIが作った案から選ぶだけです。選ぶとすぐプレビューに反映されます。")}</p>
+      <div className="takes">
+        {takes.map((t, k) => (
+          <button key={k} className={`take ${take === k ? 'on' : ''}`} onClick={() => pickTake(k)}>
+            <b>{k === 0 ? tr("最初の案") : tr("案{0}", k + 1)}</b>
+            <small>
+              {lbl('grade', t[0]?.style?.grade)} · {lbl('caption', t[0]?.style?.caption)}
+            </small>
+          </button>
+        ))}
+        <button className="take more" onClick={() => (setSeed((n) => n + 1), setTake(0))}>
+          <b>🎲 {tr("ほかの案")}</b>
+          <small>{tr("AIに作り直してもらう")}</small>
+        </button>
+      </div>
+      <div className="chipbar" style={{ marginTop: 14 }}>
+        {LOCKS.map((l) => (
+          <button key={l.axis} className={`fchip ${axis === l.axis ? 'on' : ''}`} onClick={() => setAxis(l.axis)}>
+            {l.name} <small>{l.values.length}</small>
+          </button>
+        ))}
+      </div>
+      <div className="lookopts">
+        <button className={`lookopt ${current === undefined ? 'on' : ''}`} onClick={() => pickValue()}>
+          <div className="lookthumb auto">AI</div>
+          <span>{tr("おまかせ")}</span>
+        </button>
+        {lock.values.map((v) => (
+          <LookOption key={v} k={`${lock.prefix}-${v}`} name={lbl(axis, v)} on={current === v} onPick={() => pickValue(v)} />
+        ))}
+      </div>
+    </div>
+  );
+};
+
+const LookOption: React.FC<{ k: string; name: string; on: boolean; onPick: () => void }> = ({ k, name, on, onPick }) => {
+  const [hover, setHover] = useState(false);
+  const has = showcaseList?.has(k);
+  return (
+    <button className={`lookopt ${on ? 'on' : ''}`} onClick={onPick} onMouseEnter={() => setHover(true)} onMouseLeave={() => setHover(false)}>
+      <div className="lookthumb">{has ? hover ? <ShowVideo k={k} /> : <img src={showcase(k).poster} alt="" loading="lazy" /> : <span>{name}</span>}</div>
+      <span>{name}</span>
+    </button>
   );
 };
 
@@ -974,6 +1054,7 @@ const EffectsPanel: React.FC<PanelProps<EffectsReelProps> & { playerRef: React.R
   const startFrame = (i: number) => p.segments.slice(0, i).reduce((a, s) => a + Math.max(1, Math.round((s.end - s.start) * FPS)), 0);
   return (
     <>
+      <LookPicker p={p} update={update} />
       <MixPanel p={p} update={update} />
       <div className="panel">
         <h2>{tr("カットごとの演出")}</h2>
@@ -1499,7 +1580,7 @@ const Carousel: React.FC<{ items: CatalogItem[]; onOpen: (it: CatalogItem) => vo
 
 // ---------- catalog: base templates + each effect as its own pattern ----------
 
-type Group = 'base' | 'mix' | 'behind' | 'camera' | 'ui' | 'craft' | 'cap' | 'cam' | 'tr' | 'gr' | 'tx';
+type Group = 'base' | 'mix' | 'behind' | 'camera' | 'ui' | 'craft';
 const GROUPS: { id: Group; name: string; note: string }[] = [
   { id: 'base', name: tr("テンプレート"), note: tr("商品・サービス・トーク") },
   { id: 'mix', name: tr("ミックス"), note: tr("エフェクトを掛け合わせた完成形") },
@@ -1507,11 +1588,6 @@ const GROUPS: { id: Group; name: string; note: string }[] = [
   { id: 'camera', name: tr("カメラワーク"), note: tr("単体エフェクト（ミックスの部品）") },
   { id: 'ui', name: tr("画面・UI"), note: tr("単体エフェクト（ミックスの部品）") },
   { id: 'craft', name: tr("手描き・コラージュ"), note: tr("単体エフェクト（ミックスの部品）") },
-  { id: 'cap', name: tr("字幕のスタイル"), note: tr("全カットの字幕をこの見せ方にします") },
-  { id: 'cam', name: tr("カメラの動き"), note: tr("寄る・引く・パン・クレーンなど") },
-  { id: 'tr', name: tr("切り替え"), note: tr("カットとカットのつなぎ方") },
-  { id: 'gr', name: tr("色味"), note: tr("動画全体の色の雰囲気") },
-  { id: 'tx', name: tr("質感"), note: tr("フィルム粒子や光漏れなどの仕上げ") },
 ];
 
 const EFFECT_GROUP: Record<EffectId, Group> = {
@@ -1546,16 +1622,16 @@ const EFFECT_DESC: Record<EffectId, string> = {
   sourceCard: tr("「出典」カードに名前が出て、数字がカウントアップ"),
 };
 
-type CatalogItem = { key: string; template: TemplateId; effect?: EffectId; mix?: string; lock?: { axis: LockAxis; value: string }; name: string; desc: string; group: Group };
+type CatalogItem = { key: string; template: TemplateId; effect?: EffectId; mix?: string; name: string; desc: string; group: Group };
 
-/** Sub-types that fix one style axis on every cut of an effects reel. */
+/** Finishing options the user picks after the AI has made the reel. Each value has a real render at showcase/<prefix>-<value>. */
 type LockAxis = 'caption' | 'camera' | 'transition' | 'grade' | 'texture';
-const LOCKS: { group: Group; prefix: string; axis: LockAxis; values: readonly string[]; desc: (name: string) => string }[] = [
-  { group: 'cap', prefix: 'cap', axis: 'caption', values: captionStyles, desc: (n) => tr("字幕を「{0}」で見せます。エフェクトやカメラはカットごとに変わります。", n) },
-  { group: 'cam', prefix: 'cam', axis: 'camera', values: cameraMoves, desc: (n) => tr("カメラの動きを「{0}」にそろえます。エフェクトや字幕はカットごとに変わります。", n) },
-  { group: 'tr', prefix: 'tr', axis: 'transition', values: transitions, desc: (n) => tr("カットのつなぎを「{0}」にそろえます。", n) },
-  { group: 'gr', prefix: 'gr', axis: 'grade', values: grades, desc: (n) => tr("動画全体を「{0}」の色味で仕上げます。", n) },
-  { group: 'tx', prefix: 'tx', axis: 'texture', values: textures.filter((x) => x !== 'none'), desc: (n) => tr("動画全体に「{0}」の質感を重ねます。", n) },
+const LOCKS: { prefix: string; axis: LockAxis; name: string; values: readonly string[] }[] = [
+  { prefix: 'cap', axis: 'caption', name: tr("字幕"), values: captionStyles },
+  { prefix: 'cam', axis: 'camera', name: tr("カメラ"), values: cameraMoves },
+  { prefix: 'tr', axis: 'transition', name: tr("切り替え"), values: transitions },
+  { prefix: 'gr', axis: 'grade', name: tr("色味"), values: grades },
+  { prefix: 'tx', axis: 'texture', name: tr("質感"), values: textures },
 ];
 
 const CATALOG: CatalogItem[] = [
@@ -1573,12 +1649,6 @@ const CATALOG: CatalogItem[] = [
     desc: EFFECT_DESC[fx],
     group: EFFECT_GROUP[fx],
   })),
-  ...LOCKS.flatMap((l) =>
-    l.values.map((v) => {
-      const name = lbl(l.axis, v);
-      return { key: `${l.prefix}-${v}`, template: 'EffectsReel' as TemplateId, lock: { axis: l.axis, value: v }, name, desc: l.desc(name), group: l.group };
-    }),
-  ),
 ];
 
 
@@ -1634,9 +1704,7 @@ const PreviewSheet: React.FC<{ it: CatalogItem; onClose: () => void; onUse: () =
               ? tr("エフェクト単体の実際の書き出しです。実際の動画は1本の中で複数のエフェクトを掛け合わせます。このエフェクトは必ず入り、ほかのカットはAIが話に合わせて組み合わせます。")
               : it.mix
                 ? tr("このミックスで実際に書き出した見本です。カットごとにエフェクト・字幕・カメラ・切り替えが変わります（1カットあたり{0}）。", MIX_COUNT)
-                : it.lock
-                  ? tr("この設定だけを変えて実際に書き出した見本です。選ぶと全カットにこの設定がかかり、ほかの要素はAIが組み合わせます。")
-                  : tr("この見本は、このテンプレートでAIが実際に作って書き出した動画です。")}
+                : tr("この見本は、このテンプレートでAIが実際に作って書き出した動画です。")}
           </p>
           <div className="row">
             <button className="btn" onClick={onUse}>
@@ -1655,7 +1723,7 @@ const PreviewSheet: React.FC<{ it: CatalogItem; onClose: () => void; onUse: () =
 const useCatalogPicker = (go: (h: string) => void) => {
   const [open, setOpen] = useState<CatalogItem | null>(null);
   const sheet = open ? (
-    <PreviewSheet it={open} onClose={() => setOpen(null)} onUse={() => go(open.effect ? `#/new/EffectsReel/${open.effect}` : open.mix ? `#/new/EffectsReel/mix-${open.mix}` : open.lock ? `#/new/EffectsReel/${open.key}` : `#/new/${open.template}`)} />
+    <PreviewSheet it={open} onClose={() => setOpen(null)} onUse={() => go(open.effect ? `#/new/EffectsReel/${open.effect}` : open.mix ? `#/new/EffectsReel/mix-${open.mix}` : `#/new/${open.template}`)} />
   ) : null;
   return { setOpen, sheet };
 };
@@ -2030,7 +2098,7 @@ const App = () => {
       <main className={route === 'reels' ? 'wide' : ''}>
         <div className="page" key={`${route ?? ''}/${arg ?? ''}`}>
         {route === 'new' && arg in TEMPLATES ? (
-          <NewJob key={hash} template={arg as TemplateId} fx={effectIds.includes(arg2 as EffectId) ? (arg2 as EffectId) : undefined} mixArg={arg2?.startsWith('mix-') ? arg2.slice(4) : undefined} lockKey={CATALOG.find((c) => c.key === arg2 && c.lock)?.key} onBack={() => history.back()} onStarted={(j) => go(`#/job/${j.id}`)} />
+          <NewJob key={hash} template={arg as TemplateId} fx={effectIds.includes(arg2 as EffectId) ? (arg2 as EffectId) : undefined} mixArg={arg2?.startsWith('mix-') ? arg2.slice(4) : undefined} onBack={() => history.back()} onStarted={(j) => go(`#/job/${j.id}`)} />
         ) : route === 'job' && arg ? (
           <Editor key={arg} id={arg} />
         ) : route === 'history' || route === 'me' ? (

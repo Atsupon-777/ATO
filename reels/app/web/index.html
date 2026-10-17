@@ -101,6 +101,21 @@
     main { padding: 20px 16px 60px; }
   }
 
+  /* ---- editor: pick the finish after generation ---- */
+  .takes { display: grid; grid-template-columns: repeat(auto-fill, minmax(120px, 1fr)); gap: 8px; }
+  .take { display: grid; gap: 4px; text-align: left; border: 1px solid var(--line); background: var(--panel2); color: var(--ink); border-radius: 12px; padding: 10px 12px; cursor: pointer; transition: border-color .2s, transform .2s; }
+  .take small { color: var(--mute); font-size: 11px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .take:hover { transform: translateY(-1px); }
+  .take.on { border-color: var(--accent); box-shadow: 0 0 0 1px var(--accent) inset; }
+  .take.more { border-style: dashed; }
+  .lookopts { display: flex; gap: 10px; overflow-x: auto; padding: 2px 2px 8px; scroll-snap-type: x proximity; }
+  .lookopt { flex: none; width: 92px; display: grid; gap: 6px; background: none; border: 0; color: var(--ink); cursor: pointer; padding: 0; font: inherit; font-size: 12px; text-align: center; scroll-snap-align: start; }
+  .lookthumb { aspect-ratio: 9 / 16; border-radius: 10px; overflow: hidden; background: #000; border: 2px solid var(--line); display: grid; place-items: center; color: var(--mute); transition: border-color .2s; }
+  .lookthumb img { width: 100%; height: 100%; object-fit: cover; display: block; }
+  .lookthumb.auto { font-weight: 800; font-size: 20px; color: var(--accent); background: var(--panel2); }
+  .lookopt.on .lookthumb { border-color: var(--accent); }
+  .lookopt.on > span { color: var(--accent); font-weight: 700; }
+
   /* ---- gallery: chips, grid of templates, preview sheet ---- */
   .hero h1 { font-size: 26px; }
   .chipbar { display: flex; gap: 8px; overflow-x: auto; padding: 4px 0 14px; margin-bottom: 8px; scrollbar-width: none; }

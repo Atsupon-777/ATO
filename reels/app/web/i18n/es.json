@@ -419,5 +419,12 @@
  "アイコンのタイルが並び、1つずつチェックが付く": "Mosaicos de iconos se alinean y se marcan uno a uno",
  "「出典」カードに名前が出て、数字がカウントアップ": "Una tarjeta de «fuente» muestra un nombre y una cifra que sube",
  "{0}種": "{0} tipos",
- "深いプラムの背景に、キーワードだけ大きなグラデのイタリック。通知・タイル・出典カードで語りを見せる（5パス編集の見た目）。": "Fondo ciruela oscuro y solo la palabra clave en cursiva grande con degradado. Cuenta con notificaciones, mosaicos y tarjetas de fuente (el estilo de 5 pasos)."
+ "深いプラムの背景に、キーワードだけ大きなグラデのイタリック。通知・タイル・出典カードで語りを見せる（5パス編集の見た目）。": "Fondo ciruela oscuro y solo la palabra clave en cursiva grande con degradado. Cuenta con notificaciones, mosaicos y tarjetas de fuente (el estilo de 5 pasos).",
+ "仕上がりを選ぶ": "Elige el acabado",
+ "AIが作った案から選ぶだけです。選ぶとすぐプレビューに反映されます。": "Solo elige entre las versiones que hizo la IA. Tu elección aparece al instante en la vista previa.",
+ "最初の案": "Primera versión",
+ "案{0}": "Versión {0}",
+ "ほかの案": "Más versiones",
+ "AIに作り直してもらう": "La IA crea otras nuevas",
+ "おまかせ": "Automático"
 }

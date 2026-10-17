@@ -419,5 +419,12 @@
  "アイコンのタイルが並び、1つずつチェックが付く": "Ubin ikon berjajar dan dicentang satu per satu",
  "「出典」カードに名前が出て、数字がカウントアップ": "Kartu “sumber” menampilkan nama dan angka yang menghitung naik",
  "{0}種": "{0} jenis",
- "深いプラムの背景に、キーワードだけ大きなグラデのイタリック。通知・タイル・出典カードで語りを見せる（5パス編集の見た目）。": "Latar plum gelap, hanya kata kunci dengan huruf miring gradasi besar. Bercerita dengan notifikasi, ubin, dan kartu sumber (tampilan edit 5 tahap)."
+ "深いプラムの背景に、キーワードだけ大きなグラデのイタリック。通知・タイル・出典カードで語りを見せる（5パス編集の見た目）。": "Latar plum gelap, hanya kata kunci dengan huruf miring gradasi besar. Bercerita dengan notifikasi, ubin, dan kartu sumber (tampilan edit 5 tahap).",
+ "仕上がりを選ぶ": "Pilih hasil akhir",
+ "AIが作った案から選ぶだけです。選ぶとすぐプレビューに反映されます。": "Cukup pilih dari versi yang dibuat AI. Pilihan Anda langsung tampil di pratinjau.",
+ "最初の案": "Versi pertama",
+ "案{0}": "Versi {0}",
+ "ほかの案": "Versi lain",
+ "AIに作り直してもらう": "Minta AI membuat yang baru",
+ "おまかせ": "Otomatis"
 }

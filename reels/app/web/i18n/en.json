@@ -419,5 +419,12 @@
  "アイコンのタイルが並び、1つずつチェックが付く": "Icon tiles line up and get checked one by one",
  "「出典」カードに名前が出て、数字がカウントアップ": "A “source” card shows a name and a number counts up",
  "{0}種": "{0} types",
- "深いプラムの背景に、キーワードだけ大きなグラデのイタリック。通知・タイル・出典カードで語りを見せる（5パス編集の見た目）。": "Deep plum background with only the keyword in big gradient italics. Tells the story with notifications, tiles and source cards (the 5-pass look)."
+ "深いプラムの背景に、キーワードだけ大きなグラデのイタリック。通知・タイル・出典カードで語りを見せる（5パス編集の見た目）。": "Deep plum background with only the keyword in big gradient italics. Tells the story with notifications, tiles and source cards (the 5-pass look).",
+ "仕上がりを選ぶ": "Choose the finish",
+ "AIが作った案から選ぶだけです。選ぶとすぐプレビューに反映されます。": "Just pick from the versions the AI made. Your choice shows in the preview right away.",
+ "最初の案": "First version",
+ "案{0}": "Version {0}",
+ "ほかの案": "More versions",
+ "AIに作り直してもらう": "Ask the AI for new ones",
+ "おまかせ": "Auto"
 }
