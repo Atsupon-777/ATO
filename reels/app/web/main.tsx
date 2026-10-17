@@ -20,7 +20,7 @@ import fivePassSample from '../../props/fivepass-demo.json';
 
 import { LANG_NAMES, langs, type Lang } from '../../src/lang';
 import { lang, setLang, tr } from './i18n';
-import { authHeader, config as appConfig, resetPassword, signInEmail, signInGoogle, signOut, signUpEmail, startAuth, useAuth } from './auth';
+import { authHeader, checkVerified, config as appConfig, resendVerification, resetPassword, signInEmail, signInGoogle, signOut, signUpEmail, startAuth, useAuth } from './auth';
 
 // 億 only reads naturally in Japanese and Chinese; other languages get a compact number ("96.3B").
 function mixCount() {
@@ -2333,12 +2333,50 @@ const SignIn: React.FC = () => {
   );
 };
 
+/** Email sign-ups land here until they click the link in the confirmation mail. */
+const VerifyEmail: React.FC<{ email?: string | null }> = ({ email }) => {
+  const [msg, setMsg] = useState('');
+  const [busy, setBusy] = useState(false);
+  const run = (fn: () => Promise<string>) => async () => {
+    setBusy(true);
+    setMsg('');
+    try {
+      setMsg(await fn());
+    } catch {
+      setMsg(tr("うまくいきませんでした。もう一度お試しください。"));
+    }
+    setBusy(false);
+  };
+  return (
+    <div className="signin">
+      <div className="logo">
+        <span className="mark" aria-hidden>▶</span> Reels <span>Studio</span>
+      </div>
+      <h1>{tr("メールアドレスを確認してください")}</h1>
+      <p className="sub">{tr("{0} に確認メールを送りました。メールのリンクを押してから、下のボタンを押してください。", email ?? '')}</p>
+      <button className="btn" disabled={busy} onClick={run(async () => ((await checkVerified()) ? '' : tr("まだ確認できていません。メールのリンクを押してください。")))}>
+        {tr("確認しました")}
+      </button>
+      <div className="row" style={{ justifyContent: 'space-between' }}>
+        <button className="linkbtn" disabled={busy} onClick={run(async () => (await resendVerification(), tr("確認メールをもう一度送りました。")))}>
+          {tr("メールを再送する")}
+        </button>
+        <button className="linkbtn" onClick={() => signOut()}>
+          {tr("ログアウト")}
+        </button>
+      </div>
+      {msg ? <div className="cost">{msg}</div> : null}
+    </div>
+  );
+};
+
 /** Login gate: the app itself once signed in (or when login is off, or in the static preview). */
 const Root = () => {
   const auth = useAuth();
   if (DEMO) return <App />;
   if (!auth.ready) return null;
   if (auth.enabled && !auth.signedIn) return <SignIn />;
+  if (auth.enabled && !auth.verified) return <VerifyEmail email={auth.email} />;
   return <App key={auth.email ?? ''} />;
 };
 

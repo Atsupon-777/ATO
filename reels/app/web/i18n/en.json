@@ -487,5 +487,11 @@
  "モーションデザイン": "Motion design",
  "本物の3D、マスクから立ち上がる文字、立体ブロック、線画アイコン、イラスト図解。制作会社のモーショングラフィックス風。": "Real 3D, text rising from masks, isometric blocks, line icons and illustrated boards. Agency-style motion graphics.",
  "今月のお支払いができませんでした。カードを更新してください。": "This month's payment didn't go through. Please update your card.",
- "お支払い方法を更新": "Update payment method"
+ "お支払い方法を更新": "Update payment method",
+ "メールアドレスを確認してください": "Please confirm your email",
+ "{0} に確認メールを送りました。メールのリンクを押してから、下のボタンを押してください。": "We sent a confirmation email to {0}. Click the link in it, then press the button below.",
+ "確認しました": "I've confirmed",
+ "まだ確認できていません。メールのリンクを押してください。": "Not confirmed yet. Please click the link in the email.",
+ "確認メールをもう一度送りました。": "We sent the confirmation email again.",
+ "メールを再送する": "Resend email"
 }

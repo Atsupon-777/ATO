@@ -38,6 +38,8 @@ export async function verifyIdToken(token: string): Promise<User> {
   const now = Date.now() / 1000;
   if (claims.aud !== projectId || claims.iss !== `https://securetoken.google.com/${projectId}`) throw new Error('token is for another project');
   if (!(claims.exp > now) || !(claims.iat <= now + 300) || !claims.sub) throw new Error('token expired');
+  // Email sign-ups must click the link in their confirmation mail first (Google accounts arrive verified).
+  if (claims.email_verified !== true) throw new Error('email not verified');
   return { uid: String(claims.sub), email: typeof claims.email === 'string' ? claims.email : undefined };
 }
 

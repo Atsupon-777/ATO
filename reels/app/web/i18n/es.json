@@ -487,5 +487,11 @@
  "モーションデザイン": "Motion design",
  "本物の3D、マスクから立ち上がる文字、立体ブロック、線画アイコン、イラスト図解。制作会社のモーショングラフィックス風。": "3D real, texto que surge de máscaras, bloques isométricos, iconos de línea y tableros ilustrados. Motion graphics estilo agencia.",
  "今月のお支払いができませんでした。カードを更新してください。": "El pago de este mes no se completó. Actualiza tu tarjeta.",
- "お支払い方法を更新": "Actualizar método de pago"
+ "お支払い方法を更新": "Actualizar método de pago",
+ "メールアドレスを確認してください": "Confirma tu correo electrónico",
+ "{0} に確認メールを送りました。メールのリンクを押してから、下のボタンを押してください。": "Enviamos un correo de confirmación a {0}. Haz clic en el enlace y luego pulsa el botón de abajo.",
+ "確認しました": "Ya lo confirmé",
+ "まだ確認できていません。メールのリンクを押してください。": "Aún no está confirmado. Haz clic en el enlace del correo.",
+ "確認メールをもう一度送りました。": "Volvimos a enviar el correo de confirmación.",
+ "メールを再送する": "Reenviar correo"
 }

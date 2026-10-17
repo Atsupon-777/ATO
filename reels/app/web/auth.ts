@@ -7,6 +7,7 @@ import {
   createUserWithEmailAndPassword,
   getAuth,
   onIdTokenChanged,
+  sendEmailVerification,
   sendPasswordResetEmail,
   signInWithEmailAndPassword,
   signInWithPopup,
@@ -15,7 +16,7 @@ import {
 } from 'firebase/auth';
 import { lang } from './i18n';
 
-export type AuthState = { ready: boolean; enabled: boolean; email?: string | null; signedIn: boolean };
+export type AuthState = { ready: boolean; enabled: boolean; email?: string | null; signedIn: boolean; verified?: boolean };
 export type AppConfig = { firebase: { apiKey: string; authDomain: string; projectId: string } | null; billing: boolean; topupTokens: number; freeTokens: number; planTokens: Record<string, number> };
 
 let state: AuthState = { ready: false, enabled: false, signedIn: false };
@@ -49,7 +50,7 @@ export async function startAuth() {
   onIdTokenChanged(auth, async (u) => {
     token = u ? await u.getIdToken() : null;
     setCookie(token);
-    emit({ ready: true, enabled: true, signedIn: Boolean(u), email: u?.email });
+    emit({ ready: true, enabled: true, signedIn: Boolean(u), email: u?.email, verified: Boolean(u?.emailVerified) });
   });
 }
 
@@ -65,6 +66,19 @@ export const useAuth = () => {
 
 export const signInGoogle = () => signInWithPopup(auth!, new GoogleAuthProvider());
 export const signInEmail = (email: string, password: string) => signInWithEmailAndPassword(auth!, email, password);
-export const signUpEmail = (email: string, password: string) => createUserWithEmailAndPassword(auth!, email, password);
+export const signUpEmail = async (email: string, password: string) => {
+  const { user } = await createUserWithEmailAndPassword(auth!, email, password);
+  await sendEmailVerification(user);
+};
+export const resendVerification = () => sendEmailVerification(auth!.currentUser!);
+/** After the user clicked the link: reload the account and get a token that says the email is verified. */
+export async function checkVerified() {
+  const u = auth!.currentUser!;
+  await u.reload();
+  token = await u.getIdToken(true);
+  setCookie(token);
+  emit({ verified: u.emailVerified });
+  return u.emailVerified;
+}
 export const resetPassword = (email: string) => sendPasswordResetEmail(auth!, email);
 export const signOut = () => (auth ? fbSignOut(auth) : Promise.resolve());

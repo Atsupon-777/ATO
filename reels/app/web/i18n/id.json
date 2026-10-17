@@ -487,5 +487,11 @@
  "モーションデザイン": "Motion design",
  "本物の3D、マスクから立ち上がる文字、立体ブロック、線画アイコン、イラスト図解。制作会社のモーショングラフィックス風。": "3D asli, teks yang muncul dari mask, balok isometrik, ikon garis, dan papan ilustrasi. Motion graphics ala agensi.",
  "今月のお支払いができませんでした。カードを更新してください。": "Pembayaran bulan ini gagal. Silakan perbarui kartu Anda.",
- "お支払い方法を更新": "Perbarui metode pembayaran"
+ "お支払い方法を更新": "Perbarui metode pembayaran",
+ "メールアドレスを確認してください": "Konfirmasi email Anda",
+ "{0} に確認メールを送りました。メールのリンクを押してから、下のボタンを押してください。": "Kami telah mengirim email konfirmasi ke {0}. Klik tautan di email tersebut, lalu tekan tombol di bawah.",
+ "確認しました": "Sudah dikonfirmasi",
+ "まだ確認できていません。メールのリンクを押してください。": "Belum terkonfirmasi. Silakan klik tautan di email.",
+ "確認メールをもう一度送りました。": "Email konfirmasi telah dikirim ulang.",
+ "メールを再送する": "Kirim ulang email"
 }
