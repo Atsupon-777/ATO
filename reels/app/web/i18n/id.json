@@ -426,5 +426,7 @@
  "案{0}": "Versi {0}",
  "ほかの案": "Versi lain",
  "AIに作り直してもらう": "Minta AI membuat yang baru",
- "おまかせ": "Otomatis"
+ "おまかせ": "Otomatis",
+ "編集しない、動画編集アプリ。": "Aplikasi edit video yang mengedit untuk Anda.",
+ "素材を入れるだけで、AIが編集まで仕上げます。あなたは出てきた案から選ぶだけ。": "Masukkan materi Anda dan AI menyelesaikan editannya. Anda tinggal memilih dari hasilnya."
 }

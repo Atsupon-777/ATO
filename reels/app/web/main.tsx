@@ -1763,8 +1763,8 @@ const Home: React.FC<{ go: (h: string) => void; initialGroup?: string }> = ({ go
   return (
     <>
       <div className="hero">
-        <h1>{tr("何を作りますか？")}</h1>
-        <p className="sub">{tr("テンプレートかエフェクトを選んで素材を入れるだけ。AIが構成・コピー・演出まで作ります。")}</p>
+        <h1>{tr("編集しない、動画編集アプリ。")}</h1>
+        <p className="sub">{tr("素材を入れるだけで、AIが編集まで仕上げます。あなたは出てきた案から選ぶだけ。")}</p>
       </div>
       {group === 'all' && catalog.some((c) => c.group === 'mix' || c.group === 'base') ? (
         <Carousel items={catalog.filter((c) => c.group === 'mix' || c.group === 'base')} onOpen={setOpen} />

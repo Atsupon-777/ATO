@@ -426,5 +426,7 @@
  "案{0}": "Version {0}",
  "ほかの案": "More versions",
  "AIに作り直してもらう": "Ask the AI for new ones",
- "おまかせ": "Auto"
+ "おまかせ": "Auto",
+ "編集しない、動画編集アプリ。": "The video editor that does the editing for you.",
+ "素材を入れるだけで、AIが編集まで仕上げます。あなたは出てきた案から選ぶだけ。": "Add your footage and the AI finishes the edit. You just pick from what it makes."
 }

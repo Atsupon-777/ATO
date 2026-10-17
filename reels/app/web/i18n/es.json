@@ -426,5 +426,7 @@
  "案{0}": "Versión {0}",
  "ほかの案": "Más versiones",
  "AIに作り直してもらう": "La IA crea otras nuevas",
- "おまかせ": "Automático"
+ "おまかせ": "Automático",
+ "編集しない、動画編集アプリ。": "La app de edición de vídeo que edita por ti.",
+ "素材を入れるだけで、AIが編集まで仕上げます。あなたは出てきた案から選ぶだけ。": "Sube tu material y la IA termina la edición. Tú solo eliges entre lo que crea."
 }
