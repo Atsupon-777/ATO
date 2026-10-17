@@ -24,6 +24,8 @@ export type Account = {
   extra: number;
   customerId?: string;
   subscriptionId?: string;
+  /** The last renewal payment failed and Stripe is retrying it. */
+  pastDue?: boolean;
   /** Stripe events already applied, so a retried webhook is not counted twice. */
   events?: string[];
 };

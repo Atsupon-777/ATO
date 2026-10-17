@@ -3,10 +3,16 @@
 //   STRIPE_WEBHOOK_SECRET    whsec_... (endpoint: /api/stripe/webhook)
 //   STRIPE_PRICE_STARTER, STRIPE_PRICE_STANDARD, STRIPE_PRICE_PRO   monthly prices
 //   STRIPE_PRICE_TOPUP       one-off price for TOPUP_TOKENS tokens
+//   STRIPE_TAX=1             turn on Stripe Tax (prices are tax-inclusive either way)
 import { createHmac, timingSafeEqual } from 'node:crypto';
 import { PLAN_TOKENS, TOPUP_TOKENS, findByCustomer, update, type Account, type PlanId } from './accounts.ts';
 
+// A restricted key (rk_...) with only Checkout, Customer portal, Customers and Subscriptions is enough.
 const key = process.env.STRIPE_SECRET_KEY || '';
+/** Pinned so a Dashboard upgrade never changes what the webhook receives. */
+export const STRIPE_VERSION = '2026-08-26.dahlia';
+/** Tags our Checkout sessions in the Dashboard. */
+const CHECKOUT_LABEL = 'reels-studio-checkout-qkvhzmwt';
 export const billingEnabled = Boolean(key);
 
 const PRICES: Record<Exclude<PlanId, 'free'> | 'topup', string> = {
@@ -30,7 +36,7 @@ const form = (o: Record<string, unknown>, prefix = ''): string[] =>
 async function stripe<T = any>(pathname: string, body: Record<string, unknown>): Promise<T> {
   const r = await fetch(`https://api.stripe.com/v1/${pathname}`, {
     method: 'POST',
-    headers: { Authorization: `Bearer ${key}`, 'Content-Type': 'application/x-www-form-urlencoded' },
+    headers: { Authorization: `Bearer ${key}`, 'Content-Type': 'application/x-www-form-urlencoded', 'Stripe-Version': STRIPE_VERSION },
     body: form(body).join('&'),
   });
   const j = await r.json();
@@ -59,6 +65,9 @@ export async function checkout(a: Account, what: Purchase, origin: string) {
     subscription_data: sub ? { metadata: { uid: a.uid } } : undefined,
     allow_promotion_codes: 'true',
     locale: 'auto',
+    integration_identifier: CHECKOUT_LABEL,
+    // Only after Stripe Tax has an active Japan registration; until then it would silently collect nothing.
+    automatic_tax: process.env.STRIPE_TAX === '1' ? { enabled: 'true' } : undefined,
   });
   return String(s.url);
 }
@@ -102,10 +111,17 @@ export async function webhook(raw: Buffer, signature: string | undefined) {
     if (o.customer && typeof o.customer === 'string') a.customerId = o.customer;
     switch (ev.type) {
       case 'checkout.session.completed':
+      // Konbini and bank transfer finish later: completed arrives unpaid, async_payment_succeeded once the money is in.
+      case 'checkout.session.async_payment_succeeded':
         if (o.mode === 'subscription' && o.subscription) a.subscriptionId = String(o.subscription);
         if (o.mode === 'payment' && o.metadata?.kind === 'topup' && o.payment_status === 'paid') a.extra += TOPUP_TOKENS;
         break;
+      case 'invoice.payment_failed':
+        // Stripe retries the card; the account page asks the customer to update it meanwhile.
+        if (o.subscription || o.parent?.subscription_details) a.pastDue = true;
+        break;
       case 'invoice.paid': {
+        a.pastDue = undefined;
         // A paid subscription invoice (first month, renewal or plan change) refills the monthly allowance.
         const prices: string[] = (o.lines?.data ?? []).map((l: any) => l.price?.id ?? l.pricing?.price_details?.price).filter(Boolean);
         const plan = prices.map(planOfPrice).find(Boolean);

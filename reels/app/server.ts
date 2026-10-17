@@ -379,7 +379,7 @@ const server = http.createServer(async (req, res) => {
 
     if (p === '/api/me') {
       const a = await getAccount(user!.uid, user!.email);
-      return json(res, 200, { email: a.email, plan: a.plan, tokens: a.tokens, extra: a.extra, balance: balance(a), billing: billingEnabled, subscribed: Boolean(a.subscriptionId), auth: authEnabled });
+      return json(res, 200, { email: a.email, plan: a.plan, tokens: a.tokens, extra: a.extra, balance: balance(a), billing: billingEnabled, subscribed: Boolean(a.subscriptionId), pastDue: Boolean(a.pastDue), auth: authEnabled });
     }
     if (p === '/api/billing/checkout' && req.method === 'POST') {
       const { what } = await readBody(req);

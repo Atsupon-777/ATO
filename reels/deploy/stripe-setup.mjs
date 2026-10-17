@@ -15,7 +15,7 @@ const form = (o, prefix = '') =>
 const post = async (path, body) => {
   const r = await fetch(`https://api.stripe.com/v1/${path}`, {
     method: 'POST',
-    headers: { Authorization: `Bearer ${key}`, 'Content-Type': 'application/x-www-form-urlencoded' },
+    headers: { Authorization: `Bearer ${key}`, 'Content-Type': 'application/x-www-form-urlencoded', 'Stripe-Version': '2026-08-26.dahlia' },
     body: form(body).join('&'),
   });
   const j = await r.json();
@@ -44,7 +44,18 @@ for (const it of items) {
 }
 const hook = await post('webhook_endpoints', {
   url: `${site.replace(/\/$/, '')}/api/stripe/webhook`,
-  enabled_events: { 0: 'checkout.session.completed', 1: 'invoice.paid', 2: 'customer.subscription.updated', 3: 'customer.subscription.deleted' },
+  api_version: '2026-08-26.dahlia',
+  enabled_events: Object.fromEntries(
+    [
+      'checkout.session.completed',
+      'checkout.session.async_payment_succeeded',
+      'checkout.session.async_payment_failed',
+      'invoice.paid',
+      'invoice.payment_failed',
+      'customer.subscription.updated',
+      'customer.subscription.deleted',
+    ].entries(),
+  ),
 });
 console.log(out.join('\n'));
 console.log(`\nSTRIPE_WEBHOOK_SECRET (put in Secret Manager): ${hook.secret}`);

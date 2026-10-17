@@ -1977,7 +1977,7 @@ const FAQ = [
 
 const jobTokens = (j: Job) => j.tokens ?? (j.template === 'ProductShine' ? (j.props?.clip ? 12 : 5) : j.template === 'EffectsReel' || j.template === 'FivePass' ? 5 : 2);
 
-type Me = { email?: string; plan: 'free' | 'starter' | 'standard' | 'pro'; tokens: number; extra: number; balance: number; billing: boolean; subscribed: boolean; auth: boolean };
+type Me = { email?: string; plan: 'free' | 'starter' | 'standard' | 'pro'; tokens: number; extra: number; balance: number; billing: boolean; subscribed: boolean; pastDue?: boolean; auth: boolean };
 const PLAN_NAMES: Record<Me['plan'], string> = { free: tr("無料"), starter: tr("スターター"), standard: tr("スタンダード"), pro: tr("プロ") };
 
 const Account: React.FC<{ go: (h: string) => void }> = ({ go }) => {
@@ -2021,6 +2021,14 @@ const Account: React.FC<{ go: (h: string) => void }> = ({ go }) => {
         ) : null}
       </div>
       {paid ? <div className="okmsg">{tr("お支払いありがとうございます。トークンは数秒で反映されます。")}</div> : null}
+      {me?.pastDue ? (
+        <div className="err">
+          {tr("今月のお支払いができませんでした。カードを更新してください。")}{' '}
+          <button className="linkbtn" disabled={!!busy} onClick={() => open('portal')}>
+            {tr("お支払い方法を更新")}
+          </button>
+        </div>
+      ) : null}
       <div className="stats3">
         <div>
           <b><CountUp to={me ? me.balance : made.length} /></b>
