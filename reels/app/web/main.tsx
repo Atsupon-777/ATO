@@ -102,6 +102,13 @@ const EFFECT_NAMES: Record<(typeof effectIds)[number], string> = {
   notifications: tr("20 通知の積み重ね"),
   tiles: tr("21 チェック付きタイル"),
   sourceCard: tr("22 出典カード"),
+  object3d: tr("23 3Dオブジェクト"),
+  particles3d: tr("24 3Dパーティクル"),
+  textReveal: tr("25 テキストリビール"),
+  uiLayers: tr("26 UIレイヤー"),
+  isoGrid: tr("27 アイソメ・ブロック"),
+  lineIcons: tr("28 線画アイコン"),
+  flatBoard: tr("29 イラスト図解"),
 };
 
 type Job = {
@@ -1630,7 +1637,7 @@ const Carousel: React.FC<{ items: CatalogItem[]; onOpen: (it: CatalogItem) => vo
 
 // ---------- catalog: base templates + each effect as its own pattern ----------
 
-type Group = 'base' | 'mix' | 'behind' | 'camera' | 'ui' | 'craft';
+type Group = 'base' | 'mix' | 'behind' | 'camera' | 'ui' | 'craft' | 'motion';
 const GROUPS: { id: Group; name: string; note: string }[] = [
   { id: 'base', name: tr("テンプレート"), note: tr("商品・サービス・トーク") },
   { id: 'mix', name: tr("ミックス"), note: tr("エフェクトを掛け合わせた完成形") },
@@ -1638,6 +1645,7 @@ const GROUPS: { id: Group; name: string; note: string }[] = [
   { id: 'camera', name: tr("カメラワーク"), note: tr("単体エフェクト（ミックスの部品）") },
   { id: 'ui', name: tr("画面・UI"), note: tr("単体エフェクト（ミックスの部品）") },
   { id: 'craft', name: tr("手描き・コラージュ"), note: tr("単体エフェクト（ミックスの部品）") },
+  { id: 'motion', name: tr("3D・モーション"), note: tr("単体エフェクト（ミックスの部品）") },
 ];
 
 const EFFECT_GROUP: Record<EffectId, Group> = {
@@ -1645,6 +1653,7 @@ const EFFECT_GROUP: Record<EffectId, Group> = {
   frameBreak: 'camera', digitalZoom: 'camera', zoomThrough: 'camera', pullBack: 'camera', vertigo: 'camera',
   uiWorld: 'ui', phoneMockup: 'ui', checklist: 'ui', greenScreen: 'ui', infographic: 'ui', notifications: 'ui', tiles: 'ui', sourceCard: 'ui',
   paperCut: 'craft', doodleBoil: 'craft',
+  object3d: 'motion', particles3d: 'motion', textReveal: 'motion', uiLayers: 'motion', isoGrid: 'motion', lineIcons: 'motion', flatBoard: 'motion',
 };
 
 const EFFECT_DESC: Record<EffectId, string> = {
@@ -1670,6 +1679,13 @@ const EFFECT_DESC: Record<EffectId, string> = {
   notifications: tr("スマホの通知が1枚ずつ積み重なり、キーワードが大きく出る"),
   tiles: tr("アイコンのタイルが並び、1つずつチェックが付く"),
   sourceCard: tr("「出典」カードに名前が出て、数字がカウントアップ"),
+  object3d: tr("光沢のある3Dの物体が光を受けて回り、下にキーワード"),
+  particles3d: tr("無数の粒子が銀河のように渦を巻き、カメラが中心へ飛び込む"),
+  textReveal: tr("文字が1行ずつマスクから立ち上がる、制作会社風の演出"),
+  uiLayers: tr("サイトの画面が奥行きを持って重なり、1枚の中で人物が話す"),
+  isoGrid: tr("立体ブロックが波打ち、文字がタイプされていく"),
+  lineIcons: tr("線画のアイコンが描かれ、色が入って弾む"),
+  flatBoard: tr("番号付きの柱が立ち上がるフラットなイラスト図解"),
 };
 
 type CatalogItem = { key: string; template: TemplateId; effect?: EffectId; mix?: string; name: string; desc: string; group: Group };

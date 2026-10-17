@@ -468,5 +468,22 @@
  "このメールアドレスはすでに登録されています。ログインしてください。": "Cet e-mail est déjà enregistré. Connectez-vous.",
  "新規登録": "Créer un compte",
  "ログイン": "Se connecter",
- "パスワードは6文字以上にしてください。": "Le mot de passe doit contenir au moins 6 caractères."
+ "パスワードは6文字以上にしてください。": "Le mot de passe doit contenir au moins 6 caractères.",
+ "23 3Dオブジェクト": "23 Objet 3D",
+ "24 3Dパーティクル": "24 Particules 3D",
+ "25 テキストリビール": "25 Révélation de texte",
+ "26 UIレイヤー": "26 Couches d'interface",
+ "27 アイソメ・ブロック": "27 Blocs isométriques",
+ "28 線画アイコン": "28 Icônes au trait",
+ "29 イラスト図解": "29 Tableau illustré",
+ "3D・モーション": "3D et motion",
+ "光沢のある3Dの物体が光を受けて回り、下にキーワード": "Un objet 3D brillant tourne dans la lumière, le mot-clé dessous",
+ "無数の粒子が銀河のように渦を巻き、カメラが中心へ飛び込む": "Des milliers de particules tourbillonnent comme une galaxie, la caméra plonge au centre",
+ "文字が1行ずつマスクから立ち上がる、制作会社風の演出": "Le texte surgit des masques ligne par ligne, style agence",
+ "サイトの画面が奥行きを持って重なり、1枚の中で人物が話す": "Des écrans de sites s'empilent en profondeur, l'orateur dans l'un d'eux",
+ "立体ブロックが波打ち、文字がタイプされていく": "Des blocs 3D ondulent pendant que le texte s'écrit",
+ "線画のアイコンが描かれ、色が入って弾む": "Des icônes au trait se dessinent, se colorent et rebondissent",
+ "番号付きの柱が立ち上がるフラットなイラスト図解": "Une illustration flat où des colonnes numérotées s'élèvent",
+ "モーションデザイン": "Motion design",
+ "本物の3D、マスクから立ち上がる文字、立体ブロック、線画アイコン、イラスト図解。制作会社のモーショングラフィックス風。": "Vraie 3D, texte qui surgit des masques, blocs isométriques, icônes au trait et tableaux illustrés. Motion design façon agence."
 }

@@ -7,6 +7,8 @@ import { Checklist, GreenScreen, PhoneMockup, UiWorld } from './Ui';
 import { DoodleBoil, PaperCut } from './Craft';
 import { Infographic, KineticType } from './Motion';
 import { Notifications, Source, Tiles } from './Cards';
+import { Object3D, Particles3D } from './Three';
+import { FlatBoard, IsoGrid, LineIcons, TextReveal, UiLayers } from './Studio';
 
 /** Effect id → component. Order and names follow notes/video-effects.md (01–17, then additions). */
 export const effects: Record<EffectId, React.FC<EffectProps>> = {
@@ -32,6 +34,13 @@ export const effects: Record<EffectId, React.FC<EffectProps>> = {
   notifications: Notifications,
   tiles: Tiles,
   sourceCard: Source,
+  object3d: Object3D,
+  particles3d: Particles3D,
+  textReveal: TextReveal,
+  uiLayers: UiLayers,
+  isoGrid: IsoGrid,
+  lineIcons: LineIcons,
+  flatBoard: FlatBoard,
 };
 
 /** Whether an effect only reads correctly with a person matte (it still renders without one). */
@@ -58,4 +67,11 @@ export const needsMatte: Record<EffectId, boolean> = {
   notifications: false,
   tiles: false,
   sourceCard: false,
+  object3d: false,
+  particles3d: false,
+  textReveal: false,
+  uiLayers: false,
+  isoGrid: false,
+  lineIcons: false,
+  flatBoard: false,
 };

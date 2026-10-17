@@ -36,6 +36,13 @@ export const EFFECT_GUIDE: Record<(typeof effectIds)[number], string> = {
   notifications: 'phone notification cards stack up at the top, then the key word appears big; items = 2-4 short notification lines (may start with an emoji), text = 1 key word. Good for overthinking, mental noise, too many tasks.',
   tiles: 'rounded icon tiles in a row get ticked one by one; items = 2-4 short examples the speaker lists, each starting with a fitting emoji ("🚶 Walk"), text = optional small label. Good when the speaker gives concrete examples.',
   sourceCard: 'a SOURCE card shows the institution or study the speaker names and counts their number up; text = the name exactly as said (never invent one), values = [the number], items = [unit like "x" or "%", optional short detail]. Only when a source is actually named.',
+  object3d: 'real 3D: a glossy object turns in the light above the speaker with small spheres orbiting it; text = 1-2 word keyword set big under it. Good for introducing a product, a concept or "the new way".',
+  particles3d: 'real 3D: thousands of particles swirl as a galaxy while the camera flies into its core, the key word glows in the middle; text = 1-2 words. Good for a big idea, a vision, scale, "the future".',
+  textReveal: 'premium text reveal: the line rises out of masks row by row, letter by letter (web-agency style), the first emphasis word pops in an accent pill; text = the line (max 6 words, else the caption is used), items = [optional small kicker above]. Good for a hook or a statement.',
+  uiLayers: 'website windows slide in and stack in perspective on a design board: a landing page with the headline, a dark hero with a huge word, the speaker inside a third window; text = 1-4 word headline, items = up to 3 nav labels. Good for talking about a website, a brand or a design.',
+  isoGrid: 'isometric voxel wave: a grid of cubes rises in a ripple and breathes while the text types on in big monospace letters; text = 1-3 words. Full-frame graphic with the speaker in a small circle. Good for tech, AI, building something.',
+  lineIcons: 'line icons draw themselves stroke by stroke and fill with colour, each with a label; text = title, items = 2-4 short labels (steps, benefits, features). Full-frame graphic with the speaker in a small circle. Good for a list of points.',
+  flatBoard: 'flat illustration board: four numbered coloured columns rise with people rows, hand-drawn plant, glasses and pencil, label underneath; text = 1-2 word label, items = up to 4 short column titles. Full-frame graphic with the speaker in a small circle. Good for a process, a team, a framework or steps.',
 };
 
 

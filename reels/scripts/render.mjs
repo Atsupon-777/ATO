@@ -25,6 +25,8 @@ await renderMedia({
   crf: 18,
   outputLocation: out,
   browserExecutable,
+  // the 3D scenes (src/effects/Three.tsx) need WebGL in headless Chrome
+  chromiumOptions: { gl: 'angle' },
   onProgress: ({ progress }) => process.stdout.write(`\r${id} ${(progress * 100).toFixed(0)}%`),
 });
 if (process.env.LOUDNORM) {

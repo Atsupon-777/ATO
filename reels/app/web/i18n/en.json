@@ -468,5 +468,22 @@
  "このメールアドレスはすでに登録されています。ログインしてください。": "This email is already registered. Please log in.",
  "新規登録": "Sign up",
  "ログイン": "Log in",
- "パスワードは6文字以上にしてください。": "Use at least 6 characters for the password."
+ "パスワードは6文字以上にしてください。": "Use at least 6 characters for the password.",
+ "23 3Dオブジェクト": "23 3D object",
+ "24 3Dパーティクル": "24 3D particles",
+ "25 テキストリビール": "25 Text reveal",
+ "26 UIレイヤー": "26 UI layers",
+ "27 アイソメ・ブロック": "27 Isometric blocks",
+ "28 線画アイコン": "28 Line icons",
+ "29 イラスト図解": "29 Illustrated board",
+ "3D・モーション": "3D & motion",
+ "光沢のある3Dの物体が光を受けて回り、下にキーワード": "A glossy 3D object turns in the light, with the keyword below",
+ "無数の粒子が銀河のように渦を巻き、カメラが中心へ飛び込む": "Thousands of particles swirl like a galaxy as the camera flies into the core",
+ "文字が1行ずつマスクから立ち上がる、制作会社風の演出": "Text rises out of masks line by line, agency style",
+ "サイトの画面が奥行きを持って重なり、1枚の中で人物が話す": "Website screens stack in depth, with the speaker inside one",
+ "立体ブロックが波打ち、文字がタイプされていく": "3D blocks ripple while the text types on",
+ "線画のアイコンが描かれ、色が入って弾む": "Line icons draw themselves, fill with colour and bounce",
+ "番号付きの柱が立ち上がるフラットなイラスト図解": "A flat illustration where numbered columns rise",
+ "モーションデザイン": "Motion design",
+ "本物の3D、マスクから立ち上がる文字、立体ブロック、線画アイコン、イラスト図解。制作会社のモーショングラフィックス風。": "Real 3D, text rising from masks, isometric blocks, line icons and illustrated boards. Agency-style motion graphics."
 }

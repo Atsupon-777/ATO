@@ -468,5 +468,22 @@
  "このメールアドレスはすでに登録されています。ログインしてください。": "Email ini sudah terdaftar. Silakan masuk.",
  "新規登録": "Daftar",
  "ログイン": "Masuk",
- "パスワードは6文字以上にしてください。": "Kata sandi minimal 6 karakter."
+ "パスワードは6文字以上にしてください。": "Kata sandi minimal 6 karakter.",
+ "23 3Dオブジェクト": "23 Objek 3D",
+ "24 3Dパーティクル": "24 Partikel 3D",
+ "25 テキストリビール": "25 Teks muncul",
+ "26 UIレイヤー": "26 Lapisan UI",
+ "27 アイソメ・ブロック": "27 Balok isometrik",
+ "28 線画アイコン": "28 Ikon garis",
+ "29 イラスト図解": "29 Papan ilustrasi",
+ "3D・モーション": "3D & gerak",
+ "光沢のある3Dの物体が光を受けて回り、下にキーワード": "Objek 3D mengilap berputar diterpa cahaya, kata kunci di bawahnya",
+ "無数の粒子が銀河のように渦を巻き、カメラが中心へ飛び込む": "Ribuan partikel berputar seperti galaksi, kamera terbang ke pusatnya",
+ "文字が1行ずつマスクから立ち上がる、制作会社風の演出": "Teks muncul dari mask baris demi baris, gaya agensi",
+ "サイトの画面が奥行きを持って重なり、1枚の中で人物が話す": "Layar situs bertumpuk dengan kedalaman, pembicara di salah satunya",
+ "立体ブロックが波打ち、文字がタイプされていく": "Balok 3D bergelombang sambil teks diketik",
+ "線画のアイコンが描かれ、色が入って弾む": "Ikon garis tergambar, terisi warna, lalu memantul",
+ "番号付きの柱が立ち上がるフラットなイラスト図解": "Ilustrasi datar dengan kolom bernomor yang naik",
+ "モーションデザイン": "Motion design",
+ "本物の3D、マスクから立ち上がる文字、立体ブロック、線画アイコン、イラスト図解。制作会社のモーショングラフィックス風。": "3D asli, teks yang muncul dari mask, balok isometrik, ikon garis, dan papan ilustrasi. Motion graphics ala agensi."
 }

@@ -468,5 +468,22 @@
  "このメールアドレスはすでに登録されています。ログインしてください。": "Este correo ya está registrado. Inicia sesión.",
  "新規登録": "Registrarse",
  "ログイン": "Iniciar sesión",
- "パスワードは6文字以上にしてください。": "La contraseña debe tener al menos 6 caracteres."
+ "パスワードは6文字以上にしてください。": "La contraseña debe tener al menos 6 caracteres.",
+ "23 3Dオブジェクト": "23 Objeto 3D",
+ "24 3Dパーティクル": "24 Partículas 3D",
+ "25 テキストリビール": "25 Revelado de texto",
+ "26 UIレイヤー": "26 Capas de UI",
+ "27 アイソメ・ブロック": "27 Bloques isométricos",
+ "28 線画アイコン": "28 Iconos de línea",
+ "29 イラスト図解": "29 Tablero ilustrado",
+ "3D・モーション": "3D y movimiento",
+ "光沢のある3Dの物体が光を受けて回り、下にキーワード": "Un objeto 3D brillante gira bajo la luz, con la palabra clave debajo",
+ "無数の粒子が銀河のように渦を巻き、カメラが中心へ飛び込む": "Miles de partículas giran como una galaxia y la cámara vuela hacia el centro",
+ "文字が1行ずつマスクから立ち上がる、制作会社風の演出": "El texto surge de máscaras línea a línea, estilo agencia",
+ "サイトの画面が奥行きを持って重なり、1枚の中で人物が話す": "Pantallas de sitios web se apilan en profundidad, con la persona dentro de una",
+ "立体ブロックが波打ち、文字がタイプされていく": "Bloques 3D ondulan mientras se escribe el texto",
+ "線画のアイコンが描かれ、色が入って弾む": "Los iconos de línea se dibujan, se colorean y rebotan",
+ "番号付きの柱が立ち上がるフラットなイラスト図解": "Una ilustración plana donde se alzan columnas numeradas",
+ "モーションデザイン": "Motion design",
+ "本物の3D、マスクから立ち上がる文字、立体ブロック、線画アイコン、イラスト図解。制作会社のモーショングラフィックス風。": "3D real, texto que surge de máscaras, bloques isométricos, iconos de línea y tableros ilustrados. Motion graphics estilo agencia."
 }

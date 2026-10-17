@@ -135,6 +135,13 @@ export const effectIds = [
   'notifications',
   'tiles',
   'sourceCard',
+  'object3d',
+  'particles3d',
+  'textReveal',
+  'uiLayers',
+  'isoGrid',
+  'lineIcons',
+  'flatBoard',
 ] as const;
 
 /** Per-beat look on top of the scene effect: one pick per axis plus any accents (src/effects/axes.ts). */

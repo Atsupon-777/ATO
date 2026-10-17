@@ -39,6 +39,8 @@ export async function renderTemplate(
     crf: 18,
     outputLocation: out,
     browserExecutable,
+    // the 3D scenes (src/effects/Three.tsx) need WebGL in headless Chrome
+    chromiumOptions: { gl: 'angle' },
     onProgress: ({ progress }) => {
       if (onProgress) onProgress(progress);
       else process.stdout.write(`\r  render ${id} ${(progress * 100).toFixed(0)}%`);

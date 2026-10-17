@@ -12,6 +12,6 @@ for (const j of jobs) {
   const inputProps = JSON.parse(await readFile(j.props, 'utf8'));
   const composition = await selectComposition({ serveUrl, id: j.id, inputProps, browserExecutable });
   const t = Date.now();
-  await renderMedia({ serveUrl, composition, inputProps, codec: 'h264', crf: 20, outputLocation: j.out, browserExecutable });
+  await renderMedia({ serveUrl, composition, inputProps, codec: 'h264', crf: 20, outputLocation: j.out, browserExecutable, chromiumOptions: { gl: 'angle' } });
   console.log(`${j.out} in ${((Date.now() - t) / 1000).toFixed(0)}s`);
 }
