@@ -32,6 +32,14 @@ for s in segs:
     d = round((s['end'] - s['start']) * 30) / 30
     enc(fx17, s['effect'], ss=round(at, 3), t=d)
     at += d
+# The motion-design scenes (23-29) are cut from the motion mix sample, which renders props/motion-demo.json.
+motion = src / 'effects-mix-motion-black.mp4'
+if motion.exists():
+    at = 0.0
+    for s in json.load(open(root / 'props/motion-demo.json'))['segments']:
+        d = round((s['end'] - s['start']) * 30) / 30
+        enc(motion, s['effect'], ss=round(at, 3), t=d)
+        at += d
 # Mix samples from the effects thread: effects-mix-<id>.mp4 → mix-<id>
 mixes = {}
 for f in sorted(src.glob('effects-mix-*.mp4')):
