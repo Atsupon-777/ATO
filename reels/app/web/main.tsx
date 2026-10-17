@@ -751,7 +751,7 @@ const FivePassPanel: React.FC<{ job: Job; p: FivePassProps; update: PanelProps<F
               key={i}
               className="word"
               value={w.text}
-              size={Math.max(2, [...w.text].length + 1)}
+              style={{ width: `${[...w.text].reduce((n, c) => n + (c.charCodeAt(0) > 0x2e80 ? 1 : 0.6), 0) + 1.2}em` }}
               title={`${w.start.toFixed(1)}s`}
               onChange={(e) => {
                 const v = e.target.value;
