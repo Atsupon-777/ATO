@@ -8,6 +8,9 @@ const FAMILIES = [
   'Shippori+Mincho:wght@500;800',
   'Cormorant+Garamond:ital,wght@0,500;0,600;1,500;1,600',
   'Plus+Jakarta+Sans:wght@600;800',
+  // Chinese and Tamil captions/copy (the app and videos support ja, en, fr, id, zh, es, ta).
+  'Noto+Sans+SC:wght@400;700;900',
+  'Noto+Sans+Tamil:wght@400;700;900',
 ];
 const UA = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0 Safari/537.36';
 const get = (url, out) => execFileSync('curl', ['-sSfL', '-A', UA, ...(out ? ['-o', out] : []), url], { maxBuffer: 1 << 26 });

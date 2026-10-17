@@ -9,7 +9,7 @@ const point = z.object({ x: z.number().min(0).max(1), y: z.number().min(0).max(1
 export const productShineSchema = z.object({
   brand: z.string().max(16),
   productName: z.string().max(24),
-  tagline: z.string().max(22),
+  tagline: z.string().max(40),
   /** The original photo, used for macro detail shots. */
   photo: z.string(),
   /** Transparent PNG of the product, trimmed to its bounds. */
@@ -23,11 +23,11 @@ export const productShineSchema = z.object({
       point.extend({
         zoom: z.number().min(1).max(4),
         kicker: z.string().max(24),
-        title: z.string().max(14),
+        title: z.string().max(26),
       }),
     )
     .length(3),
-  cta: z.string().max(16),
+  cta: z.string().max(30),
   handle: z.string().max(30),
   bpm: z.number().min(80).max(160),
   music: z.string().optional(),
@@ -45,23 +45,23 @@ export const saasPromoSchema = z.object({
   logo: z.string().optional(),
   url: z.string().max(40),
   /** Three short hook lines; the word in `hookEmphasis` gets the accent swipe. */
-  hook: z.array(z.string().max(12)).length(3),
-  hookEmphasis: z.string().max(10),
+  hook: z.array(z.string().max(22)).length(3),
+  hookEmphasis: z.string().max(18),
   desktop: z.string(),
   mobile: z.string().optional(),
-  chips: z.array(z.string().max(14)).max(4),
+  chips: z.array(z.string().max(26)).max(4),
   features: z
     .array(
       z.object({
         kicker: z.string().max(16),
-        title: z.string().max(16),
+        title: z.string().max(29),
         device: z.enum(['desktop', 'mobile']),
         focus,
       }),
     )
     .length(3),
-  stats: z.array(z.object({ value: z.number(), suffix: z.string().max(6), label: z.string().max(14) })).length(3),
-  cta: z.string().max(14),
+  stats: z.array(z.object({ value: z.number(), suffix: z.string().max(11), label: z.string().max(26) })).length(3),
+  cta: z.string().max(26),
   bpm: z.number().min(90).max(160),
   music: z.string().optional(),
   palette: z.object({ bg: zColor(), ink: zColor(), accent: zColor(), accent2: zColor(), panel: zColor() }),
@@ -103,7 +103,7 @@ export const talkCaptionsSchema = z.object({
     )
     .default([]),
   emphasis: z.array(z.string()),
-  title: z.string().max(30).optional(),
+  title: z.string().max(54).optional(),
   titleY: z.number().min(0).max(1),
   accent: zColor(),
 });

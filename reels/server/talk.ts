@@ -7,6 +7,7 @@ import { fileURLToPath } from 'node:url';
 import { promisify } from 'node:util';
 import { z } from 'zod';
 import { talkCaptionsSchema, type TalkCaptionsProps } from '../src/schemas.ts';
+import { LANG_NAMES, fit, isCJK, type Lang } from '../src/lang.ts';
 import { askJson } from './gemini.ts';
 import { Usage } from './usage.ts';
 
@@ -74,8 +75,50 @@ export function snapWords(words: { text: string; start: number; end: number }[],
 
 const round = (n: number) => Math.round(n * 100) / 100;
 
+type Word = { text: string; start: number; end: number };
+
+/** Groups timed words into sentences (split on sentence punctuation or pauses over 0.7s). */
+export function sentences(words: Word[]) {
+  const out: Word[][] = [];
+  let cur: Word[] = [];
+  words.forEach((w, i) => {
+    cur.push(w);
+    const next = words[i + 1];
+    if (!next || /[。！？.!?]$/.test(w.text) || next.start - w.end > 0.7) (out.push(cur), (cur = []));
+  });
+  return out;
+}
+
+/** Splits a translated sentence into caption units: words for spaced scripts, 2-6 character chunks for CJK. */
+export function units(text: string, lang: Lang) {
+  if (!isCJK(lang)) return text.split(/\s+/).filter(Boolean);
+  return text.match(/[^、。，！？,.!?]{1,6}[、。，！？,.!?]*/g) ?? [text];
+}
+
+/** Spreads translated units over the sentence's time span in proportion to their length. */
+export function spread(sentence: Word[], parts: string[]): Word[] {
+  const start = sentence[0].start;
+  const end = sentence[sentence.length - 1].end;
+  const total = parts.reduce((a, p) => a + p.length + 1, 0);
+  let t = start;
+  return parts.map((text) => {
+    const d = ((end - start) * (text.length + 1)) / total;
+    const w = { text, start: round(t), end: round(t + d) };
+    t += d;
+    return w;
+  });
+}
+
+const translationSchema = z.object({
+  sentences: z.array(z.string()).describe('one translation per input sentence, same order and count'),
+  title: z.string(),
+  emphasis: z.array(z.string()).describe('2-5 key words copied exactly from the translations'),
+});
+
 export type TalkBrief = {
   video: string;
+  /** Caption language. When it differs from the spoken language, captions are translated (default: as spoken). */
+  lang?: Lang;
   jobId?: string;
   onStep?: (step: number, total: number, label: string) => void;
 };
@@ -119,11 +162,36 @@ export async function buildTalkProps(brief: TalkBrief) {
     ].join('\n'),
   });
   const t = transcriptSchema.parse(raw);
-  const words = snapWords(t.words, speech, info.duration);
+  let words = snapWords(t.words, speech, info.duration);
+  const lang: Lang | undefined = brief.lang && !t.language.toLowerCase().startsWith(brief.lang) ? brief.lang : undefined;
+  if (lang) {
+    // Translate sentence by sentence and keep each sentence on its original time span, so cuts and timing still match the speech.
+    brief.onStep?.(3, 3, 'translate');
+    const groups = sentences(words.filter((w) => !DEFAULT_FILLERS.includes(w.text.replace(/[、。,.!?！？]/g, ''))));
+    const tr = translationSchema.parse(
+      await askJson({
+        images: [],
+        jsonSchema: z.toJSONSchema(translationSchema),
+        usage,
+        step: 'translate',
+        temperature: 0.2,
+        prompt: [
+          `Translate these ${groups.length} spoken sentences into natural, casual ${LANG_NAMES[lang].english} subtitles. Keep each one short enough to read at speaking speed.`,
+          `Also translate the title (max ${fit(lang, 20)} characters) and pick 2-5 emphasis words from your translations.`,
+          `Title: ${t.title}`,
+          ...groups.map((g, i) => `${i + 1}. ${g.map((w) => w.text).join(isCJK(t.language.startsWith('zh') ? 'zh' : t.language.startsWith('ja') ? 'ja' : 'en') ? '' : ' ')}`),
+        ].join('\n'),
+      }),
+    );
+    words = groups.flatMap((g, i) => spread(g, units(tr.sentences[i] ?? '', lang)));
+    t.title = tr.title;
+    t.emphasis = tr.emphasis;
+    t.language = lang;
+  }
 
   brief.onStep?.(3, 3, 'build props');
   const vertical = info.height > info.width * 1.2;
-  const ja = t.language.startsWith('ja');
+  const ja = t.language.startsWith('ja') || t.language.startsWith('zh');
   const props: TalkCaptionsProps = talkCaptionsSchema.parse({
     video: `jobs/${jobId}/${path.basename(video)}`,
     sourceDuration: round(info.duration),
@@ -146,7 +214,7 @@ export async function buildTalkProps(brief: TalkBrief) {
     overrides: [],
     // Caption emphasis matches whole words, so map each suggestion to the word that contains it.
     emphasis: [...new Set(t.emphasis.map((e) => words.find((w) => w.text.includes(e))?.text.replace(/[、。！？,.!?]/g, '')).filter(Boolean) as string[])].slice(0, 5),
-    title: t.title.slice(0, 30),
+    title: t.title.slice(0, 54),
     titleY: 0.16,
     accent: '#FFD84D',
   });

@@ -6,6 +6,7 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { z } from 'zod';
 import { productShineSchema, type ProductShineProps } from '../src/schemas.ts';
+import { copyLanguage, fit, type Lang } from '../src/lang.ts';
 import { cutout } from './cutout.ts';
 import { askJson, editImage, imageToVideo } from './gemini.ts';
 import { renderTemplate } from './render.ts';
@@ -41,7 +42,7 @@ const KEEP_PRODUCT =
   'Keep the product exactly as it is in the reference photo: identical shape, proportions, colours, materials, logo, printed text and every detail. Do not redesign, add, remove or move any part of the product, and do not change any lettering.';
 
 const planSchema = z.object({
-  tagline: z.string().describe('Japanese tagline, poetic but concrete, max 18 characters'),
+  tagline: z.string().describe('tagline in the target language, poetic but concrete, max 18 characters'),
   details: z
     .array(
       z.object({
@@ -49,7 +50,7 @@ const planSchema = z.object({
         y: z.number().describe('0-1 vertical position of the detail in IMAGE 2'),
         zoom: z.number().describe('2.0-3.2, how close to frame the detail'),
         kicker: z.string().describe('short English label, 2-3 words'),
-        title: z.string().describe('Japanese headline for this detail, max 10 characters'),
+        title: z.string().describe('headline for this detail in the target language, max 10 characters'),
       }),
     )
     .describe('exactly 3 visually distinct close-up details, each a real visible feature'),
@@ -71,6 +72,8 @@ export type ProductBrief = {
   cta: string;
   handle: string;
   video: boolean;
+  /** Language of the on-screen copy (default ja). */
+  lang?: Lang;
   /** Cosmetics: generate an on-skin model shot and animate that instead of the product shot. */
   onSkin: boolean;
   jobId?: string;
@@ -81,6 +84,7 @@ export type ProductBrief = {
 };
 
 export async function buildProductReel(brief: ProductBrief) {
+  const lang = brief.lang ?? 'ja';
   const usage = new Usage();
   const step = (n: number, label: string) => {
     console.log(`${n}/5 ${label}`);
@@ -125,7 +129,7 @@ export async function buildProductReel(brief: ProductBrief) {
       'You are the art director of a luxury product reel. IMAGE 1 is the client photo, IMAGE 2 the studio shot, IMAGE 3 the cut-out.',
       `Brand: ${brief.brand}. Product: ${brief.productName}.`,
       `Facts you may use (do not claim anything else, no numbers, awards or effects that are not listed): ${brief.facts || '(none)'}`,
-      'Write natural Japanese copy for an Instagram reel. Pick three close-up details that are clearly visible in IMAGE 2 and differ from each other.',
+      `Write natural copy for an Instagram reel. ${copyLanguage(lang)} Pick three close-up details that are clearly visible in IMAGE 2 and differ from each other.`,
     ].join('\n'),
   });
   const plan = planSchema.parse(raw);
@@ -163,7 +167,7 @@ export async function buildProductReel(brief: ProductBrief) {
   const props: ProductShineProps = productShineSchema.parse({
     brand: brief.brand,
     productName: brief.productName,
-    tagline: plan.tagline.slice(0, 22),
+    tagline: plan.tagline.slice(0, fit(lang, 22)),
     photo: rel('studio.png'),
     cutout: rel('cutout.png'),
     cutoutAspect: cut.aspect,
@@ -172,7 +176,7 @@ export async function buildProductReel(brief: ProductBrief) {
       ...d,
       zoom: Math.min(3.2, Math.max(1.6, d.zoom)),
       kicker: d.kicker.slice(0, 24),
-      title: d.title.slice(0, 14),
+      title: d.title.slice(0, fit(lang, 14)),
     })),
     cta: brief.cta,
     handle: brief.handle,

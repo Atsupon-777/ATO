@@ -14,6 +14,7 @@ import { buildProductReel, STYLES, type Style } from '../server/product.ts';
 import { renderTemplate } from '../server/render.ts';
 import { buildSaasProps } from '../server/saas.ts';
 import { buildTalkProps } from '../server/talk.ts';
+import { isLang, type Lang } from '../src/lang.ts';
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const publicDir = path.join(root, 'public');
@@ -87,6 +88,7 @@ async function startJob(template: Template, input: Record<string, any>) {
     job.step = { n, total, label };
     save(job);
   };
+  const lang: Lang = isLang(input.lang) ? input.lang : 'ja';
   (async () => {
     try {
       if (template === 'ProductShine') {
@@ -103,6 +105,7 @@ async function startJob(template: Template, input: Record<string, any>) {
           handle: String(input.handle || '').slice(0, 30),
           video: Boolean(input.video),
           onSkin: Boolean(input.onSkin),
+          lang,
           jobId: id,
           onStep,
           render: false,
@@ -120,6 +123,7 @@ async function startJob(template: Template, input: Record<string, any>) {
           desktop,
           mobile: upload(input.mobile),
           logo: upload(input.logo),
+          lang,
           jobId: id,
           onStep,
         });
@@ -130,14 +134,16 @@ async function startJob(template: Template, input: Record<string, any>) {
         if (!video) throw new Error('動画をアップロードしてください');
         const prefer = (Array.isArray(input.effects) ? input.effects : []).filter((e: string) => (effectIds as readonly string[]).includes(e));
         const recipe = typeof input.recipe === 'string' ? input.recipe : undefined;
-        const res = await buildEffectsProps({ video, jobId: id, prefer, recipe, onStep });
+        const brief = { video, jobId: id, prefer, recipe, lang, onStep };
+        const res = await buildEffectsProps(brief);
         job.props = res.props;
         job.usage = res.usage;
         job.title = String(res.title || job.title);
       } else {
         const video = upload(input.video);
         if (!video) throw new Error('動画をアップロードしてください');
-        const res = await buildTalkProps({ video, jobId: id, onStep });
+        // Captions follow the spoken language unless the user picked a different one.
+        const res = await buildTalkProps({ video, jobId: id, lang: isLang(input.lang) ? input.lang : undefined, onStep });
         job.props = res.props;
         job.usage = res.usage;
         job.title = String(res.props.title || job.title);
@@ -234,8 +240,9 @@ async function sendFile(req: http.IncomingMessage, res: http.ServerResponse, fil
   createReadStream(file).pipe(res);
 }
 
+// AI cost lines (usage) stay on the server: customers see tokens, never our costs.
 const json = (res: http.ServerResponse, code: number, body: unknown) =>
-  res.writeHead(code, { 'Content-Type': 'application/json' }).end(JSON.stringify(body));
+  res.writeHead(code, { 'Content-Type': 'application/json' }).end(JSON.stringify(body, (k, v) => (k === 'usage' ? undefined : v)));
 
 const readBody = async (req: http.IncomingMessage) => {
   const chunks: Buffer[] = [];
@@ -315,6 +322,7 @@ const server = http.createServer(async (req, res) => {
     // Media and fonts from public/ (jobs, uploads, samples, fonts).
     const file = path.join(publicDir, path.normalize(p).replace(/^(\.\.[/\\])+/, ''));
     if (!file.startsWith(publicDir)) return res.writeHead(403).end();
+    if (/^\/jobs\/.*\/(job|usage|plan)\.json$/.test(p)) return res.writeHead(404).end();
     return sendFile(req, res, file);
   } catch (e) {
     console.error(e);

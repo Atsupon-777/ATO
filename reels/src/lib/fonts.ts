@@ -3,10 +3,10 @@ import { continueRender, delayRender, staticFile } from 'remotion';
 // Fonts are self-hosted from public/fonts (run `npm run fonts` once), so a render never depends on
 // Google's servers. All families are SIL Open Font License and may be embedded in commercial video.
 export const fonts = {
-  sansJP: '"Noto Sans JP", sans-serif',
-  minchoJP: '"Shippori Mincho", serif',
-  serif: '"Cormorant Garamond", "Shippori Mincho", serif',
-  display: '"Plus Jakarta Sans", "Noto Sans JP", sans-serif',
+  sansJP: '"Noto Sans JP", "Noto Sans SC", "Noto Sans Tamil", sans-serif',
+  minchoJP: '"Shippori Mincho", "Noto Sans SC", "Noto Sans Tamil", serif',
+  serif: '"Cormorant Garamond", "Shippori Mincho", "Noto Sans SC", "Noto Sans Tamil", serif',
+  display: '"Plus Jakarta Sans", "Noto Sans JP", "Noto Sans SC", "Noto Sans Tamil", sans-serif',
 };
 
 const FACES = [
@@ -20,6 +20,12 @@ const FACES = [
   'italic 500 40px "Cormorant Garamond"',
   '600 40px "Plus Jakarta Sans"',
   '800 40px "Plus Jakarta Sans"',
+  '400 40px "Noto Sans SC"',
+  '700 40px "Noto Sans SC"',
+  '900 40px "Noto Sans SC"',
+  '400 40px "Noto Sans Tamil"',
+  '700 40px "Noto Sans Tamil"',
+  '900 40px "Noto Sans Tamil"',
 ];
 
 let loading: Promise<void> | null = null;
