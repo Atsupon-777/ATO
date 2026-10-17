@@ -1,13 +1,15 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { createRoot } from 'react-dom/client';
 import { Player, Thumbnail, type PlayerRef } from '@remotion/player';
+import { accentColors, accents, cameraMoves, captionStyles, combinationCount, fontChoices, grades, textures, transitions } from '../../src/effects/axes';
+import { recipeById, recipes, rollStyles } from '../../src/effects/recipes';
 import { ProductShine, productShineBeats } from '../../src/templates/ProductShine';
 import { SaaSPromo, saasPromoBeats } from '../../src/templates/SaaSPromo';
 import { TalkCaptions, talkCaptionsDuration } from '../../src/templates/TalkCaptions';
 import { EffectsReel, effectsReelDuration } from '../../src/templates/EffectsReel';
 import { FPS, beatFrames } from '../../src/lib/timing';
 import { keepSegments, paginate, placeWords } from '../../src/lib/edit';
-import { effectIds, type EffectId, type EffectsReelProps, type ProductShineProps, type SaaSPromoProps, type TalkCaptionsProps } from '../../src/schemas';
+import { effectIds, type BeatStyle, type EffectId, type EffectsReelProps, type ProductShineProps, type SaaSPromoProps, type TalkCaptionsProps } from '../../src/schemas';
 import productSample from '../../props/product-watch.json';
 import saasSample from '../../props/saas-ato.json';
 import talkSample from '../../props/talk-ato.json';
@@ -46,7 +48,7 @@ const TEMPLATES: Record<
   EffectsReel: {
     name: 'トーク＋動画エフェクト',
     tag: '動画から',
-    desc: '話している動画に、人物の後ろに文字やカードを出す・落書き・ズームなど17種のエフェクトをAIが話の内容に合わせて付けます。',
+    desc: '話している動画を、カットごとに違うエフェクト・字幕・カメラ・切り替えで仕上げます。17種のエフェクトと演出の掛け合わせで、1カットあたり約962億通り。ミックスを選ぶと全体の雰囲気がそろいます。',
     component: EffectsReel,
     frames: (p) => effectsReelDuration(p, FPS),
     sample: effectsSample,
@@ -265,8 +267,8 @@ const STYLE_OPTIONS = [
   { id: 'natural', name: 'ナチュラル', note: '木目・木漏れ日' },
 ];
 
-const NewJob: React.FC<{ template: TemplateId; fx?: EffectId; onStarted: (job: Job) => void; onBack: () => void }> = ({ template, fx, onStarted, onBack }) => {
-  const [input, setInput] = useState<Record<string, any>>({ style: 'luxury', cta: '詳しくはプロフィールへ', effects: fx ? [fx] : [] });
+const NewJob: React.FC<{ template: TemplateId; fx?: EffectId; mixArg?: string; onStarted: (job: Job) => void; onBack: () => void }> = ({ template, fx, mixArg, onStarted, onBack }) => {
+  const [input, setInput] = useState<Record<string, any>>({ style: 'luxury', cta: '詳しくはプロフィールへ', effects: fx ? [fx] : [], recipe: mixArg ?? 'all' });
   const [err, setErr] = useState('');
   const [busy, setBusy] = useState(false);
   const set = (k: string) => (v: any) => setInput((s) => ({ ...s, [k]: v }));
@@ -366,9 +368,10 @@ const NewJob: React.FC<{ template: TemplateId; fx?: EffectId; onStarted: (job: J
           ) : (
             <>
               <Drop label="トーク動画" hint="3分以内のMP4 / MOV。縦でも横でもOK" accept="video/*" value={input.video} onChange={set('video')} />
+              {template === 'EffectsReel' ? <MixPicker value={input.recipe} onChange={set('recipe')} /> : null}
               <p className="cost">
                 {template === 'EffectsReel'
-                  ? '文字起こし → 人物の切り抜き → 話の内容に合わせて17種からエフェクトを選んで配置します。'
+                  ? '文字起こし → 人物の切り抜き → 話の内容に合わせて、選んだミックスの中でカットごとにエフェクト・字幕・カメラ・切り替えを組み合わせます。'
                   : '文字起こし → 無音・言い淀み（えー、あの）のカット → 単語ごとのテロップまで自動で行います。'}
               </p>
             </>
@@ -630,20 +633,151 @@ const ProductPanel: React.FC<PanelProps<ProductShineProps>> = ({ p, update }) =>
   );
 };
 
+// ---------- effect mixing: labels, mix picker, per-beat style ----------
+
+const AXIS_LABELS: Record<string, Record<string, string>> = {
+  caption: { pop: 'ポップ', blur: 'ぼかしから', spaced: '字間ひろめ', upper: '大文字', script: '筆記体ゴールド', outline: '袋文字', box: '黒帯', highlighter: 'マーカー', typewriter: 'タイプ', stack: '縦積み', bounce: 'バウンド', neon: 'ネオン' },
+  camera: { still: '固定', push: 'ゆっくり寄る', pull: 'ゆっくり引く', drift: '横に流れる', punch: 'パンチイン', shake: '衝撃ゆれ', tilt: '傾き', spinIn: '回転イン', handheld: '手持ち風', rack: 'ピント送り' },
+  transition: { cut: 'カット', zoomBlur: 'ズームブラー', whipLeft: '横スワイプ', whipUp: '縦スワイプ', flash: 'フラッシュ', glitch: 'グリッチ', slide: 'スライド', dip: '暗転', iris: '丸ワイプ', split: '左右から閉じる', spin: '回転', blurDissolve: 'ぼかしディゾルブ' },
+  grade: { natural: 'ナチュラル', warm: 'あたたかい', cool: 'クール', mono: 'モノクロ', film: 'フィルム', tealOrange: 'ティール＆オレンジ', pastel: 'パステル', punchy: 'くっきり', faded: '色あせ', neon: 'ネオン', sepia: 'セピア', night: 'ナイト' },
+  texture: { none: 'なし', grain: 'フィルム粒子', lightLeak: '光漏れ', vignette: '周辺減光', halftone: '網点', scanlines: '走査線', dust: 'ほこり', paper: '紙' },
+  accent: { sparkles: 'キラキラ', outline: '人物の白フチ', arrows: '手描き矢印', underline: '下線', emoji: '絵文字', beatFlash: 'ビートで光る', letterbox: 'シネマ帯', progress: '進行バー', stickers: 'ステッカー', glow: '人物の後光' },
+  font: { display: '太ゴシック（欧文）', sansJP: 'ゴシック', serif: 'セリフ', mincho: '明朝' },
+};
+const lbl = (axis: string, v?: string) => (v ? AXIS_LABELS[axis]?.[v] ?? v : '—');
+
+/** 約963億通り: scenes × every style axis × accent subsets (src/effects/axes.ts). */
+const MIX_COUNT = `約${Math.floor(combinationCount(effectIds.length) / 1e8).toLocaleString()}億通り`;
+
+const MixPicker: React.FC<{ value: string; onChange: (id: string) => void }> = ({ value, onChange }) => (
+  <div className="field">
+    <label>
+      <span>ミックス（エフェクトの組み合わせ方）</span>
+      <span>1カットあたり{MIX_COUNT}</span>
+    </label>
+    <div className="mixgrid">
+      {recipes.map((r) => (
+        <button key={r.id} className={`mix ${value === r.id ? 'on' : ''}`} onClick={() => onChange(r.id)}>
+          <b>{r.name}</b>
+          <small>{r.desc}</small>
+        </button>
+      ))}
+    </div>
+  </div>
+);
+
+const Select: React.FC<{ label: string; axis: string; options: readonly string[]; value?: string; onChange: (v: string) => void }> = ({ label, axis, options, value, onChange }) => (
+  <div className="field">
+    <label>{label}</label>
+    <select className="sel" value={value ?? ''} onChange={(e) => onChange(e.target.value)}>
+      {value ? null : <option value="">標準</option>}
+      {options.map((o) => (
+        <option key={o} value={o}>
+          {lbl(axis, o)}
+        </option>
+      ))}
+    </select>
+  </div>
+);
+
+/** Reel-level look + shuffle. Grade, texture, font and colour are written to every beat. */
+const MixPanel: React.FC<PanelProps<EffectsReelProps>> = ({ p, update }) => {
+  const recipe = recipeById(p.recipe);
+  const first = p.segments[0]?.style ?? {};
+  const setAll = (patch: Partial<BeatStyle>) =>
+    update((x) => {
+      x.segments.forEach((s) => (s.style = { ...(s.style ?? {}), ...patch }));
+      return x;
+    });
+  const shuffle = (id = p.recipe) =>
+    update((x) => {
+      const looks = rollStyles(recipeById(id), x.segments.length, Math.floor(Math.random() * 1e5), { hasMatte: !!x.matte });
+      x.recipe = id;
+      x.segments.forEach((s, i) => {
+        s.effect = looks[i].scene;
+        s.style = looks[i].style;
+      });
+      return x;
+    });
+  return (
+    <div className="panel">
+      <h2>
+        ミックス
+        <button className="btn small" onClick={() => shuffle()}>
+          🎲 シャッフル
+        </button>
+      </h2>
+      <p className="cost" style={{ marginTop: -4 }}>
+        各カットは「エフェクト × 字幕 × カメラ × 切り替え × 色味 × 質感 × 飾り」の掛け合わせです（1カットあたり{MIX_COUNT}）。シャッフルすると、いまのミックスの中で全カットの組み合わせを引き直します。文字の内容はそのままです。
+      </p>
+      <MixPicker value={recipe.id} onChange={(id) => shuffle(id)} />
+      <div className="grid4" style={{ marginTop: 12 }}>
+        <Select label="色味（全体）" axis="grade" options={grades} value={first.grade} onChange={(v) => setAll({ grade: v as never })} />
+        <Select label="質感（全体）" axis="texture" options={textures} value={first.texture} onChange={(v) => setAll({ texture: v as never })} />
+        <Select label="フォント（全体）" axis="font" options={fontChoices} value={first.font} onChange={(v) => setAll({ font: v as never })} />
+        <div className="field">
+          <label>差し色（全体）</label>
+          <div className="swatches">
+            {accentColors.map((c) => (
+              <button key={c} className={`sw ${first.color === c ? 'on' : ''}`} style={{ background: c }} aria-label={c} onClick={() => setAll({ color: c })} />
+            ))}
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+};
+
+const BeatStyleEditor: React.FC<{ seg: EffectsReelProps['segments'][number]; hasMatte: boolean; onChange: (s: BeatStyle) => void }> = ({ seg, hasMatte, onChange }) => {
+  const st = seg.style ?? {};
+  const set = (patch: Partial<BeatStyle>) => onChange({ ...st, ...patch });
+  const on = new Set(st.accents ?? []);
+  return (
+    <div className="beatstyle">
+      <div className="grid3s">
+        <Select label="字幕" axis="caption" options={captionStyles} value={st.caption} onChange={(v) => set({ caption: v as never })} />
+        <Select label="カメラ" axis="camera" options={cameraMoves} value={st.camera} onChange={(v) => set({ camera: v as never })} />
+        <Select label="入りの切り替え" axis="transition" options={transitions} value={st.transition} onChange={(v) => set({ transition: v as never })} />
+      </div>
+      <div className="accentchips">
+        {accents.map((a) => {
+          const disabled = !hasMatte && (a === 'outline' || a === 'glow');
+          return (
+            <button
+              key={a}
+              disabled={disabled}
+              title={disabled ? '人物の切り抜きがある動画で使えます' : undefined}
+              className={`fchip ${on.has(a) ? 'on' : ''}`}
+              onClick={() => {
+                const next = new Set(on);
+                next.has(a) ? next.delete(a) : next.add(a);
+                set({ accents: [...next] as never });
+              }}
+            >
+              {lbl('accent', a)}
+            </button>
+          );
+        })}
+      </div>
+    </div>
+  );
+};
+
 const EffectsPanel: React.FC<PanelProps<EffectsReelProps> & { playerRef: React.RefObject<PlayerRef | null> }> = ({ p, update, playerRef }) => {
   const set = (fn: (p: EffectsReelProps) => void) => mut(update, fn)();
   // Segments play back to back, so a segment's place on the timeline is the sum of the ones before it.
   const startFrame = (i: number) => p.segments.slice(0, i).reduce((a, s) => a + Math.max(1, Math.round((s.end - s.start) * FPS)), 0);
   return (
     <>
+      <MixPanel p={p} update={update} />
       <div className="panel">
-        <h2>エフェクト（区間ごと）</h2>
+        <h2>カットごとの演出</h2>
         {!p.matte ? <p className="cost">人物の切り抜きがないため、「人物の後ろ」に出る系のエフェクトは前面に重なって表示されます。</p> : null}
         <div style={{ display: 'grid', gap: 18 }}>
           {p.segments.map((seg, i) => (
             <div key={i} style={{ display: 'grid', gap: 8, paddingBottom: 14, borderBottom: '1px solid var(--line, #e5e5e5)' }}>
               <div className="row" style={{ justifyContent: 'space-between' }}>
-                <select value={seg.effect} onChange={(e) => set((x) => void (x.segments[i].effect = e.target.value as never))}>
+                <select className="sel" style={{ flex: 1, minWidth: 0 }} value={seg.effect} onChange={(e) => set((x) => void (x.segments[i].effect = e.target.value as never))}>
                   {effectIds.map((id) => (
                     <option key={id} value={id}>
                       {EFFECT_NAMES[id]}
@@ -654,6 +788,7 @@ const EffectsPanel: React.FC<PanelProps<EffectsReelProps> & { playerRef: React.R
                   {seg.start.toFixed(1)}–{seg.end.toFixed(1)}秒 ▶
                 </button>
               </div>
+              <BeatStyleEditor seg={seg} hasMatte={!!p.matte} onChange={(st) => set((x) => void (x.segments[i].style = st))} />
               <Field label="字幕" max={60} value={seg.caption ?? ''} onChange={(v) => set((x) => void (x.segments[i].caption = v))} />
               <div className="grid2">
                 <Field label="強調する言葉（空白区切り）" value={seg.emphasis.join(' ')} onChange={(v) => set((x) => void (x.segments[i].emphasis = v.split(/\s+/).filter(Boolean)))} />
@@ -951,13 +1086,14 @@ const History: React.FC<{ onOpen: (id: string) => void }> = ({ onOpen }) => {
 
 // ---------- catalog: base templates + each effect as its own pattern ----------
 
-type Group = 'base' | 'behind' | 'camera' | 'ui' | 'craft';
+type Group = 'base' | 'mix' | 'behind' | 'camera' | 'ui' | 'craft';
 const GROUPS: { id: Group; name: string; note: string }[] = [
   { id: 'base', name: 'テンプレート', note: '商品・サービス・トーク' },
-  { id: 'behind', name: '人物の後ろに出す', note: 'エフェクト・文字やカードを人の後ろに' },
-  { id: 'camera', name: 'カメラワーク', note: 'エフェクト・ズームや引き' },
-  { id: 'ui', name: '画面・UI', note: 'エフェクト・アプリやスマホを見せる' },
-  { id: 'craft', name: '手描き・コラージュ', note: 'エフェクト・落書きや切り抜き' },
+  { id: 'mix', name: 'ミックス', note: 'エフェクトを掛け合わせた完成形' },
+  { id: 'behind', name: '人物の後ろに出す', note: '単体エフェクト（ミックスの部品）' },
+  { id: 'camera', name: 'カメラワーク', note: '単体エフェクト（ミックスの部品）' },
+  { id: 'ui', name: '画面・UI', note: '単体エフェクト（ミックスの部品）' },
+  { id: 'craft', name: '手描き・コラージュ', note: '単体エフェクト（ミックスの部品）' },
 ];
 
 const EFFECT_GROUP: Record<EffectId, Group> = {
@@ -987,13 +1123,14 @@ const EFFECT_DESC: Record<EffectId, string> = {
   glassType: '立体のガラス文字が後ろで光る',
 };
 
-type CatalogItem = { key: string; template: TemplateId; effect?: EffectId; name: string; desc: string; group: Group };
+type CatalogItem = { key: string; template: TemplateId; effect?: EffectId; mix?: string; name: string; desc: string; group: Group };
 
 const CATALOG: CatalogItem[] = [
   { key: 'ProductShine', template: 'ProductShine', name: TEMPLATES.ProductShine.name, desc: TEMPLATES.ProductShine.desc, group: 'base' },
   { key: 'SaaSPromo', template: 'SaaSPromo', name: TEMPLATES.SaaSPromo.name, desc: TEMPLATES.SaaSPromo.desc, group: 'base' },
   { key: 'TalkCaptions', template: 'TalkCaptions', name: TEMPLATES.TalkCaptions.name, desc: TEMPLATES.TalkCaptions.desc, group: 'base' },
   { key: 'EffectsReel', template: 'EffectsReel', name: 'エフェクトおまかせ', desc: TEMPLATES.EffectsReel.desc, group: 'base' },
+  ...recipes.map((r) => ({ key: `mix-${r.id}`, template: 'EffectsReel' as TemplateId, mix: r.id, name: r.name, desc: r.desc, group: 'mix' as Group })),
   ...effectIds.map((fx) => ({
     key: fx,
     template: 'EffectsReel' as TemplateId,
@@ -1048,8 +1185,10 @@ const PreviewSheet: React.FC<{ it: CatalogItem; onClose: () => void; onUse: () =
           <div className="desc">{it.desc}</div>
           <p className="cost">
             {it.effect
-              ? 'この見本は、このエフェクトの実際の書き出し動画です。作るときは、選んだエフェクトを必ず入れて、話の内容に合わせてAIがほかのエフェクトも5〜10カット組み合わせます。'
-              : 'この見本は、このテンプレートでAIが実際に作って書き出した動画です。'}
+              ? 'エフェクト単体の実際の書き出しです。実際の動画は1本の中で複数のエフェクトを掛け合わせます。このエフェクトは必ず入り、ほかのカットはAIが話に合わせて組み合わせます。'
+              : it.mix
+                ? `このミックスで実際に書き出した見本です。カットごとにエフェクト・字幕・カメラ・切り替えが変わります（1カットあたり${MIX_COUNT}）。`
+                : 'この見本は、このテンプレートでAIが実際に作って書き出した動画です。'}
           </p>
           <div className="row">
             <button className="btn" onClick={onUse}>
@@ -1068,9 +1207,23 @@ const PreviewSheet: React.FC<{ it: CatalogItem; onClose: () => void; onUse: () =
 const useCatalogPicker = (go: (h: string) => void) => {
   const [open, setOpen] = useState<CatalogItem | null>(null);
   const sheet = open ? (
-    <PreviewSheet it={open} onClose={() => setOpen(null)} onUse={() => go(open.effect ? `#/new/EffectsReel/${open.effect}` : `#/new/${open.template}`)} />
+    <PreviewSheet it={open} onClose={() => setOpen(null)} onUse={() => go(open.effect ? `#/new/EffectsReel/${open.effect}` : open.mix ? `#/new/EffectsReel/mix-${open.mix}` : `#/new/${open.template}`)} />
   ) : null;
   return { setOpen, sheet };
+};
+
+/** Keys with a real render in public/showcase (index.json, written by scripts/make-showcase.py). */
+let showcaseKeys: Promise<Set<string> | null> | null = null;
+const useShowcaseKeys = () => {
+  const [keys, setKeys] = useState<Set<string> | null>(null);
+  useEffect(() => {
+    showcaseKeys ??= fetch(media('showcase/index.json'))
+      .then((r) => (r.ok ? r.json() : null))
+      .then((k) => (k ? new Set<string>(k) : null))
+      .catch(() => null);
+    showcaseKeys.then(setKeys);
+  }, []);
+  return keys;
 };
 
 const Grid: React.FC<{ items: CatalogItem[]; onOpen: (it: CatalogItem) => void }> = ({ items, onOpen }) => (
@@ -1084,7 +1237,9 @@ const Grid: React.FC<{ items: CatalogItem[]; onOpen: (it: CatalogItem) => void }
 const Home: React.FC<{ go: (h: string) => void }> = ({ go }) => {
   const [group, setGroup] = useState<Group | 'all'>('all');
   const { setOpen, sheet } = useCatalogPicker(go);
-  const shown = group === 'all' ? GROUPS : GROUPS.filter((g) => g.id === group);
+  const keys = useShowcaseKeys();
+  const catalog = keys ? CATALOG.filter((c) => keys.has(c.key)) : CATALOG.filter((c) => c.group !== 'mix');
+  const shown = (group === 'all' ? GROUPS : GROUPS.filter((g) => g.id === group)).filter((g) => catalog.some((c) => c.group === g.id));
   return (
     <>
       <div className="hero">
@@ -1093,11 +1248,11 @@ const Home: React.FC<{ go: (h: string) => void }> = ({ go }) => {
       </div>
       <div className="chipbar" role="tablist">
         <button className={`fchip ${group === 'all' ? 'on' : ''}`} onClick={() => setGroup('all')}>
-          すべて <small>{CATALOG.length}</small>
+          すべて <small>{catalog.length}</small>
         </button>
-        {GROUPS.map((g) => (
+        {GROUPS.filter((g) => catalog.some((c) => c.group === g.id)).map((g) => (
           <button key={g.id} className={`fchip ${group === g.id ? 'on' : ''}`} onClick={() => setGroup(g.id)}>
-            {g.name} <small>{CATALOG.filter((c) => c.group === g.id).length}</small>
+            {g.name} <small>{catalog.filter((c) => c.group === g.id).length}</small>
           </button>
         ))}
       </div>
@@ -1107,7 +1262,7 @@ const Home: React.FC<{ go: (h: string) => void }> = ({ go }) => {
             <h2>{g.name}</h2>
             <span className="cost">{g.note}</span>
           </div>
-          <Grid items={CATALOG.filter((c) => c.group === g.id)} onOpen={setOpen} />
+          <Grid items={catalog.filter((c) => c.group === g.id)} onOpen={setOpen} />
         </section>
       ))}
       {sheet}
@@ -1118,12 +1273,13 @@ const Home: React.FC<{ go: (h: string) => void }> = ({ go }) => {
 const Search: React.FC<{ go: (h: string) => void }> = ({ go }) => {
   const [q, setQ] = useState('');
   const { setOpen, sheet } = useCatalogPicker(go);
+  const keys = useShowcaseKeys();
   const words = q.trim().toLowerCase().split(/\s+/).filter(Boolean);
-  const hits = CATALOG.filter((c) => {
+  const hits = CATALOG.filter((c) => (keys ? keys.has(c.key) : c.group !== 'mix')).filter((c) => {
     const hay = `${c.name} ${c.desc} ${GROUPS.find((g) => g.id === c.group)!.name} ${c.effect ?? ''} ${c.template}`.toLowerCase();
     return words.every((w) => hay.includes(w));
   });
-  const ideas = ['ズーム', 'グラフ', 'スマホ', '文字', '落書き', '商品', '字幕', 'カード'];
+  const ideas = ['ミックス', 'ズーム', 'グラフ', 'スマホ', '文字', '落書き', '商品', '字幕'];
   return (
     <>
       <div className="searchbox">
@@ -1369,7 +1525,7 @@ const App = () => {
       </div>
       <main className={route === 'reels' ? 'wide' : ''}>
         {route === 'new' && arg in TEMPLATES ? (
-          <NewJob key={hash} template={arg as TemplateId} fx={effectIds.includes(arg2 as EffectId) ? (arg2 as EffectId) : undefined} onBack={() => history.back()} onStarted={(j) => go(`#/job/${j.id}`)} />
+          <NewJob key={hash} template={arg as TemplateId} fx={effectIds.includes(arg2 as EffectId) ? (arg2 as EffectId) : undefined} mixArg={arg2?.startsWith('mix-') ? arg2.slice(4) : undefined} onBack={() => history.back()} onStarted={(j) => go(`#/job/${j.id}`)} />
         ) : route === 'job' && arg ? (
           <Editor key={arg} id={arg} />
         ) : route === 'history' || route === 'me' ? (

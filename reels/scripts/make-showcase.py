@@ -28,4 +28,9 @@ for s in segs:
     d = round((s['end'] - s['start']) * 30) / 30
     enc(src / 'effects-17-test.mp4', s['effect'], ss=round(at, 3), t=d)
     at += d
+# Mix samples from the effects thread: effects-mix-<id>.mp4 → mix-<id>
+for f in sorted(src.glob('effects-mix-*.mp4')):
+    enc(f, 'mix-' + f.stem[len('effects-mix-'):])
+# The app hides gallery items that have no real render yet.
+json.dump(sorted(p.stem for p in out.glob('*.mp4')), open(out / 'index.json', 'w'))
 print('done')

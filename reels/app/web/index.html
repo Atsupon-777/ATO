@@ -175,6 +175,21 @@
     .sheetplayer { max-height: 62dvh; aspect-ratio: auto; height: 62dvh; }
     .feed { height: calc(100dvh - 160px); }
   }
+  .mixgrid { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 8px; }
+  .mix { text-align: left; background: var(--panel); border: 1px solid var(--line); border-radius: 12px; padding: 10px 12px; cursor: pointer; display: grid; gap: 4px; color: var(--ink); }
+  .mix small { color: var(--mute); font-size: 11px; line-height: 1.5; }
+  .mix.on { border-color: var(--accent); background: #221d14; }
+  .sel { background: var(--panel2); border: 1px solid var(--line); border-radius: 10px; padding: 9px 10px; width: 100%; color: var(--ink); }
+  .grid4 { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 10px; }
+  .grid3s { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; }
+  .beatstyle { display: grid; gap: 8px; background: var(--bg); border: 1px solid var(--line); border-radius: 12px; padding: 10px; }
+  .accentchips { display: flex; flex-wrap: wrap; gap: 6px; }
+  .accentchips .fchip { padding: 5px 10px; font-size: 12px; }
+  .accentchips .fchip:disabled { opacity: .35; cursor: not-allowed; }
+  .swatches { display: flex; flex-wrap: wrap; gap: 6px; }
+  .sw { width: 26px; height: 26px; border-radius: 50%; border: 2px solid var(--line); cursor: pointer; padding: 0; }
+  .sw.on { border-color: var(--ink); box-shadow: 0 0 0 2px var(--accent); }
+  @media (max-width: 600px) { .grid3s { grid-template-columns: 1fr 1fr; } }
 </style>
 </head>
 <body>
