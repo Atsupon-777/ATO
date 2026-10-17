@@ -124,7 +124,7 @@ export const Infographic: React.FC<EffectProps> = ({ seg }) => {
           <span style={{ color: s.accent }}>■</span> {(seg.text ?? 'THE NUMBERS').toUpperCase()}
         </div>
         <div style={{ display: 'flex', alignItems: 'center', gap: 50, marginTop: 40 }}>
-          <svg width={2 * R + 40} height={2 * R + 40}>
+          <svg width={2 * R + 40} height={2 * R + 40} style={{ flexShrink: 0 }}>
             <circle cx={R + 20} cy={R + 20} r={R} fill="none" stroke="rgba(255,255,255,0.14)" strokeWidth={30} />
             <circle
               cx={R + 20}
