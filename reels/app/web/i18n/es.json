@@ -512,5 +512,21 @@
  "確認コードがちがいます。": "El código no es correcto.",
  "この電話番号はすでに別のアカウントで使われています。": "Este número ya lo usa otra cuenta.",
  "回数が多すぎます。しばらくしてからもう一度お試しください。": "Demasiados intentos. Inténtalo más tarde.",
- "登録して電話番号を確認すると、{0}トークン分を無料で試せます。": "Regístrate y verifica tu teléfono para probar {0} tokens gratis."
+ "登録して電話番号を確認すると、{0}トークン分を無料で試せます。": "Regístrate y verifica tu teléfono para probar {0} tokens gratis.",
+ "「ビデオを保存」で写真アプリへ。InstagramやTikTokを選ぶとそのまま投稿できます。": "Elige \"Guardar video\" para Fotos, o Instagram o TikTok para publicarlo al instante.",
+ "あと1分以内": "Menos de 1 minuto",
+ "あと約{0}分": "Faltan unos {0} min",
+ "まもなく完了": "Casi listo",
+ "テンプレートを選んで素材を入れるだけ。": "Elige una plantilla y añade tu video. Nada más.",
+ "プロフィールを編集": "Editar perfil",
+ "作成する": "Crear",
+ "保存": "Guardar",
+ "保存・共有": "Guardar / Compartir",
+ "写真に保存・SNSで共有": "Guardar en Fotos / Compartir",
+ "写真を変更": "Cambiar foto",
+ "動画を書き出す": "Exportar video",
+ "動画を読み込めませんでした。もう一度タップしてください。": "No se pudo cargar el video. Toca otra vez.",
+ "名前": "Nombre",
+ "準備ができました。もう一度タップしてください。": "Listo. Toca una vez más.",
+ "準備中…": "Preparando…"
 }

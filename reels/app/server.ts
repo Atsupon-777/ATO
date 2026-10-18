@@ -20,7 +20,7 @@ import { buildSaasProps } from '../server/saas.ts';
 import { buildTalkProps } from '../server/talk.ts';
 import { isLang, type Lang } from '../src/lang.ts';
 import { authEnabled, LOCAL_USER, verifyIdToken, webConfig, type User } from '../server/auth.ts';
-import { FreeClaimError, NotEnoughTokens, balance, charge, claimFree, getAccount, refund, TOPUP_TOKENS, PLAN_TOKENS, FREE_TOKENS } from '../server/accounts.ts';
+import { FreeClaimError, NotEnoughTokens, balance, charge, claimFree, getAccount, refund, update, TOPUP_TOKENS, PLAN_TOKENS, FREE_TOKENS } from '../server/accounts.ts';
 import { billingEnabled, checkout, isPurchase, portal, webhook } from '../server/billing.ts';
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
@@ -45,8 +45,10 @@ type Job = {
   title: string;
   createdAt: string;
   status: 'generating' | 'ready' | 'rendering' | 'done' | 'error';
-  step?: { n: number; total: number; label: string };
+  /** Current generation step; `at` is when it started, so the browser can estimate time left. */
+  step?: { n: number; total: number; label: string; at?: string };
   renderProgress?: number;
+  renderStartedAt?: string;
   props?: Record<string, unknown>;
   usage?: { totalUsd: number; lines: unknown[] };
   video?: string;
@@ -109,7 +111,7 @@ async function startJob(template: Template, input: Record<string, any>, user: Us
   jobs.set(id, job);
   await save(job);
   const onStep = (n: number, total: number, label: string) => {
-    job.step = { n, total, label };
+    job.step = { n, total, label, at: new Date().toISOString() };
     save(job);
   };
   const lang: Lang = isLang(input.lang) ? input.lang : 'ja';
@@ -215,6 +217,7 @@ let renderQueue = Promise.resolve();
 function startRender(job: Job) {
   job.status = 'rendering';
   job.renderProgress = 0;
+  job.renderStartedAt = new Date().toISOString();
   save(job);
   // One render at a time: each render already uses every core.
   renderQueue = renderQueue.then(async () => {
@@ -377,9 +380,21 @@ const server = http.createServer(async (req, res) => {
     const user = await userOf(req);
     if (p.startsWith('/api/') && !user) return json(res, 401, { error: 'ログインしてください' });
 
-    if (p === '/api/me') {
+    if (p === '/api/me' && req.method === 'GET') {
       const a = await getAccount(user!.uid, user!.email);
-      return json(res, 200, { email: a.email, plan: a.plan, tokens: a.tokens, extra: a.extra, balance: balance(a), billing: billingEnabled, subscribed: Boolean(a.subscriptionId), pastDue: Boolean(a.pastDue), freePending: Boolean(a.freePending), auth: authEnabled });
+      return json(res, 200, { email: a.email, plan: a.plan, tokens: a.tokens, extra: a.extra, balance: balance(a), billing: billingEnabled, subscribed: Boolean(a.subscriptionId), pastDue: Boolean(a.pastDue), freePending: Boolean(a.freePending), displayName: a.displayName, avatar: a.avatar, auth: authEnabled });
+    }
+    // Profile: a name and a photo the user uploaded earlier (it must be one of their own uploads).
+    if (p === '/api/me' && req.method === 'PUT') {
+      const { displayName, avatar } = await readBody(req);
+      const mine = `/uploads/${userDir(user!)}/`;
+      if (avatar !== undefined && avatar !== null && !(typeof avatar === 'string' && avatar.startsWith(mine) && /^[\w.-]+\.(jpe?g|png|webp)$/i.test(avatar.slice(mine.length))))
+        return json(res, 400, { error: '画像はJPG / PNG / WebPを選んでください' });
+      const a = await update(user!.uid, (a) => {
+        if (typeof displayName === 'string') a.displayName = displayName.trim().slice(0, 30) || undefined;
+        if (avatar !== undefined) a.avatar = avatar || undefined;
+      });
+      return json(res, 200, { displayName: a.displayName, avatar: a.avatar });
     }
     // Free tokens: the browser links a phone number by SMS first, so the ID token carries it.
     if (p === '/api/free-tokens' && req.method === 'POST') {

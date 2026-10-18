@@ -117,8 +117,9 @@ type Job = {
   title: string;
   createdAt: string;
   status: 'generating' | 'ready' | 'rendering' | 'done' | 'error';
-  step?: { n: number; total: number; label: string };
+  step?: { n: number; total: number; label: string; at?: string };
   renderProgress?: number;
+  renderStartedAt?: string;
   props?: any;
   usage?: { totalUsd: number; lines: { step: string; model: string; units: string; usd: number }[] };
   video?: string;
@@ -444,7 +445,7 @@ const NewJob: React.FC<{ template: TemplateId; fx?: EffectId; mixArg?: string; o
           <VideoLang template={template} value={input.lang} onChange={set('lang')} />
           <div className="actions">
             <button className="btn" disabled={!ready || busy || !!DEMO} onClick={submit}>
-              {busy ? tr("送信中…") : tr("AIで作成する")}
+              {busy ? tr("送信中…") : input.video && template !== 'ProductShine' ? tr("作成する") : tr("AIで作成する")}
             </button>
             <span className="cost">
               {tr("消費:")}{' '}<b>{tokensFor(template, input)}{tr("トークン")}</b>
@@ -483,24 +484,76 @@ const useJob = (id: string) => {
   return [job, setJob, () => refresh((n) => n + 1)] as const;
 };
 
+/** Rough seconds each generation step takes, for the progress bar and the time-left estimate. */
+const STEP_SECONDS: Record<string, number> = {
+  'cut-out': 15,
+  'studio shot': 25,
+  'plan and copy': 15,
+  'motion clip (Veo)': 120,
+  'on-skin model shot': 120,
+  'build props': 5,
+  render: 5,
+  'copy and layout': 25,
+  audio: 5,
+  transcribe: 30,
+  matte: 150,
+  'plan effects': 20,
+};
+
+/** Re-renders every second while something is running, so bars and countdowns move. */
+const useNow = (on: boolean) => {
+  const [now, setNow] = useState(Date.now());
+  useEffect(() => {
+    if (!on) return;
+    const t = setInterval(() => setNow(Date.now()), 1000);
+    return () => clearInterval(t);
+  }, [on]);
+  return now;
+};
+
+const timeLeft = (sec: number) =>
+  sec < 15 ? tr("まもなく完了") : sec < 60 ? tr("あと1分以内") : tr("あと約{0}分", Math.ceil(sec / 60));
+
+/** A horizontal bar with the percentage and the time left underneath. */
+const ProgressBar: React.FC<{ fraction: number; label: string; left: number }> = ({ fraction, label, left }) => {
+  const pct = Math.max(2, Math.min(99, Math.round(fraction * 100)));
+  return (
+    <div className="progress" role="progressbar" aria-valuemin={0} aria-valuemax={100} aria-valuenow={pct} aria-label={label}>
+      <div className="progresshead">
+        <b>{label}</b>
+        <span>{pct}%</span>
+      </div>
+      <div className="bar">
+        <div style={{ width: `${pct}%` }} />
+      </div>
+      <div className="cost">{timeLeft(left)}</div>
+    </div>
+  );
+};
+
 const Generating: React.FC<{ job: Job }> = ({ job }) => {
   const steps =
     job.template === 'ProductShine'
-      ? ['cut-out', 'studio shot', 'plan and copy', 'motion clip (Veo)', 'build props']
+      ? ['cut-out', 'studio shot', 'plan and copy', ...((job.tokens ?? 5) >= 12 ? ['motion clip (Veo)'] : []), 'build props']
       : job.template === 'SaaSPromo'
         ? ['copy and layout', 'build props']
         : job.template === 'EffectsReel'
           ? ['audio', 'transcribe', 'matte', 'plan effects']
           : ['audio', 'transcribe', 'build props'];
   const cur = job.step?.label;
-  const curIdx = steps.findIndex((s) => s === cur || (cur === 'on-skin model shot' && s === 'motion clip (Veo)'));
+  const norm = (l?: string) => (l === 'on-skin model shot' ? 'motion clip (Veo)' : l === 'render' ? 'build props' : l);
+  const curIdx = Math.max(0, steps.indexOf(norm(cur) ?? ''));
+  const now = useNow(true);
+  // Time left = what remains of the current step (by its usual length) + the usual length of the steps after it.
+  const inStep = job.step?.at ? (now - Date.parse(job.step.at)) / 1000 : 0;
+  const curSec = STEP_SECONDS[steps[curIdx]] ?? 20;
+  const left = Math.max(5, curSec - inStep) + steps.slice(curIdx + 1).reduce((a, s) => a + (STEP_SECONDS[s] ?? 20), 0);
+  const elapsed = Math.max(1, (now - Date.parse(job.createdAt)) / 1000);
   return (
     <div style={{ maxWidth: 520, margin: '40px auto' }}>
       <h1>{tr("AIが作成しています")}</h1>
       <p className="sub">{tr("このページを閉じても作成は続きます。履歴からいつでも開けます。")}</p>
-      <div className="bar">
-        <div style={{ width: `${job.step ? (job.step.n / (job.step.total + 0.5)) * 100 : 5}%` }} />
-      </div>
+      <ProgressBar fraction={elapsed / (elapsed + left)} label={STEP_LABELS[steps[curIdx]] ?? tr("準備中")} left={left} />
       <div className="steps">
         {steps.map((s, i) => (
           <div key={s} className={i < curIdx ? 'done' : i === curIdx ? 'cur' : ''}>
@@ -510,6 +563,66 @@ const Generating: React.FC<{ job: Job }> = ({ job }) => {
         ))}
       </div>
     </div>
+  );
+};
+
+const RenderProgress: React.FC<{ job: Job }> = ({ job }) => {
+  const now = useNow(true);
+  const p = job.renderProgress ?? 0;
+  const spent = job.renderStartedAt ? (now - Date.parse(job.renderStartedAt)) / 1000 : 0;
+  // Until a few percent are done there is nothing to extrapolate from, so assume about a minute.
+  const left = p > 0.05 ? (spent / p) * (1 - p) : Math.max(10, 60 - spent);
+  return <ProgressBar fraction={p} label={tr("書き出し中…")} left={left} />;
+};
+
+/**
+ * Save to Photos or post to Instagram / TikTok through the phone's share sheet (Web Share API with a file).
+ * iOS only opens the sheet straight from a tap, so the file is fetched ahead of time; where sharing files
+ * isn't supported (most desktops) it falls back to a plain download.
+ */
+const ShareButton: React.FC<{ job: Job; compact?: boolean }> = ({ job, compact }) => {
+  const url = media(job.video!);
+  const name = `${job.title.replace(/[\\/:*?"<>|]+/g, ' ').trim() || 'reel'}.mp4`;
+  const [file, setFile] = useState<File | null>(null);
+  const [msg, setMsg] = useState('');
+  const canShareFiles = typeof navigator.canShare === 'function' && navigator.canShare({ files: [new File([], 'x.mp4', { type: 'video/mp4' })] });
+  const load = useCallback(async () => {
+    const b = await fetch(url, { headers: authHeader() }).then((r) => (r.ok ? r.blob() : Promise.reject(new Error(r.statusText))));
+    const f = new File([b], name, { type: 'video/mp4' });
+    setFile(f);
+    return f;
+  }, [url]);
+  useEffect(() => {
+    if (canShareFiles && !compact && !DEMO) load().catch(() => setMsg(tr("動画を読み込めませんでした。もう一度タップしてください。")));
+  }, [load]);
+  const share = async () => {
+    setMsg('');
+    if (!canShareFiles || DEMO) return void window.open(url, '_blank');
+    try {
+      const f = file ?? (await load());
+      await navigator.share({ files: [f], title: job.title });
+    } catch (e: any) {
+      if (e?.name === 'AbortError') return;
+      // The tap "expired" while the file downloaded (iOS); it is ready now, so one more tap works.
+      setMsg(e?.name === 'NotAllowedError' ? tr("準備ができました。もう一度タップしてください。") : e?.message ?? String(e));
+    }
+  };
+  if (compact)
+    return (
+      <button onClick={share} aria-label={tr("保存・共有")}>
+        <span>⇪</span>
+        {tr("保存・共有")}
+        {msg ? <small style={{ maxWidth: 120 }}>{msg}</small> : null}
+      </button>
+    );
+  return (
+    <>
+      <button className="btn" onClick={share} disabled={canShareFiles && !file && !DEMO && !msg}>
+        {canShareFiles ? (file ? tr("写真に保存・SNSで共有") : tr("準備中…")) : tr("ダウンロード")}
+      </button>
+      {canShareFiles ? <p className="cost" style={{ width: '100%', textAlign: 'center', margin: 0 }}>{tr("「ビデオを保存」で写真アプリへ。InstagramやTikTokを選ぶとそのまま投稿できます。")}</p> : null}
+      {msg ? <p className="cost" style={{ width: '100%', textAlign: 'center', margin: 0 }}>{msg}</p> : null}
+    </>
   );
 };
 
@@ -603,21 +716,14 @@ const Editor: React.FC<{ id: string }> = ({ id }) => {
         <div className="actions" style={{ justifyContent: 'center' }}>
           {job.status === 'rendering' ? (
             <div style={{ width: '100%' }}>
-              <div className="cost" style={{ marginBottom: 6 }}>{tr("書き出し中…")}{' '}{Math.round((job.renderProgress ?? 0) * 100)}%</div>
-              <div className="bar">
-                <div style={{ width: `${(job.renderProgress ?? 0) * 100}%` }} />
-              </div>
+              <RenderProgress job={job} />
             </div>
           ) : (
             <>
-              <button className="btn" disabled={!saved || !!DEMO || (job.template === 'FivePass' && props.pass < 5)} onClick={render} title={DEMO ? DEMO_BLOCKED : job.template === 'FivePass' && props.pass < 5 ? tr("5つの工程が終わると書き出せます") : undefined}>
-                {tr("MP4を書き出す")}
+              <button className={`btn ${job.status === 'done' && job.video ? 'ghost' : ''}`} disabled={!saved || !!DEMO || (job.template === 'FivePass' && props.pass < 5)} onClick={render} title={DEMO ? DEMO_BLOCKED : job.template === 'FivePass' && props.pass < 5 ? tr("5つの工程が終わると書き出せます") : undefined}>
+                {tr("動画を書き出す")}
               </button>
-              {job.status === 'done' && job.video ? (
-                <a className="btn ghost" href={media(job.video)} download={`${job.title}.mp4`} target="_blank">
-                  {DEMO ? tr("書き出し済みのMP4を見る") : tr("ダウンロード")}
-                </a>
-              ) : null}
+              {job.status === 'done' && job.video ? <ShareButton job={job} /> : null}
             </>
           )}
         </div>
@@ -1447,7 +1553,9 @@ const usePanelAccordion = (root: React.RefObject<HTMLElement | null>) => {
     root.current?.querySelectorAll<HTMLElement>('.panel > h2:not([role])').forEach((h) => {
       h.setAttribute('role', 'button');
       h.tabIndex = 0;
-      h.setAttribute('aria-expanded', 'true');
+      // Every section starts closed so the editor isn't a wall of options; tap a heading to open it.
+      h.parentElement!.classList.add('shut');
+      h.setAttribute('aria-expanded', 'false');
     });
   });
   // Listens on document because the panels mount after the first render (the job loads first).
@@ -1816,44 +1924,58 @@ const Grid: React.FC<{ items: CatalogItem[]; onOpen: (it: CatalogItem) => void }
   </div>
 );
 
+// Home stays short: templates and mixes to start from; single effects sit behind one chip row.
 const Home: React.FC<{ go: (h: string) => void; initialGroup?: string }> = ({ go, initialGroup }) => {
   const [group, setGroupState] = useState<Group | 'all'>(GROUPS.some((g) => g.id === initialGroup) ? (initialGroup as Group) : 'all');
   const setGroup = (g: Group | 'all') => {
     setGroupState(g);
     history.replaceState(null, '', g === 'all' ? '#/' : `#/?g=${g}`);
+    window.scrollTo({ top: 0 });
   };
   const { setOpen, sheet } = useCatalogPicker(go);
   const keys = useShowcaseKeys();
   const catalog = keys ? CATALOG.filter((c) => keys.has(c.key)) : CATALOG.filter((c) => c.group !== 'mix');
-  const shown = (group === 'all' ? GROUPS : GROUPS.filter((g) => g.id === group)).filter((g) => catalog.some((c) => c.group === g.id));
+  const has = (g: Group) => catalog.some((c) => c.group === g);
+  const effectGroups = GROUPS.filter((g) => g.id !== 'base' && g.id !== 'mix' && has(g.id));
+  const section = (g: (typeof GROUPS)[number]) => (
+    <section key={g.id} className="tsection">
+      <div className="thead">
+        <h2>{g.name}</h2>
+        <span className="cost">{g.note}</span>
+      </div>
+      <Grid items={catalog.filter((c) => c.group === g.id)} onOpen={setOpen} />
+    </section>
+  );
+  if (group !== 'all')
+    return (
+      <>
+        <Crumbs items={[{ label: tr("ホーム"), href: '#/' }, { label: GROUPS.find((g) => g.id === group)!.name }]} />
+        {section(GROUPS.find((g) => g.id === group)!)}
+        {sheet}
+      </>
+    );
   return (
     <>
       <div className="hero">
         <h1>{tr("編集しない、動画編集アプリ。")}</h1>
-        <p className="sub">{tr("素材を入れるだけで、AIが編集まで仕上げます。あなたは出てきた案から選ぶだけ。")}</p>
+        <p className="sub">{tr("テンプレートを選んで素材を入れるだけ。")}</p>
       </div>
-      {group === 'all' && catalog.some((c) => c.group === 'mix' || c.group === 'base') ? (
-        <Carousel items={catalog.filter((c) => c.group === 'mix' || c.group === 'base')} onOpen={setOpen} />
-      ) : null}
-      <div className="chipbar" role="tablist">
-        <button className={`fchip ${group === 'all' ? 'on' : ''}`} onClick={() => setGroup('all')}>
-          {tr("すべて")}{' '}<small>{catalog.length}</small>
-        </button>
-        {GROUPS.filter((g) => catalog.some((c) => c.group === g.id)).map((g) => (
-          <button key={g.id} className={`fchip ${group === g.id ? 'on' : ''}`} onClick={() => setGroup(g.id)}>
-            {g.name} <small>{catalog.filter((c) => c.group === g.id).length}</small>
-          </button>
-        ))}
-      </div>
-      {shown.map((g) => (
-        <section key={`${group}-${g.id}`} className="tsection">
+      {GROUPS.filter((g) => (g.id === 'base' || g.id === 'mix') && has(g.id)).map(section)}
+      {effectGroups.length ? (
+        <section className="tsection">
           <div className="thead">
-            <h2>{g.name}</h2>
-            <span className="cost">{g.note}</span>
+            <h2>{tr("エフェクト")}</h2>
+            <span className="cost">{tr("{0}種", catalog.filter((c) => effectGroups.some((g) => g.id === c.group)).length)}</span>
           </div>
-          <Grid items={catalog.filter((c) => c.group === g.id)} onOpen={setOpen} />
+          <div className="chipbar">
+            {effectGroups.map((g) => (
+              <button key={g.id} className="fchip" onClick={() => setGroup(g.id)}>
+                {g.name} <small>{catalog.filter((c) => c.group === g.id).length}</small>
+              </button>
+            ))}
+          </div>
         </section>
-      ))}
+      ) : null}
       {sheet}
     </>
   );
@@ -1951,9 +2073,7 @@ const FeedItem: React.FC<{ job: Job; onEdit: () => void }> = ({ job, onEdit }) =
             <span>✎</span>{tr("編集")}
           </button>
           {job.video ? (
-            <a href={media(job.video)} target="_blank" aria-label="MP4">
-              <span>⤓</span>MP4
-            </a>
+            <ShareButton job={job} compact />
           ) : null}
         </div>
       </div>
@@ -1980,7 +2100,7 @@ const FAQ = [
 
 const jobTokens = (j: Job) => j.tokens ?? (j.template === 'ProductShine' ? (j.props?.clip ? 12 : 5) : j.template === 'EffectsReel' || j.template === 'FivePass' || j.template === 'SaaSPromo' ? 5 : 2);
 
-type Me = { email?: string; plan: 'free' | 'starter' | 'standard' | 'pro'; tokens: number; extra: number; balance: number; billing: boolean; subscribed: boolean; pastDue?: boolean; freePending?: boolean; auth: boolean };
+type Me = { email?: string; plan: 'free' | 'starter' | 'standard' | 'pro'; tokens: number; extra: number; balance: number; billing: boolean; subscribed: boolean; pastDue?: boolean; freePending?: boolean; displayName?: string; avatar?: string; auth: boolean };
 const PLAN_NAMES: Record<Me['plan'], string> = { free: tr("無料"), starter: tr("スターター"), standard: tr("スタンダード"), pro: tr("プロ") };
 
 // Free tokens are claimed once per phone number: SMS code, then the server checks the number is new.
@@ -2042,11 +2162,74 @@ const FreeClaim: React.FC<{ onDone: () => void }> = ({ onDone }) => {
   );
 };
 
+const Avatar: React.FC<{ me: Me | null; size?: number }> = ({ me, size = 64 }) => (
+  <div className="avatar" style={{ width: size, height: size, fontSize: size * 0.4 }}>
+    {me?.avatar ? <img src={media(me.avatar.slice(1))} alt="" /> : (me?.displayName || me?.email || '◎').slice(0, 1).toUpperCase()}
+  </div>
+);
+
+/** Edit name and photo, like CapCut's profile screen: tap the photo to change it, type a name, save. */
+const ProfileSheet: React.FC<{ me: Me; onClose: () => void; onSaved: () => void }> = ({ me, onClose, onSaved }) => {
+  const [name, setName] = useState(me.displayName ?? '');
+  const [avatar, setAvatar] = useState(me.avatar);
+  const [busy, setBusy] = useState(false);
+  const [err, setErr] = useState('');
+  const pick = useRef<HTMLInputElement>(null);
+  const take = async (f?: File) => {
+    if (!f) return;
+    setBusy(true);
+    setErr('');
+    try {
+      setAvatar((await uploadFile(f)).url);
+    } catch (e: any) {
+      setErr(e.message);
+    }
+    setBusy(false);
+  };
+  return (
+    <Sheet onClose={onClose}>
+      {(close) => (
+        <div className="profileedit">
+          <h2>{tr("プロフィールを編集")}</h2>
+          <button className="avatarpick" onClick={() => pick.current?.click()} disabled={busy} aria-label={tr("写真を変更")}>
+            <Avatar me={{ ...me, avatar, displayName: name }} size={96} />
+            <span>{busy ? tr("アップロード中…") : tr("写真を変更")}</span>
+          </button>
+          <input ref={pick} type="file" accept="image/jpeg,image/png,image/webp" hidden onChange={(e) => take(e.target.files?.[0])} />
+          <div className="field">
+            <label htmlFor="pname">{tr("名前")}</label>
+            <input id="pname" className="inp" maxLength={30} value={name} placeholder={me.email ?? ''} onChange={(e) => setName(e.target.value)} />
+          </div>
+          {err ? <div className="err">{err}</div> : null}
+          <button
+            className="btn"
+            disabled={busy}
+            onClick={async () => {
+              setBusy(true);
+              try {
+                await api('/api/me', { method: 'PUT', body: JSON.stringify({ displayName: name, avatar: avatar ?? null }) });
+                onSaved();
+                close();
+              } catch (e: any) {
+                setErr(e.message);
+                setBusy(false);
+              }
+            }}
+          >
+            {tr("保存")}
+          </button>
+        </div>
+      )}
+    </Sheet>
+  );
+};
+
 const Account: React.FC<{ go: (h: string) => void }> = ({ go }) => {
   const [jobs, setJobs] = useState<Job[]>([]);
   const [me, setMe] = useState<Me | null>(null);
   const [busy, setBusy] = useState('');
   const [err, setErr] = useState('');
+  const [editing, setEditing] = useState(false);
   const loadMe = () => api<Me>('/api/me').then(setMe).catch(() => null);
   useEffect(() => {
     api<Job[]>('/api/jobs').then(async (list) => setJobs(await Promise.all(list.map((j) => api<Job>(`/api/jobs/${j.id}`).catch(() => j)))));
@@ -2072,17 +2255,25 @@ const Account: React.FC<{ go: (h: string) => void }> = ({ go }) => {
     <>
       <Crumbs items={[{ label: tr("ホーム"), href: '#/' }, { label: tr("アカウント") }]} />
       <div className="profile">
-        <div className="avatar">◎</div>
+        <Avatar me={me} />
         <div style={{ flex: 1, minWidth: 0 }}>
-          <div className="name">{me?.email ?? tr("マイアカウント")}</div>
+          <div className="name">{me?.displayName || me?.email || tr("マイアカウント")}</div>
           <div className="cost">{me ? tr("プラン: {0}", PLAN_NAMES[me.plan]) : tr("β版・課金はまだつながっていません")}</div>
         </div>
-        {me?.auth ? (
-          <button className="btn ghost small" onClick={() => signOut()}>
-            {tr("ログアウト")}
-          </button>
-        ) : null}
       </div>
+      {me ? (
+        <div className="row" style={{ gap: 8, marginBottom: 18 }}>
+          <button className="btn ghost small" style={{ flex: 1 }} onClick={() => setEditing(true)}>
+            {tr("プロフィールを編集")}
+          </button>
+          {me.auth ? (
+            <button className="btn ghost small" onClick={() => signOut()}>
+              {tr("ログアウト")}
+            </button>
+          ) : null}
+        </div>
+      ) : null}
+      {editing && me ? <ProfileSheet me={me} onClose={() => setEditing(false)} onSaved={loadMe} /> : null}
       {me?.freePending ? <FreeClaim onDone={loadMe} /> : null}
       {paid ? <div className="okmsg">{tr("お支払いありがとうございます。トークンは数秒で反映されます。")}</div> : null}
       {me?.pastDue ? (

@@ -28,6 +28,10 @@ export type Account = {
   subscriptionId?: string;
   /** The last renewal payment failed and Stripe is retrying it. */
   pastDue?: boolean;
+  /** Shown on the account page instead of the email; set by the user. */
+  displayName?: string;
+  /** Profile photo, a path under /uploads/<the user's folder>/. */
+  avatar?: string;
   /** The free tokens are still waiting to be claimed with a phone number. */
   freePending?: boolean;
   /** Hash of the phone number that claimed the free tokens, so one number claims once. */

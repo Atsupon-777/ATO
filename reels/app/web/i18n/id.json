@@ -512,5 +512,21 @@
  "確認コードがちがいます。": "Kode salah.",
  "この電話番号はすでに別のアカウントで使われています。": "Nomor ini sudah dipakai akun lain.",
  "回数が多すぎます。しばらくしてからもう一度お試しください。": "Terlalu banyak percobaan. Coba lagi nanti.",
- "登録して電話番号を確認すると、{0}トークン分を無料で試せます。": "Daftar dan verifikasi nomor telepon untuk mencoba {0} token gratis."
+ "登録して電話番号を確認すると、{0}トークン分を無料で試せます。": "Daftar dan verifikasi nomor telepon untuk mencoba {0} token gratis.",
+ "「ビデオを保存」で写真アプリへ。InstagramやTikTokを選ぶとそのまま投稿できます。": "Pilih \"Simpan Video\" ke Foto, atau pilih Instagram/TikTok untuk langsung posting.",
+ "あと1分以内": "Kurang dari 1 menit lagi",
+ "あと約{0}分": "Sekitar {0} menit lagi",
+ "まもなく完了": "Hampir selesai",
+ "テンプレートを選んで素材を入れるだけ。": "Pilih template lalu masukkan video. Selesai.",
+ "プロフィールを編集": "Edit profil",
+ "作成する": "Buat",
+ "保存": "Simpan",
+ "保存・共有": "Simpan / Bagikan",
+ "写真に保存・SNSで共有": "Simpan ke Foto / Bagikan",
+ "写真を変更": "Ganti foto",
+ "動画を書き出す": "Ekspor video",
+ "動画を読み込めませんでした。もう一度タップしてください。": "Video gagal dimuat. Ketuk lagi.",
+ "名前": "Nama",
+ "準備ができました。もう一度タップしてください。": "Sudah siap. Ketuk sekali lagi.",
+ "準備中…": "Menyiapkan…"
 }

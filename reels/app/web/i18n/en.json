@@ -512,5 +512,21 @@
  "確認コードがちがいます。": "That code is not correct.",
  "この電話番号はすでに別のアカウントで使われています。": "This phone number is already used by another account.",
  "回数が多すぎます。しばらくしてからもう一度お試しください。": "Too many attempts. Please try again later.",
- "登録して電話番号を確認すると、{0}トークン分を無料で試せます。": "Sign up and verify your phone to try {0} tokens free."
+ "登録して電話番号を確認すると、{0}トークン分を無料で試せます。": "Sign up and verify your phone to try {0} tokens free.",
+ "「ビデオを保存」で写真アプリへ。InstagramやTikTokを選ぶとそのまま投稿できます。": "Choose \"Save Video\" for Photos, or pick Instagram or TikTok to post it right away.",
+ "あと1分以内": "Less than a minute left",
+ "あと約{0}分": "About {0} min left",
+ "まもなく完了": "Almost done",
+ "テンプレートを選んで素材を入れるだけ。": "Pick a template and add your footage. That’s it.",
+ "プロフィールを編集": "Edit profile",
+ "作成する": "Create",
+ "保存": "Save",
+ "保存・共有": "Save / Share",
+ "写真に保存・SNSで共有": "Save to Photos / Share",
+ "写真を変更": "Change photo",
+ "動画を書き出す": "Export video",
+ "動画を読み込めませんでした。もう一度タップしてください。": "Couldn’t load the video. Tap again.",
+ "名前": "Name",
+ "準備ができました。もう一度タップしてください。": "Ready. Tap once more.",
+ "準備中…": "Preparing…"
 }
