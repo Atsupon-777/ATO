@@ -146,6 +146,15 @@ const Shot: React.FC<{ shot: FilmShot; index: number; first: boolean; grade: { f
           <Img src={src} style={media} />
         )}
       </AbsoluteFill>
+      {!isVideo(shot.src) && shot.kind === 'hero' ? (
+        // a still hero gets a slow band of light across it, like a spotlight passing over a glossy surface
+        <AbsoluteFill
+          style={{
+            mixBlendMode: 'soft-light',
+            background: `linear-gradient(115deg, rgba(255,255,255,0) ${t * 140 - 40}%, rgba(255,236,200,0.75) ${t * 140 - 20}%, rgba(255,255,255,0) ${t * 140}%)`,
+          }}
+        />
+      ) : null}
       <AbsoluteFill style={{ background: grade.tint, mixBlendMode: 'soft-light' }} />
     </AbsoluteFill>
   );
@@ -291,7 +300,8 @@ const EndCard: React.FC<ProductFilmProps> = (p) => {
   const rise = progress(frame, 8, 40, easeOutExpo);
   const sweep = interpolate(frame, [26, 58], [-1.1, 1.1], { ...clamp, easing: easeInOut });
   const h = 800;
-  const w = Math.min(820, h * p.cutoutAspect);
+  // tall products fill the height, wide ones (a plate, a pair of shoes) the width
+  const w = Math.min(p.cutoutAspect > 1.4 ? 960 : 820, h * p.cutoutAspect);
   const ph = w / p.cutoutAspect;
   const textIn = (d: number) => progress(frame, d, d + 22, easeOutExpo);
   const cta = pop(frame, fps, 52, 16);

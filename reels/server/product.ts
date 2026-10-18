@@ -79,7 +79,7 @@ const planSchema = z.object({
     .describe('exactly 3 scenes in the order hook, origin, ritual: the world of the product before it is revealed. Only things that are true for this kind of product; no claims beyond the facts'),
   revealPrompt: z
     .string()
-    .describe('English prompt for an 8s image-to-video shot of IMAGE 2 that is the emotional climax of a short film: the product revealed slowly and gracefully, for example a slow arc around it as a beam of light sweeps across the package, with gentle atmosphere (steam, mist, drifting petals or dust in the light) that suits the product and never covers it. The product itself stays rigid and unchanged'),
+    .describe('English prompt for an 8s image-to-video shot of IMAGE 2 that is the emotional climax of a short film: the product revealed slowly and gracefully, for example a slow arc around it as a beam of light sweeps across the package, with light that glides across the product surface itself and gentle depth-of-field changes. Never add smoke, steam, glowing orbs, light blobs or new light sources in the frame (food is shown as served, not hot). The product itself stays rigid and unchanged'),
   musicPrompt: z
     .string()
     .describe('English prompt for a 30s instrumental music bed for this film: genre and instruments that suit the product and its culture, tempo 70-90 BPM, starting intimate and sparse, swelling warmly at about 12 seconds where the product is revealed, then resolving softly. No vocals'),
@@ -245,7 +245,7 @@ export async function buildProductReel(brief: ProductBrief) {
     })();
     step(4, 'motion clips (Veo)');
     const [hero, ...clips] = await Promise.all([
-      shot(source, 'clip.mp4', `${plan.revealPrompt} The product keeps its exact shape, logo and text throughout.`, 'motion clip'),
+      shot(source, 'clip.mp4', `${plan.revealPrompt} The product keeps its exact shape, logo and text throughout. No smoke, no steam, no glowing orbs.`, 'motion clip'),
       ...storyClips,
     ]);
     clip = hero;
