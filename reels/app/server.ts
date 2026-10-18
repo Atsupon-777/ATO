@@ -125,10 +125,12 @@ async function startJob(template: Template, input: Record<string, any>, user: Us
     try {
       if (template === 'ProductShine') {
         const photo = upload(input.photo);
-        if (!photo) throw new Error('写真をアップロードしてください');
+        const concept = String(input.concept || '').slice(0, 300);
+        if (!photo && !concept) throw new Error('写真をアップロードしてください');
         const style = (input.style in STYLES ? input.style : 'luxury') as Style;
         const res = await buildProductReel({
           photo,
+          concept,
           brand: String(input.brand || '').slice(0, 16),
           productName: String(input.name || '').slice(0, 24),
           facts: String(input.facts || ''),

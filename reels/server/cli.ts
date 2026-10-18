@@ -1,6 +1,6 @@
 // Usage:
 //   node server/cli.ts models
-//   node server/cli.ts product --photo path.jpg --brand ATO --name "ÉCLAT DE TEMPS" \
+//   node server/cli.ts product --photo path.jpg (or --concept "otoro nigiri by a master chef") --brand ATO --name "ÉCLAT DE TEMPS" \
 //     --facts "18K rose gold case, sapphire crystal" [--style luxury|clean|cosmetic|natural] \
 //     [--video] [--on-skin] [--cta "詳しくはプロフィールへ"] [--handle @ato] [--lang ja] [--no-render]
 //   node server/cli.ts matte --video talk.mp4 --out public/uploads/talk-matte.webm [--model u2net_human_seg]
@@ -28,6 +28,7 @@ if (cmd === 'models') {
     args: rest,
     options: {
       photo: { type: 'string' },
+      concept: { type: 'string' },
       brand: { type: 'string' },
       name: { type: 'string' },
       facts: { type: 'string', default: '' },
@@ -42,10 +43,11 @@ if (cmd === 'models') {
     },
   });
   if (!isLang(values.lang)) throw new Error('--lang must be one of ja, en, fr, id, zh, es, ta');
-  if (!values.photo || !values.brand || !values.name) throw new Error('--photo, --brand and --name are required');
+  if (!(values.photo || values.concept) || !values.brand || !values.name) throw new Error('--photo (or --concept), --brand and --name are required');
   if (!(values.style! in STYLES)) throw new Error(`--style must be one of ${Object.keys(STYLES).join(', ')}`);
   const res = await buildProductReel({
     photo: values.photo,
+    concept: values.concept,
     brand: values.brand,
     productName: values.name,
     facts: values.facts!,

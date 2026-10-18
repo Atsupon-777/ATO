@@ -30,6 +30,11 @@ export const STYLES = {
     light: 'bright high-key beauty lighting, glossy highlights, fresh and dewy feel',
     palette: { accent: '#E8A5B4', glow: '#FFE3EA', base: '#1A1214' },
   },
+  omakase: {
+    scene: 'on a pale hinoki-wood counter of a quiet, dark, high-end sushi restaurant, a dark stone plate, blurred warm lanterns far behind',
+    light: 'a single soft overhead spotlight like a sushi counter downlight, glistening highlights on the fish and rice, deep calm shadows',
+    palette: { accent: '#C9A46A', glow: '#FFD9A0', base: '#0A0806' },
+  },
   natural: {
     scene: 'on a light oak surface with soft leaf shadows and a blurred green background',
     light: 'warm morning sunlight with dappled shadows, natural and calm',
@@ -84,7 +89,10 @@ const planSchema = z.object({
 });
 
 export type ProductBrief = {
-  photo: string;
+  /** The client's photo. Without one, the AI first creates the hero photo from `concept`. */
+  photo?: string;
+  /** What to show when there is no photo, e.g. "otoro nigiri made by a master sushi chef". */
+  concept?: string;
   brand: string;
   productName: string;
   /** Facts the copy may use. Nothing else is claimed. */
@@ -116,14 +124,31 @@ export async function buildProductReel(brief: ProductBrief) {
   const rel = (f: string) => `jobs/${jobId}/${f}`;
   await mkdir(dir, { recursive: true });
   const style = STYLES[brief.style];
-  const original = path.join(dir, `original${path.extname(brief.photo) || '.jpg'}`);
-  await copyFile(brief.photo, original);
+  const exists = (f: string) => access(f).then(() => true, () => false);
+  let original = path.join(dir, `original${(brief.photo && path.extname(brief.photo)) || '.jpg'}`);
+  if (brief.photo) await copyFile(brief.photo, original);
+  else {
+    // No photo (a restaurant dish, a place, a service): the AI shoots the hero photo first and everything follows from it.
+    if (!brief.concept) throw new Error('a photo or a concept is required');
+    original = path.join(dir, 'original.png');
+    if (!(await exists(original))) await editImage({
+      input: [],
+      out: original,
+      prompt: [
+        `A world-class commercial food and product photograph for ${brief.brand}: ${brief.concept}.`,
+        `Facts: ${brief.facts || '(none)'}. Scene: ${style.scene}. Lighting: ${style.light}.`,
+        'Square 1:1, the subject centred and filling about 60% of the frame, photorealistic, tack-sharp, appetising and luxurious, shallow depth of field. No text, no logo, no watermark.',
+      ].join('\n'),
+      aspectRatio: '1:1',
+      usage,
+      step: 'hero photo',
+    });
+  }
 
   step(1, 'cut-out');
   const cut = await cutout(original, path.join(dir, 'cutout.png'), usage);
 
   // Re-running a job reuses the studio shot, plan and clip already paid for.
-  const exists = (f: string) => access(f).then(() => true, () => false);
   step(2, 'studio shot');
   const studioFile = path.join(dir, 'studio.png');
   const studio = (await exists(studioFile)) ? studioFile : await editImage({
@@ -265,7 +290,7 @@ export async function buildProductReel(brief: ProductBrief) {
   return { jobId, dir, out, props, usage: usage.toJSON(), render: result };
 }
 
-const GRADE: Record<Style, ProductFilmProps['grade']> = { luxury: 'warm', clean: 'neutral', cosmetic: 'warm', natural: 'verdant' };
+const GRADE: Record<Style, ProductFilmProps['grade']> = { luxury: 'warm', clean: 'neutral', cosmetic: 'warm', omakase: 'warm', natural: 'verdant' };
 
 /**
  * The story scenes and the reveal clip cut as a short film: hook → origin → ritual → the product → end card.
