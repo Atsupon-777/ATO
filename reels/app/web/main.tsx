@@ -2795,15 +2795,20 @@ const AppleLogo = () => (
   </svg>
 );
 
-/** Splits a line into words (Japanese too) that animate in one by one but never break inside a word. */
+/** Splits a line into words or phrases that animate in one by one and never break inside. */
 const splitWords = (text: string) => {
-  const Seg = (Intl as any).Segmenter;
-  const parts: string[] = Seg ? [...new Seg(lang, { granularity: 'word' }).segment(text)].map((x: any) => x.segment) : text.split(/(\s+)/);
-  return parts.map((w, i) => (
-    <span key={i} className="w" style={{ '--i': i } as React.CSSProperties}>
-      {w}
-    </span>
-  ));
+  // Japanese and Chinese break only after punctuation (編集しない、｜動画編集アプリ。); other languages between words.
+  const parts = lang === 'ja' || lang === 'zh' ? text.split(/(?<=[、。，！？])/) : text.split(/(\s+)/);
+  // spaces stay plain text, so a line never starts with one
+  return parts.map((w, i) =>
+    /^\s+$/.test(w) ? (
+      w
+    ) : (
+      <span key={i} className="w" style={{ '--i': i } as React.CSSProperties}>
+        {w}
+      </span>
+    ),
+  );
 };
 
 /** The three steps of the app, lit one after another. */
@@ -2817,13 +2822,10 @@ const SignInSteps = () => {
   return (
     <div className="signsteps" aria-hidden>
       {steps.map((s, i) => (
-        <React.Fragment key={i}>
-          {i ? <i /> : null}
-          <span className={i === on ? 'on' : ''}>
-            <b>{i + 1}</b>
-            {s}
-          </span>
-        </React.Fragment>
+        <span key={i} className={i === on ? 'on' : ''}>
+          <b>{i + 1}</b>
+          {s}
+        </span>
       ))}
     </div>
   );
