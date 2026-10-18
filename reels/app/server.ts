@@ -258,6 +258,7 @@ const types: Record<string, string> = {
   '.woff2': 'font/woff2',
   '.ttf': 'font/ttf',
   '.svg': 'image/svg+xml',
+  '.webmanifest': 'application/manifest+json',
 };
 
 async function sendFile(req: http.IncomingMessage, res: http.ServerResponse, file: string) {
@@ -353,6 +354,8 @@ const readRaw = async (req: http.IncomingMessage) => {
   return Buffer.concat(chunks);
 };
 
+const pwaFiles = new Set(['/manifest.webmanifest', '/sw.js', '/offline.html', '/favicon.svg', '/favicon-32.png', '/apple-touch-icon.png', '/icon-192.png', '/icon-512.png', '/icon-maskable-512.png']);
+
 const server = http.createServer(async (req, res) => {
   const url = new URL(req.url ?? '/', ORIGIN);
   const p = decodeURIComponent(url.pathname);
@@ -366,6 +369,11 @@ const server = http.createServer(async (req, res) => {
     }
     if (/^\/legal\/[\w-]+\.html$/.test(p)) return sendFile(req, res, path.join(webDir, p));
     if (/^\/icons\/icon(-\d+)?\.(svg|png)$/.test(p)) return sendFile(req, res, path.join(webDir, p));
+    // Home-screen app files live at the site root. The service worker must always be re-checked.
+    if (pwaFiles.has(p)) {
+      if (p === '/sw.js') res.setHeader('Cache-Control', 'no-cache');
+      return sendFile(req, res, path.join(webDir, 'pwa', p));
+    }
     if (p === '/api/config') return json(res, 200, { firebase: webConfig(), billing: billingEnabled, topupTokens: TOPUP_TOKENS, freeTokens: FREE_TOKENS, planTokens: PLAN_TOKENS });
     if (p === '/api/stripe/webhook' && req.method === 'POST') {
       try {

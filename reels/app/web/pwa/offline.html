@@ -1,0 +1,40 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#fffdf3">
+<title>Reels Studio</title>
+<link rel="icon" href="/favicon.svg" type="image/svg+xml">
+<style>
+  :root { color-scheme: light; }
+  html, body { margin: 0; height: 100%; background: #fffdf3; color: #1a1a14;
+    font-family: "Plus Jakarta Sans", "Noto Sans JP", system-ui, sans-serif; }
+  main { min-height: 100%; display: grid; place-content: center; gap: 18px; text-align: center;
+    padding: 24px max(16px, env(safe-area-inset-right)) 24px max(16px, env(safe-area-inset-left)); }
+  .mark { width: 64px; height: 64px; margin: 0 auto; display: block; }
+  h1 { margin: 0; font-size: 20px; font-weight: 800; }
+  p { margin: 0; color: #67635a; font-size: 15px; line-height: 1.6; }
+  button { justify-self: center; border: 0; border-radius: 12px; padding: 12px 22px; font: inherit;
+    font-weight: 700; background: #ffd23f; color: #1a1a14; cursor: pointer; }
+</style>
+</head>
+<body>
+<main>
+  <img class="mark" src="/favicon.svg" alt="">
+  <h1 id="t">You're offline</h1>
+  <p id="m">Reels Studio needs an internet connection.<br>Check your connection and try again.</p>
+  <button id="b" type="button" onclick="location.reload()">Try again</button>
+</main>
+<script>
+  // Japanese for Japanese devices, English otherwise.
+  if ((navigator.language || "").toLowerCase().startsWith("ja")) {
+    document.documentElement.lang = "ja";
+    document.getElementById("t").textContent = "オフラインです";
+    document.getElementById("m").innerHTML = "Reels Studio はインターネット接続が必要です。<br>接続を確認して、もう一度お試しください。";
+    document.getElementById("b").textContent = "もう一度";
+  }
+  addEventListener("online", () => location.reload());
+</script>
+</body>
+</html>

@@ -2632,7 +2632,7 @@ const VerifyEmail: React.FC<{ email?: string | null }> = ({ email }) => {
 };
 
 /** Login gate: the app itself once signed in (or when login is off, or in the static preview). */
-const Root = () => {
+const Gate = () => {
   const auth = useAuth();
   if (DEMO) return <App />;
   if (!auth.ready) return null;
@@ -2640,6 +2640,58 @@ const Root = () => {
   if (auth.enabled && !auth.verified) return <VerifyEmail email={auth.email} />;
   return <App key={auth.email ?? ''} />;
 };
+
+/** iPhone Safari only (not the home-screen app, not Chrome or Instagram's browser): how to add it to the home screen. */
+const showInstallHint = (() => {
+  const ua = navigator.userAgent;
+  const ios = /iPhone|iPad|iPod/.test(ua) || (/Macintosh/.test(ua) && navigator.maxTouchPoints > 1);
+  const safari = /Safari/.test(ua) && !/CriOS|FxiOS|EdgiOS|OPiOS|Instagram|FBAN|FBAV|Line\//.test(ua);
+  let hidden = false;
+  try {
+    hidden = localStorage.getItem('reels-install-hint') === 'hidden';
+  } catch {}
+  return ios && safari && (navigator as any).standalone !== true && !(window as any).Capacitor && !hidden;
+})();
+
+const ShareGlyph = () => (
+  <svg viewBox="0 0 24 24" width="17" height="17" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+    <path d="M12 3v12M8 7l4-4 4 4" />
+    <path d="M7 10H6a2 2 0 0 0-2 2v7a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-7a2 2 0 0 0-2-2h-1" />
+  </svg>
+);
+
+const InstallHint = () => {
+  const [open, setOpen] = useState(showInstallHint);
+  if (!open) return null;
+  const [before, after] = tr("共有ボタン {0} をタップして「ホーム画面に追加」を選んでください", '\u0000').split('\u0000');
+  const close = () => {
+    setOpen(false);
+    try {
+      localStorage.setItem('reels-install-hint', 'hidden');
+    } catch {}
+  };
+  return (
+    <div className="installhint" role="note">
+      <img src="/favicon.svg" alt="" />
+      <div>
+        <b>{tr("ホーム画面に追加すると、アプリのように使えます")}</b>
+        <span>
+          {before}
+          <ShareGlyph />
+          {after}
+        </span>
+      </div>
+      <button onClick={close} aria-label={tr("閉じる")}>×</button>
+    </div>
+  );
+};
+
+const Root = () => (
+  <>
+    <Gate />
+    <InstallHint />
+  </>
+);
 
 if (!DEMO) startAuth();
 createRoot(document.getElementById('root')!).render(<Root />);

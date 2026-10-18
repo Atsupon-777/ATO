@@ -528,5 +528,7 @@
  "動画を読み込めませんでした。もう一度タップしてください。": "Impossible de charger la vidéo. Touchez à nouveau.",
  "名前": "Nom",
  "準備ができました。もう一度タップしてください。": "C’est prêt. Touchez encore une fois.",
- "準備中…": "Préparation…"
+ "準備中…": "Préparation…",
+ "ホーム画面に追加すると、アプリのように使えます": "Ajoutez-la à l’écran d’accueil pour l’utiliser comme une app",
+ "共有ボタン {0} をタップして「ホーム画面に追加」を選んでください": "Touchez Partager {0}, puis « Sur l’écran d’accueil »."
 }

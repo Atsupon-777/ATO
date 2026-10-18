@@ -528,5 +528,7 @@
  "動画を読み込めませんでした。もう一度タップしてください。": "Couldn’t load the video. Tap again.",
  "名前": "Name",
  "準備ができました。もう一度タップしてください。": "Ready. Tap once more.",
- "準備中…": "Preparing…"
+ "準備中…": "Preparing…",
+ "ホーム画面に追加すると、アプリのように使えます": "Add it to your Home Screen to use it like an app",
+ "共有ボタン {0} をタップして「ホーム画面に追加」を選んでください": "Tap Share {0}, then choose “Add to Home Screen”."
 }
