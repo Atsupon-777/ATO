@@ -56,6 +56,9 @@ for f in sorted(src.glob('subtypes-*.mp4')):
     lang = f.stem.split('-')[1]
     for key, c in json.load(open(f.with_suffix('.json'))).items():
         enc(f, key if lang == 'ja' else f'{key}.{lang}', ss=c['start'], t=c['dur'])
+# Product films (story mode, ProductFilm): <name>-film.mp4 → film-<name>, shown first on the sign-in page.
+for f in sorted(src.glob('*-film.mp4')):
+    enc(f, 'film-' + f.stem.removesuffix('-film'), t=16)
 # The app hides gallery items that have no real render yet.
 json.dump(sorted(p.stem for p in out.glob('*.mp4')), open(out / 'index.json', 'w'))
 print('done')

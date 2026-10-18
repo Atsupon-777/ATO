@@ -2833,7 +2833,8 @@ const SignInSteps = () => {
 
 /** Real renders behind the sign-in form: tilted columns of reels drifting past, and a phone playing the samples. */
 const STAGE_FEATURED = [
-  { key: 'ProductShine', name: () => tr("商品を魅せる") },
+  { key: 'film-sushi', name: () => tr("商品を魅せる") },
+  { key: 'film-matcha', name: () => tr("商品を魅せる") },
   { key: 'SaaSPromo', name: () => tr("サービス紹介") },
   { key: 'TalkCaptions', name: () => tr("トーク動画＋字幕") },
   { key: 'mix-hype', name: () => tr("ミックス") },
@@ -2844,8 +2845,9 @@ const SignInStage = () => {
   const [cur, setCur] = useState(0);
   if (!keys) return <div className="signstage" aria-hidden />;
   // base keys only (per-language copies are picked by showcase()), templates and mixes first
-  const base = [...keys].filter((k) => !/\.[a-z]{2}$/.test(k));
-  const ranked = [...featured.map((f) => f.key), ...base.filter((k) => k.startsWith('mix-')), ...effectIds.filter((k) => keys.has(k))];
+  // the older product sample stays out once a product film exists
+  const base = [...keys].filter((k) => !/\.[a-z]{2}$/.test(k) && !(k === 'ProductShine' && featured.length && featured[0].key.startsWith('film-')));
+  const ranked = [...featured.map((f) => f.key).filter((k) => base.includes(k)), ...base.filter((k) => k.startsWith('mix-')), ...effectIds.filter((k) => keys.has(k))];
   const pool = [...new Set(ranked)];
   const cols = [0, 1, 2].map((c) => {
     const list = pool.filter((_, i) => i % 3 === c);
