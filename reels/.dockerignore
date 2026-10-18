@@ -5,3 +5,6 @@ public/jobs
 public/uploads
 .env
 *.log
+ios
+android
+app/native

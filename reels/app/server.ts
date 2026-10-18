@@ -2,9 +2,9 @@
 //   node app/server.ts            (PORT=3000 by default)
 // Jobs live in public/jobs/<id>/ (job.json + media), so a restart keeps history.
 // Login (FIREBASE_PROJECT_ID) and billing (STRIPE_SECRET_KEY) switch on from the environment; see deploy/README.md.
-import { createHash } from 'node:crypto';
+import { createHash, createHmac, randomBytes, timingSafeEqual } from 'node:crypto';
 import { createReadStream, createWriteStream } from 'node:fs';
-import { mkdir, readFile, readdir, stat, writeFile } from 'node:fs/promises';
+import { mkdir, readFile, readdir, rm, stat, writeFile } from 'node:fs/promises';
 import http from 'node:http';
 import path from 'node:path';
 import { pipeline } from 'node:stream/promises';
@@ -20,8 +20,12 @@ import { buildSaasProps } from '../server/saas.ts';
 import { buildTalkProps } from '../server/talk.ts';
 import { isLang, type Lang } from '../src/lang.ts';
 import { authEnabled, LOCAL_USER, verifyIdToken, webConfig, type User } from '../server/auth.ts';
-import { FreeClaimError, NotEnoughTokens, balance, charge, claimFree, getAccount, refund, update, TOPUP_TOKENS, PLAN_TOKENS, FREE_TOKENS } from '../server/accounts.ts';
-import { billingEnabled, checkout, isPurchase, portal, webhook } from '../server/billing.ts';
+import { FreeClaimError, NotEnoughTokens, balance, charge, claimFree, getAccount, refund, removeAccount, update, TOPUP_TOKENS, PLAN_TOKENS, FREE_TOKENS } from '../server/accounts.ts';
+import { billingEnabled, cancelSubscription, checkout, isPurchase, portal, webhook } from '../server/billing.ts';
+import { iapConfig, revenuecatWebhook } from '../server/appstore.ts';
+import { deleteFirebaseUser } from '../server/google.ts';
+import { dataDir } from '../server/paths.ts';
+import { addDevice, notifyJob, removeDevice } from '../server/push.ts';
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const publicDir = path.join(root, 'public');
@@ -192,6 +196,7 @@ async function startJob(template: Template, input: Record<string, any>, user: Us
       }
       job.status = 'ready';
       job.step = undefined;
+      notifyJob(user.uid, 'ready', job);
     } catch (e) {
       console.error(e);
       job.status = 'error';
@@ -230,6 +235,7 @@ function startRender(job: Job) {
       if (job.template === 'FivePass') await loudnorm(out);
       job.video = `jobs/${job.id}/${path.basename(out)}`;
       job.status = 'done';
+      if (job.owner) notifyJob(job.owner, 'done', job);
     } catch (e) {
       console.error(e);
       job.status = 'ready';
@@ -293,6 +299,57 @@ async function sendFile(req: http.IncomingMessage, res: http.ServerResponse, fil
 const json = (res: http.ServerResponse, code: number, body: unknown) =>
   res.writeHead(code, { 'Content-Type': 'application/json' }).end(JSON.stringify(body, (k, v) => (k === 'usage' ? undefined : v)));
 
+/**
+ * The iPhone / Android app bundles the page itself (capacitor://localhost, https://localhost) and calls this
+ * server across origins. It signs requests with the Authorization header, never cookies.
+ */
+const APP_ORIGINS = new Set(['capacitor://localhost', 'https://localhost', 'http://localhost', ...(process.env.APP_ORIGINS ?? '').split(',').filter(Boolean)]);
+const cors = (req: http.IncomingMessage, res: http.ServerResponse) => {
+  const o = req.headers.origin;
+  if (!o || !APP_ORIGINS.has(o)) return false;
+  res.setHeader('Access-Control-Allow-Origin', o);
+  res.setHeader('Vary', 'Origin');
+  res.setHeader('Access-Control-Allow-Headers', 'Authorization, Content-Type');
+  res.setHeader('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS');
+  res.setHeader('Access-Control-Max-Age', '86400');
+  return true;
+};
+
+/**
+ * <video> and <img> in the app can't send the Authorization header, and the website's session cookie
+ * doesn't reach another origin. So the app adds ?k=<media key> to job and upload URLs: the uid, an expiry
+ * and an HMAC with a server secret kept next to the accounts.
+ */
+let mediaSecret: Buffer | null = null;
+const mediaSecretOf = async () => {
+  if (mediaSecret) return mediaSecret;
+  const file = path.join(dataDir, 'media-secret');
+  try {
+    mediaSecret = Buffer.from((await readFile(file, 'utf8')).trim(), 'hex');
+  } catch {}
+  if (!mediaSecret || mediaSecret.length < 32) {
+    mediaSecret = randomBytes(32);
+    await mkdir(dataDir, { recursive: true });
+    await writeFile(file, mediaSecret.toString('hex'), { mode: 0o600 });
+  }
+  return mediaSecret;
+};
+const MEDIA_KEY_HOURS = 24;
+const signMedia = async (uid: string, exp: number) => createHmac('sha256', await mediaSecretOf()).update(`${uid}.${exp}`).digest('base64url');
+async function mediaKey(user: User) {
+  const exp = Math.floor(Date.now() / 1000) + MEDIA_KEY_HOURS * 3600;
+  return `${Buffer.from(user.uid).toString('base64url')}.${exp}.${await signMedia(user.uid, exp)}`;
+}
+async function userOfMediaKey(k: string): Promise<User | null> {
+  const [u, e, sig] = k.split('.');
+  const exp = Number(e);
+  if (!u || !sig || !(exp > Date.now() / 1000)) return null;
+  const uid = Buffer.from(u, 'base64url').toString('utf8');
+  const want = Buffer.from(await signMedia(uid, exp));
+  const got = Buffer.from(sig);
+  return want.length === got.length && timingSafeEqual(want, got) ? { uid } : null;
+}
+
 const readBody = async (req: http.IncomingMessage) => {
   const chunks: Buffer[] = [];
   for await (const c of req) chunks.push(c as Buffer);
@@ -329,9 +386,12 @@ const cookie = (req: http.IncomingMessage, name: string) =>
 
 /** The signed-in user from the Authorization header, or from the session cookie for <video> and <img> requests. */
 const verified = new Map<string, { user: User; until: number }>();
-async function userOf(req: http.IncomingMessage): Promise<User | null> {
+async function userOf(req: http.IncomingMessage, url: URL): Promise<User | null> {
   if (!authEnabled) return LOCAL_USER;
   const token = req.headers.authorization?.replace(/^Bearer /, '') || cookie(req, 'reels_session');
+  // Media only: never accepted for /api/ calls.
+  const k = url.searchParams.get('k');
+  if (!token && k && req.method === 'GET' && !url.pathname.startsWith('/api/')) return userOfMediaKey(k);
   if (!token) return null;
   const hit = verified.get(token);
   if (hit && hit.until > Date.now()) return hit.user;
@@ -360,6 +420,7 @@ const server = http.createServer(async (req, res) => {
   const url = new URL(req.url ?? '/', ORIGIN);
   const p = decodeURIComponent(url.pathname);
   try {
+    if (cors(req, res) && req.method === 'OPTIONS') return res.writeHead(204).end();
     if (p === '/' || p === '/index.html') return sendFile(req, res, path.join(webDir, 'index.html'));
     if (p === '/app.js') {
       // Rebuilt on every request in development so UI edits show on reload.
@@ -374,7 +435,16 @@ const server = http.createServer(async (req, res) => {
       if (p === '/sw.js') res.setHeader('Cache-Control', 'no-cache');
       return sendFile(req, res, path.join(webDir, 'pwa', p));
     }
-    if (p === '/api/config') return json(res, 200, { firebase: webConfig(), billing: billingEnabled, topupTokens: TOPUP_TOKENS, freeTokens: FREE_TOKENS, planTokens: PLAN_TOKENS });
+    if (p === '/api/config')
+      return json(res, 200, { firebase: webConfig(), billing: billingEnabled, topupTokens: TOPUP_TOKENS, freeTokens: FREE_TOKENS, planTokens: PLAN_TOKENS, iap: iapConfig(), appleWeb: process.env.APPLE_SIGNIN_WEB === '1' });
+    if (p === '/api/revenuecat/webhook' && req.method === 'POST') {
+      try {
+        return json(res, 200, await revenuecatWebhook(await readBody(req), req.headers.authorization));
+      } catch (e) {
+        console.error('revenuecat webhook', e);
+        return json(res, 400, { error: e instanceof Error ? e.message : String(e) });
+      }
+    }
     if (p === '/api/stripe/webhook' && req.method === 'POST') {
       try {
         return json(res, 200, await webhook(await readRaw(req), req.headers['stripe-signature'] as string | undefined));
@@ -386,12 +456,36 @@ const server = http.createServer(async (req, res) => {
 
     // Everything below belongs to a signed-in user (or to the renderer on this machine).
     const local = isLocal(req);
-    const user = await userOf(req);
+    const user = await userOf(req, url);
     if (p.startsWith('/api/') && !user) return json(res, 401, { error: 'ログインしてください' });
 
     if (p === '/api/me' && req.method === 'GET') {
       const a = await getAccount(user!.uid, user!.email);
-      return json(res, 200, { email: a.email, plan: a.plan, tokens: a.tokens, extra: a.extra, balance: balance(a), billing: billingEnabled, subscribed: Boolean(a.subscriptionId), pastDue: Boolean(a.pastDue), freePending: Boolean(a.freePending), displayName: a.displayName, avatar: a.avatar, auth: authEnabled });
+      return json(res, 200, { email: a.email, plan: a.plan, tokens: a.tokens, extra: a.extra, balance: balance(a), billing: billingEnabled, subscribed: Boolean(a.subscriptionId), store: a.store ?? (a.subscriptionId ? 'stripe' : undefined), pastDue: Boolean(a.pastDue), freePending: Boolean(a.freePending), displayName: a.displayName, avatar: a.avatar, auth: authEnabled });
+    }
+    // Account deletion (App Store guideline 5.1.1(v)): web plan cancelled, jobs, uploads, account and login removed.
+    // An App Store subscription can only be cancelled by the customer in their Apple ID settings; the app says so.
+    if (p === '/api/me' && req.method === 'DELETE') {
+      if (!authEnabled) return json(res, 400, { error: 'login is off' });
+      const a = await getAccount(user!.uid, user!.email);
+      await cancelSubscription(a);
+      for (const j of [...jobs.values()].filter((j) => j.owner === user!.uid)) {
+        jobs.delete(j.id);
+        await rm(path.join(jobsDir, j.id), { recursive: true, force: true });
+      }
+      await rm(path.join(uploadsDir, userDir(user!)), { recursive: true, force: true });
+      await removeAccount(user!.uid);
+      await deleteFirebaseUser(user!.uid);
+      for (const [t, v] of verified) if (v.user.uid === user!.uid) verified.delete(t);
+      return json(res, 200, { deleted: true });
+    }
+    if (p === '/api/media-key' && req.method === 'GET') return json(res, 200, { key: await mediaKey(user!), hours: MEDIA_KEY_HOURS });
+    // Push notifications in the app: its FCM token, so a finished export can tell the phone.
+    if (p === '/api/push-token' && (req.method === 'POST' || req.method === 'DELETE')) {
+      const { token, platform, lang } = await readBody(req);
+      if (typeof token !== 'string' || token.length < 20 || token.length > 4096) return json(res, 400, { error: 'bad token' });
+      await (req.method === 'POST' ? addDevice(user!.uid, token, platform, lang) : removeDevice(user!.uid, token));
+      return json(res, 200, { ok: true });
     }
     // Profile: a name and a photo the user uploaded earlier (it must be one of their own uploads).
     if (p === '/api/me' && req.method === 'PUT') {

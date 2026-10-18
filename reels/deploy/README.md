@@ -12,6 +12,7 @@
 | ログイン | Firebase Authentication（Google・メール） | `FIREBASE_PROJECT_ID` `FIREBASE_API_KEY` `FIREBASE_AUTH_DOMAIN` |
 | 課金 | Stripe（月額プラン・トークン追加・解約ページ） | `STRIPE_SECRET_KEY` `STRIPE_WEBHOOK_SECRET` `STRIPE_PRICE_*` |
 | AI | Gemini API（有料枠） | `GEMINI_API_KEY` |
+| iPhone/Android アプリ | アプリ内課金（RevenueCat）・通知（FCM）・アカウント削除 | `REVENUECAT_IOS_KEY` `REVENUECAT_WEBHOOK_AUTH`（Secret Manager）`IAP_PRODUCT_*`。手順は `app/native/README.md` |
 
 ログインと課金は、値が入っていなければ自動でオフになります（ローカル開発用）。
 

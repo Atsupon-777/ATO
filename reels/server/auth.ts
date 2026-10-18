@@ -1,4 +1,4 @@
-// Firebase Authentication on the server: checks the ID token the browser sends (Google or email sign-in).
+// Firebase Authentication on the server: checks the ID token the browser or the iPhone app sends (Google, Apple or email sign-in).
 // No SDK needed: the token is an RS256 JWT signed by Google's securetoken keys.
 //   FIREBASE_PROJECT_ID   turns login on. Without it the app runs as a single local user (development).
 import { createPublicKey, createVerify } from 'node:crypto';
@@ -39,7 +39,8 @@ export async function verifyIdToken(token: string): Promise<User> {
   if (claims.aud !== projectId || claims.iss !== `https://securetoken.google.com/${projectId}`) throw new Error('token is for another project');
   if (!(claims.exp > now) || !(claims.iat <= now + 300) || !claims.sub) throw new Error('token expired');
   // Email sign-ups must click the link in their confirmation mail first (Google accounts arrive verified).
-  if (claims.email_verified !== true) throw new Error('email not verified');
+  // Apple vouches for its users itself, even when they chose not to share an address.
+  if (claims.email_verified !== true && claims.firebase?.sign_in_provider !== 'apple.com') throw new Error('email not verified');
   return { uid: String(claims.sub), email: typeof claims.email === 'string' ? claims.email : undefined, phone: typeof claims.phone_number === 'string' ? claims.phone_number : undefined };
 }
 

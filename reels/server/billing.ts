@@ -72,6 +72,17 @@ export async function checkout(a: Account, what: Purchase, origin: string) {
   return String(s.url);
 }
 
+/** Ends a web subscription at once (account deletion). Later invoices stop; nothing is refunded. */
+export async function cancelSubscription(a: Account) {
+  if (!key || !a.subscriptionId) return;
+  const r = await fetch(`https://api.stripe.com/v1/subscriptions/${encodeURIComponent(a.subscriptionId)}`, {
+    method: 'DELETE',
+    headers: { Authorization: `Bearer ${key}`, 'Stripe-Version': STRIPE_VERSION },
+  });
+  // Already cancelled is fine.
+  if (!r.ok && r.status !== 404) throw new Error(`Stripe ${r.status}: ${(await r.json()).error?.message ?? ''}`);
+}
+
 /** Stripe's own page for changing plan, card and invoices, or cancelling. */
 export async function portal(a: Account, origin: string) {
   if (!a.customerId) throw new Error('まだお支払いの記録がありません');
@@ -128,20 +139,26 @@ export async function webhook(raw: Buffer, signature: string | undefined) {
         if (plan) {
           a.plan = plan;
           a.tokens = PLAN_TOKENS[plan];
+          a.store = 'stripe';
+          a.storeProduct = undefined;
         }
         break;
       }
       case 'customer.subscription.updated': {
         const plan = planOfPrice(o.items?.data?.[0]?.price?.id);
         a.subscriptionId = o.id;
+        // A plan bought in the iPhone app is the App Store's to end, not Stripe's.
+        if (a.store === 'app_store' || a.store === 'play_store') break;
         if (['canceled', 'unpaid', 'incomplete_expired'].includes(o.status)) (a.plan = 'free'), (a.tokens = 0);
         else if (plan) a.plan = plan;
         break;
       }
       case 'customer.subscription.deleted':
+        a.subscriptionId = undefined;
+        if (a.store === 'app_store' || a.store === 'play_store') break;
         a.plan = 'free';
         a.tokens = 0;
-        a.subscriptionId = undefined;
+        a.store = undefined;
         break;
     }
   });

@@ -13,3 +13,6 @@ deploy/env.yaml
 data
 .ca.crt
 .env
+ios
+android
+app/native

@@ -20,7 +20,8 @@ import fivePassSample from '../../props/fivepass-demo.json';
 
 import { LANG_NAMES, langs, type Lang } from '../../src/lang';
 import { lang, setLang, tr } from './i18n';
-import { authHeader, checkVerified, config as appConfig, confirmPhoneCode, linkedPhone, resendVerification, sendPhoneCode, resetPassword, signInEmail, signInGoogle, signOut, signUpEmail, startAuth, useAuth } from './auth';
+import { authHeader, checkVerified, config as appConfig, confirmPhoneCode, deleteAccount, linkedPhone, registerPushToken, resendVerification, sendPhoneCode, resetPassword, signInApple, signInEmail, signInGoogle, signOut, signUpEmail, startAuth, useAuth } from './auth';
+import { apiUrl, enablePush, iapBuy, iapProducts, iapRestore, isNative, manageStoreSubscription, mediaQuery, pickFromLibrary, platform, saveToCameraRoll, shareVideo, type IapProduct } from './native';
 
 // 億 only reads naturally in Japanese and Chinese; other languages get a compact number ("96.3B").
 function mixCount() {
@@ -133,7 +134,8 @@ type Job = {
 // and generation/export explain that they need the server.
 const DEMO = (window as any).ATO_DEMO as { jobs: Job[] } | undefined;
 const BASE: string = (window as any).remotion_staticBase ?? '';
-const media = (p: string) => (/^(blob:|https?:)/.test(p) ? p : `${BASE}/${p}`);
+/** Address of a file under public/ ("jobs/…", "/uploads/…"). In the app it points at the server, with the media key. */
+const media = (p: string) => (/^(blob:|https?:|data:)/.test(p) ? p : `${BASE}/${p.replace(/^\//, '')}${mediaQuery(p)}`);
 const DEMO_BLOCKED = tr("このプレビューでは生成と書き出しは動きません（サーバー版で動作確認済み）。編集とプレビューは試せます。");
 
 const demoApi = async (url: string, init?: RequestInit): Promise<any> => {
@@ -152,7 +154,7 @@ const demoApi = async (url: string, init?: RequestInit): Promise<any> => {
 
 const api = async <T,>(url: string, init?: RequestInit): Promise<T> => {
   if (DEMO) return demoApi(url, init);
-  const r = await fetch(url, { ...init, headers: { 'Content-Type': 'application/json', ...authHeader(), ...(init?.headers ?? {}) } });
+  const r = await fetch(apiUrl(url), { ...init, headers: { 'Content-Type': 'application/json', ...authHeader(), ...(init?.headers ?? {}) } });
   const j = await r.json();
   if (r.status === 402 && j.code === 'tokens') throw new Error(tr("トークンが足りません。アカウントのページでプランを選ぶか、トークンを追加してください。"));
   if (!r.ok) throw new Error(j.error ?? r.statusText);
@@ -161,7 +163,7 @@ const api = async <T,>(url: string, init?: RequestInit): Promise<T> => {
 
 const uploadFile = async (f: File) => {
   if (DEMO) return { file: f.name, url: URL.createObjectURL(f) };
-  const r = await fetch(`/api/upload?name=${encodeURIComponent(f.name)}`, { method: 'POST', body: f, headers: authHeader() });
+  const r = await fetch(apiUrl(`/api/upload?name=${encodeURIComponent(f.name)}`), { method: 'POST', body: f, headers: authHeader() });
   const j = await r.json();
   if (!r.ok) throw new Error(j.error);
   return j as { file: string; url: string };
@@ -237,14 +239,14 @@ const Drop: React.FC<{ label: string; hint: string; accept: string; value?: { fi
       <label>{label}</label>
       <div
         className={`drop ${over ? 'over' : ''}`}
-        onClick={() => ref.current?.click()}
+        onClick={() => (isNative ? pickFromLibrary(accept).then((f) => take(f ?? undefined), (e) => setErr(e?.message ?? String(e))) : ref.current?.click())}
         onDragOver={(e) => (e.preventDefault(), setOver(true))}
         onDragLeave={() => setOver(false)}
         onDrop={(e) => (e.preventDefault(), setOver(false), take(e.dataTransfer.files[0]))}
       >
-        {value ? isVideo ? <video src={value.url} muted /> : <img src={value.url} /> : <div style={{ width: 72, height: 72, borderRadius: 8, background: 'var(--panel2)', display: 'grid', placeItems: 'center', fontSize: 24 }}>{tr("＋")}</div>}
+        {value ? isVideo ? <video src={media(value.url)} muted playsInline /> : <img src={media(value.url)} /> : <div style={{ width: 72, height: 72, borderRadius: 8, background: 'var(--panel2)', display: 'grid', placeItems: 'center', fontSize: 24 }}>{tr("＋")}</div>}
         <div>
-          <div>{busy ? tr("アップロード中…") : value ? value.name : tr("クリックまたはドラッグ＆ドロップ")}</div>
+          <div>{busy ? tr("アップロード中…") : value ? value.name : isNative ? tr("写真ライブラリから選ぶ") : tr("クリックまたはドラッグ＆ドロップ")}</div>
           <div className="hint">{hint}</div>
           {err ? <div className="err">{err}</div> : null}
         </div>
@@ -345,6 +347,8 @@ const NewJob: React.FC<{ template: TemplateId; fx?: EffectId; mixArg?: string; o
     try {
       const body = Object.fromEntries(Object.entries(input).map(([k, v]) => [k, v && typeof v === 'object' ? v.file : v]));
       onStarted(await api<Job>('/api/jobs', { method: 'POST', body: JSON.stringify({ template, input: body }) }));
+      // In the app: ask once whether to send a notification when it's ready (the reason is obvious right now).
+      enablePush(registerPushToken);
     } catch (e: any) {
       setErr(e.message);
       setBusy(false);
@@ -580,7 +584,50 @@ const RenderProgress: React.FC<{ job: Job }> = ({ job }) => {
  * iOS only opens the sheet straight from a tap, so the file is fetched ahead of time; where sharing files
  * isn't supported (most desktops) it falls back to a plain download.
  */
-const ShareButton: React.FC<{ job: Job; compact?: boolean }> = ({ job, compact }) => {
+const ShareButton: React.FC<{ job: Job; compact?: boolean }> = (p) => (isNative ? <NativeShare {...p} /> : <WebShare {...p} />);
+
+/** In the app: save straight to the camera roll, or open the share sheet (Instagram, TikTok…) with the file. */
+const NativeShare: React.FC<{ job: Job; compact?: boolean }> = ({ job, compact }) => {
+  const url = media(job.video!);
+  const name = `${job.title.replace(/[\\/:*?"<>|]+/g, ' ').trim() || 'reel'}-${job.id.slice(-6)}.mp4`;
+  const [busy, setBusy] = useState<'' | 'save' | 'share'>('');
+  const [msg, setMsg] = useState('');
+  const run = (what: 'save' | 'share') => async () => {
+    setBusy(what);
+    setMsg('');
+    try {
+      if (what === 'save') {
+        await saveToCameraRoll(url, name);
+        setMsg(tr("カメラロールに保存しました。"));
+      } else await shareVideo(url, name, job.title);
+    } catch (e: any) {
+      const m = String(e?.message ?? e);
+      setMsg(/denied|permission|access/i.test(m) ? tr("写真へのアクセスが許可されていません。設定アプリで Reels Studio の「写真」を許可してください。") : m);
+    }
+    setBusy('');
+  };
+  if (compact)
+    return (
+      <button onClick={run('share')} disabled={!!busy} aria-label={tr("保存・共有")}>
+        <span>⇪</span>
+        {busy ? tr("準備中…") : tr("保存・共有")}
+        {msg ? <small style={{ maxWidth: 120 }}>{msg}</small> : null}
+      </button>
+    );
+  return (
+    <>
+      <button className="btn" onClick={run('save')} disabled={!!busy}>
+        {busy === 'save' ? tr("保存中…") : tr("カメラロールに保存")}
+      </button>
+      <button className="btn ghost" onClick={run('share')} disabled={!!busy}>
+        {busy === 'share' ? tr("準備中…") : tr("InstagramやTikTokに共有")}
+      </button>
+      {msg ? <p className="cost" style={{ width: '100%', textAlign: 'center', margin: 0 }}>{msg}</p> : null}
+    </>
+  );
+};
+
+const WebShare: React.FC<{ job: Job; compact?: boolean }> = ({ job, compact }) => {
   const url = media(job.video!);
   const name = `${job.title.replace(/[\\/:*?"<>|]+/g, ' ').trim() || 'reel'}.mp4`;
   const [file, setFile] = useState<File | null>(null);
@@ -2100,7 +2147,7 @@ const FAQ = [
 
 const jobTokens = (j: Job) => j.tokens ?? (j.template === 'ProductShine' ? (j.props?.clip ? 12 : 5) : j.template === 'EffectsReel' || j.template === 'FivePass' || j.template === 'SaaSPromo' ? 5 : 2);
 
-type Me = { email?: string; plan: 'free' | 'starter' | 'standard' | 'pro'; tokens: number; extra: number; balance: number; billing: boolean; subscribed: boolean; pastDue?: boolean; freePending?: boolean; displayName?: string; avatar?: string; auth: boolean };
+type Me = { email?: string; plan: 'free' | 'starter' | 'standard' | 'pro'; tokens: number; extra: number; balance: number; billing: boolean; subscribed: boolean; store?: 'stripe' | 'app_store' | 'play_store'; pastDue?: boolean; freePending?: boolean; displayName?: string; avatar?: string; auth: boolean };
 const PLAN_NAMES: Record<Me['plan'], string> = { free: tr("無料"), starter: tr("スターター"), standard: tr("スタンダード"), pro: tr("プロ") };
 
 // Free tokens are claimed once per phone number: SMS code, then the server checks the number is new.
@@ -2191,7 +2238,7 @@ const ProfileSheet: React.FC<{ me: Me; onClose: () => void; onSaved: () => void 
       {(close) => (
         <div className="profileedit">
           <h2>{tr("プロフィールを編集")}</h2>
-          <button className="avatarpick" onClick={() => pick.current?.click()} disabled={busy} aria-label={tr("写真を変更")}>
+          <button className="avatarpick" onClick={() => (isNative ? pickFromLibrary('image/*').then((f) => take(f ?? undefined), (e) => setErr(e?.message ?? String(e))) : pick.current?.click())} disabled={busy} aria-label={tr("写真を変更")}>
             <Avatar me={{ ...me, avatar, displayName: name }} size={96} />
             <span>{busy ? tr("アップロード中…") : tr("写真を変更")}</span>
           </button>
@@ -2251,6 +2298,8 @@ const Account: React.FC<{ go: (h: string) => void }> = ({ go }) => {
     }
   };
   const billing = !!me?.billing;
+  /** A plan bought in the app is billed by Apple / Google; the website can't change it, and the app can't change a web plan. */
+  const inStore = me?.store === 'app_store' || me?.store === 'play_store';
   return (
     <>
       <Crumbs items={[{ label: tr("ホーム"), href: '#/' }, { label: tr("アカウント") }]} />
@@ -2276,7 +2325,7 @@ const Account: React.FC<{ go: (h: string) => void }> = ({ go }) => {
       {editing && me ? <ProfileSheet me={me} onClose={() => setEditing(false)} onSaved={loadMe} /> : null}
       {me?.freePending ? <FreeClaim onDone={loadMe} /> : null}
       {paid ? <div className="okmsg">{tr("お支払いありがとうございます。トークンは数秒で反映されます。")}</div> : null}
-      {me?.pastDue ? (
+      {me?.pastDue && !isNative && !inStore ? (
         <div className="err">
           {tr("今月のお支払いができませんでした。カードを更新してください。")}{' '}
           <button className="linkbtn" disabled={!!busy} onClick={() => open('portal')}>
@@ -2299,6 +2348,10 @@ const Account: React.FC<{ go: (h: string) => void }> = ({ go }) => {
         </div>
       </div>
       <h2>{tr("プラン")}</h2>
+      {isNative ? (
+        <StorePlans me={me} onChanged={loadMe} />
+      ) : (
+      <>
       <p className="lead-price">
         {tr("リール1本")} <b>{tr("約{0}円", MIN_PER_REEL)}</b> {tr("から")}
       </p>
@@ -2318,7 +2371,11 @@ const Account: React.FC<{ go: (h: string) => void }> = ({ go }) => {
                 <br />
                 {p.note}
               </div>
-              {!billing ? (
+              {inStore ? (
+                <button className="btn ghost small" disabled>
+                  {current ? tr("利用中") : tr("App Storeで契約中")}
+                </button>
+              ) : !billing ? (
                 <button className="btn ghost small" disabled title={tr("課金の接続後に選べます")}>
                   {tr("準備中")}
                 </button>
@@ -2335,6 +2392,7 @@ const Account: React.FC<{ go: (h: string) => void }> = ({ go }) => {
           );
         })}
       </div>
+      {inStore ? <p className="cost">{tr("このプランはiPhoneのアプリで契約しています。変更・解約はiPhoneの「設定」→ Apple ID →「サブスクリプション」からできます。")}</p> : null}
       <p className="cost">{tr("消費トークン: 自分の素材だけ 2 ／ AI写真・エフェクト 5 ／ AI動画あり 12")}</p>
       {billing ? (
         <div className="row" style={{ flexWrap: 'wrap', gap: 8, marginTop: 8 }}>
@@ -2348,6 +2406,8 @@ const Account: React.FC<{ go: (h: string) => void }> = ({ go }) => {
           ) : null}
         </div>
       ) : null}
+      </>
+      )}
       {err ? <div className="err">{err}</div> : null}
       <h2 style={{ marginTop: 24 }}>{tr("言語")}</h2>
       <div className="langgrid">
@@ -2366,7 +2426,169 @@ const Account: React.FC<{ go: (h: string) => void }> = ({ go }) => {
       </p>
       <h2 style={{ marginTop: 24 }}>{tr("履歴")}</h2>
       <History onOpen={(id) => go(`#/job/${id}`)} />
+      {me?.auth ? <DeleteAccount me={me} /> : null}
     </>
+  );
+};
+
+/**
+ * Plans and token packs in the app, sold through the App Store (RevenueCat). Prices are the store's own.
+ * Tokens land on the same account as the website, through the server's RevenueCat webhook.
+ */
+const StorePlans: React.FC<{ me: Me | null; onChanged: () => Promise<unknown> }> = ({ me, onChanged }) => {
+  const auth = useAuth();
+  const [products, setProducts] = useState<Partial<Record<'topup' | 'starter' | 'standard' | 'pro', IapProduct>> | null>(null);
+  const [busy, setBusy] = useState('');
+  const [msg, setMsg] = useState('');
+  const iap = appConfig?.iap;
+  useEffect(() => {
+    if (iap && auth.uid) iapProducts(iap, auth.uid).then(setProducts, (e) => (setProducts({}), setMsg(e?.message ?? String(e))));
+  }, [auth.uid]);
+  const webPlan = me?.store === 'stripe' || (me?.subscribed && !me?.store);
+  /** The webhook usually lands within seconds; watch the balance until it moves. */
+  const waitForTokens = async (before: number, plan?: string) => {
+    for (let i = 0; i < 15; i++) {
+      await new Promise((r) => setTimeout(r, 2000));
+      const m = await api<Me>('/api/me').catch(() => null);
+      if (m && (m.balance !== before || (plan && m.plan === plan))) break;
+    }
+    await onChanged();
+  };
+  const buy = (key: 'topup' | 'starter' | 'standard' | 'pro') => async () => {
+    const p = products?.[key];
+    if (!p) return;
+    setBusy(key);
+    setMsg('');
+    try {
+      const before = me?.balance ?? 0;
+      if (await iapBuy(p)) {
+        setMsg(tr("お支払いありがとうございます。トークンは数秒で反映されます。"));
+        await waitForTokens(before, key === 'topup' ? undefined : key);
+      }
+    } catch (e: any) {
+      setMsg(e?.message ?? String(e));
+    }
+    setBusy('');
+  };
+  const restore = async () => {
+    setBusy('restore');
+    setMsg('');
+    try {
+      await iapRestore();
+      await waitForTokens(me?.balance ?? 0);
+      setMsg(tr("購入を復元しました。"));
+    } catch (e: any) {
+      setMsg(e?.message ?? String(e));
+    }
+    setBusy('');
+  };
+  if (!iap) return <p className="cost">{tr("アプリ内のご購入は準備中です。")}</p>;
+  return (
+    <>
+      <div className="plans">
+        {PLANS.map((p) => {
+          const prod = products?.[p.id];
+          const current = me?.plan === p.id;
+          return (
+            <div key={p.id} className={`plan ${current ? 'on' : ''}`}>
+              <div className="name">{p.name}</div>
+              <div className="price">{prod ? prod.price : products ? '—' : '…'}<small>{tr("/月")}</small></div>
+              <div className="cost">
+                {tr("毎月{0}トークン", p.tokens)}
+                <br />
+                {p.note}
+              </div>
+              {current ? (
+                <button className="btn ghost small" disabled>{tr("利用中")}</button>
+              ) : webPlan ? (
+                <button className="btn ghost small" disabled>{tr("アプリ以外で契約中")}</button>
+              ) : (
+                <button className="btn small" disabled={!prod || !!busy} onClick={buy(p.id)}>
+                  {busy === p.id ? tr("処理中…") : me?.store === 'app_store' || me?.store === 'play_store' ? tr("このプランに変更") : tr("このプランにする")}
+                </button>
+              )}
+            </div>
+          );
+        })}
+      </div>
+      {webPlan ? <p className="cost">{tr("このプランはアプリ以外で契約しています。")}</p> : null}
+      <p className="cost">{tr("消費トークン: 自分の素材だけ 2 ／ AI写真・エフェクト 5 ／ AI動画あり 12")}</p>
+      <div className="row" style={{ flexWrap: 'wrap', gap: 8, marginTop: 8 }}>
+        <button className="btn ghost small" disabled={!products?.topup || !!busy} onClick={buy('topup')}>
+          {busy === 'topup' ? tr("処理中…") : tr("トークンを{0}追加する", appConfig?.topupTokens ?? 30)}
+          {products?.topup ? ` (${products.topup.price})` : ''}
+        </button>
+        {me?.store === 'app_store' || me?.store === 'play_store' ? (
+          <button className="btn ghost small" onClick={() => manageStoreSubscription()}>
+            {tr("サブスクリプションの管理")}
+          </button>
+        ) : null}
+        <button className="linkbtn" disabled={!!busy} onClick={restore}>
+          {busy === 'restore' ? tr("処理中…") : tr("購入を復元")}
+        </button>
+      </div>
+      {msg ? <div className="okmsg" style={{ marginTop: 10 }}>{msg}</div> : null}
+      <p className="cost" style={{ marginTop: 10 }}>
+        {platform === 'android'
+          ? tr("プランは1か月ごとの自動更新です。Google Playの定期購入からいつでも解約できます。")
+          : tr("プランは1か月ごとの自動更新です。お支払いはApple IDに請求されます。期間終了の24時間前までに解約しない限り自動で更新され、解約はiPhoneの「設定」→ Apple ID →「サブスクリプション」からいつでもできます。")}
+      </p>
+    </>
+  );
+};
+
+/** Delete the account from inside the app (App Store guideline 5.1.1(v)); the website has the same. */
+const DeleteAccount: React.FC<{ me: Me }> = ({ me }) => {
+  const [step, setStep] = useState<'closed' | 'confirm' | 'busy'>('closed');
+  const [err, setErr] = useState('');
+  const inStore = me.store === 'app_store' || me.store === 'play_store';
+  if (step === 'closed')
+    return (
+      <p style={{ marginTop: 32, textAlign: 'center' }}>
+        <button className="linkbtn" style={{ color: 'var(--danger)' }} onClick={() => setStep('confirm')}>
+          {tr("アカウントを削除")}
+        </button>
+      </p>
+    );
+  return (
+    <div className="err" style={{ marginTop: 24, display: 'grid', gap: 10 }}>
+      <b>{tr("アカウントを削除しますか？")}</b>
+      <span>{tr("作ったリール、アップロードした素材、残りのトークン、ログイン情報がすべて削除され、元に戻せません。Webで契約中のプランは解約されます。")}</span>
+      {inStore ? (
+        <span>
+          {tr("App Storeのサブスクリプションは自動では止まりません。先にiPhoneの「設定」→ Apple ID →「サブスクリプション」で解約してください。")}{' '}
+          {isNative ? (
+            <button className="linkbtn" onClick={() => manageStoreSubscription()}>
+              {tr("サブスクリプションの管理")}
+            </button>
+          ) : null}
+        </span>
+      ) : null}
+      <div className="row" style={{ gap: 8 }}>
+        <button
+          className="btn small"
+          style={{ background: 'var(--danger)', color: '#fff' }}
+          disabled={step === 'busy'}
+          onClick={async () => {
+            setStep('busy');
+            setErr('');
+            try {
+              await deleteAccount();
+              location.hash = '#/';
+            } catch (e: any) {
+              setErr(String(e?.code ?? '').includes('cancel') ? '' : e?.message ?? String(e));
+              setStep('confirm');
+            }
+          }}
+        >
+          {step === 'busy' ? tr("削除中…") : tr("削除する")}
+        </button>
+        <button className="btn ghost small" disabled={step === 'busy'} onClick={() => setStep('closed')}>
+          {tr("やめる")}
+        </button>
+      </div>
+      {err ? <span>{err}</span> : null}
+    </div>
   );
 };
 
@@ -2519,6 +2741,12 @@ const App = () => {
   );
 };
 
+const AppleLogo = () => (
+  <svg width="16" height="18" viewBox="0 0 814 1000" aria-hidden fill="currentColor">
+    <path d="M788 341c-6 4-108 62-108 190 0 149 131 202 135 203-1 3-21 72-69 142-43 62-88 124-156 124s-86-40-164-40c-77 0-104 41-166 41s-106-57-156-127C46 792 0 667 0 548 0 357 124 256 247 256c65 0 120 43 161 43 39 0 100-45 174-45 28 0 129 2 196 87zM555 160c31-37 53-88 53-139 0-7-1-14-2-20-50 2-110 34-146 76-28 32-55 83-55 135 0 8 1 16 2 18 3 1 9 2 14 2 45 0 102-30 134-72z" />
+  </svg>
+);
+
 /** Shown instead of the app while login is on and nobody is signed in. */
 const SignIn: React.FC = () => {
   const [mode, setMode] = useState<'in' | 'up'>('in');
@@ -2540,7 +2768,7 @@ const SignIn: React.FC = () => {
             ? tr("このメールアドレスはすでに登録されています。ログインしてください。")
             : code.includes('weak-password')
               ? tr("パスワードは6文字以上にしてください。")
-              : code.includes('popup-closed')
+              : code.includes('popup-closed') || /cancel/i.test(String(e?.message ?? '')) || code === '1001'
                 ? ''
                 : tr("うまくいきませんでした。もう一度お試しください。"),
       );
@@ -2554,6 +2782,11 @@ const SignIn: React.FC = () => {
       </div>
       <h1>{tr("編集しない、動画編集アプリ。")}</h1>
       <p className="sub">{tr("素材を入れるだけで、AIが編集まで仕上げます。あなたは出てきた案から選ぶだけ。")}</p>
+      {isNative || appConfig?.appleWeb ? (
+        <button className="btn apple" disabled={busy} onClick={run(signInApple)}>
+          <AppleLogo /> {tr("Appleでサインイン")}
+        </button>
+      ) : null}
       <button className="btn google" disabled={busy} onClick={run(signInGoogle)}>
         <b>G</b> {tr("Googleで続ける")}
       </button>

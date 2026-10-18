@@ -26,6 +26,10 @@ export type Account = {
   extra: number;
   customerId?: string;
   subscriptionId?: string;
+  /** Where the current plan is billed: Stripe on the web, or the App Store / Google Play through RevenueCat. */
+  store?: 'stripe' | 'app_store' | 'play_store';
+  /** The App Store / Google Play product of the current in-app subscription. */
+  storeProduct?: string;
   /** The last renewal payment failed and Stripe is retrying it. */
   pastDue?: boolean;
   /** Shown on the account page instead of the email; set by the user. */
@@ -36,8 +40,10 @@ export type Account = {
   freePending?: boolean;
   /** Hash of the phone number that claimed the free tokens, so one number claims once. */
   phoneHash?: string;
-  /** Stripe events already applied, so a retried webhook is not counted twice. */
+  /** Stripe and RevenueCat events already applied, so a retried webhook is not counted twice. */
   events?: string[];
+  /** Phones of the iPhone / Android app that get a push when a reel is ready (FCM tokens). */
+  devices?: { token: string; platform: 'ios' | 'android'; lang: string; at: string }[];
 };
 
 const file = path.join(dataDir, 'accounts.json');
@@ -125,4 +131,17 @@ export async function update(uid: string, fn: (a: Account) => void) {
 
 export async function findByCustomer(customerId: string) {
   return [...(await load()).values()].find((a) => a.customerId === customerId);
+}
+
+/**
+ * Deletes an account for good (the in-app "delete account"). Only the hash of the phone number that
+ * claimed free tokens is kept, so a deleted account cannot be re-created to claim them again.
+ */
+export async function removeAccount(uid: string) {
+  const all = await load();
+  const a = all.get(uid);
+  if (!a) return;
+  all.delete(uid);
+  if (a.phoneHash) all.set(`deleted-${a.phoneHash.slice(0, 16)}`, { uid: `deleted-${a.phoneHash.slice(0, 16)}`, createdAt: new Date().toISOString(), plan: 'free', tokens: 0, extra: 0, phoneHash: a.phoneHash });
+  await persist();
 }

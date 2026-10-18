@@ -9,3 +9,4 @@ public/samples/black-long.mp4
 deploy/env.yaml
 data
 .ca.crt
+app/native/www
