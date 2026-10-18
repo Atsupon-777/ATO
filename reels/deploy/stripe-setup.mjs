@@ -1,9 +1,11 @@
 // Creates the Reels Studio products, prices and webhook in Stripe, and prints the values for deploy/env.yaml.
 //   STRIPE_SECRET_KEY=sk_live_... node deploy/stripe-setup.mjs https://app.example.com
+// Without the URL it creates only the products and prices; run with `--webhook-only <url>` once the app is live.
 // Run once per Stripe account (test mode first with sk_test_...). Prices are in yen, tax included.
 const key = process.env.STRIPE_SECRET_KEY;
-const site = process.argv[2];
-if (!key || !site) throw new Error('usage: STRIPE_SECRET_KEY=... node deploy/stripe-setup.mjs https://your-app-url');
+const webhookOnly = process.argv[2] === '--webhook-only';
+const site = webhookOnly ? process.argv[3] : process.argv[2];
+if (!key || (webhookOnly && !site)) throw new Error('usage: STRIPE_SECRET_KEY=... node deploy/stripe-setup.mjs [--webhook-only] [https://your-app-url]');
 
 const form = (o, prefix = '') =>
   Object.entries(o).flatMap(([k, v]) => {
@@ -31,7 +33,7 @@ const items = [
   { env: 'STRIPE_PRICE_TOPUP', name: 'Reels Studio トークン追加（30）', yen: TOPUP_YEN, monthly: false, desc: '30トークン（期限なし）' },
 ];
 const out = [];
-for (const it of items) {
+for (const it of webhookOnly ? [] : items) {
   const product = await post('products', { name: it.name, description: it.desc });
   const price = await post('prices', {
     product: product.id,
@@ -42,6 +44,8 @@ for (const it of items) {
   });
   out.push(`${it.env}: "${price.id}"`);
 }
+console.log(out.join('\n'));
+if (!site) process.exit(0);
 const hook = await post('webhook_endpoints', {
   url: `${site.replace(/\/$/, '')}/api/stripe/webhook`,
   api_version: '2026-08-26.dahlia',
@@ -57,5 +61,4 @@ const hook = await post('webhook_endpoints', {
     ].entries(),
   ),
 });
-console.log(out.join('\n'));
 console.log(`\nSTRIPE_WEBHOOK_SECRET (put in Secret Manager): ${hook.secret}`);

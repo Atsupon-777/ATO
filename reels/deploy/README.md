@@ -40,14 +40,20 @@
    - Subscriptions：読み取り
 
    このキーを Secret Manager の `STRIPE_SECRET_KEY` に入れます。
-3. 商品・価格・Webhook の作成だけは、テストモードのシークレットキー（`sk_test_...`）で一度実行します。
+3. 商品と価格は、テストモードのシークレットキー（`sk_test_...`）で一度だけ作ります。
 
    ```sh
-   STRIPE_SECRET_KEY=sk_test_... node deploy/stripe-setup.mjs https://<公開URL>
+   STRIPE_SECRET_KEY=sk_test_... node deploy/stripe-setup.mjs
    ```
 
    月額 9,800円 / 29,800円 / 79,800円 と、トークン追加（30トークン 4,800円）を税込で作成し、`deploy/env.yaml` に貼る値を表示します。
    トークン追加の金額は `TOPUP_YEN=...` で変えられます。
+   Webhook は公開URLが決まってから（手順4のあと）作ります。
+
+   ```sh
+   STRIPE_SECRET_KEY=sk_test_... node deploy/stripe-setup.mjs --webhook-only https://<公開URL>
+   ```
+
 4. 「設定」→「カスタマーポータル」を有効にし、プラン変更・カード変更・解約・請求書の表示を許可します。
 5. 「設定」→「支払い方法」で、カードに加えて **コンビニ決済** と **銀行振込** を必要に応じてオンにします。アプリ側の変更は不要です（入金が確認できた時点でトークンを追加します）。
 6. テストで動作を確かめたら、本番モードでもう一度 3 を実行し、本番の制限付きキーに差し替えます。
