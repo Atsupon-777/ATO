@@ -34,6 +34,15 @@ export const productShineSchema = z.object({
   music: z.string().optional(),
   /** Optional AI motion clip (e.g. Veo image-to-video, 9:16) shown between the hero and the details. */
   clip: z.string().optional(),
+  /**
+   * Story mode: AI-shot scenes of the product's world (ingredient, place, ritual) that open the reel like a short
+   * film, each with one line of narration, before the product is revealed with `clip`.
+   */
+  story: z
+    .array(z.object({ clip: z.string(), image: z.string(), line: z.string().max(40), kicker: z.string().max(24) }))
+    .min(2)
+    .max(4)
+    .optional(),
   palette: z.object({ accent: zColor(), glow: zColor(), base: zColor() }),
 });
 

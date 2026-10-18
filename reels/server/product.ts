@@ -57,6 +57,21 @@ const planSchema = z.object({
   glints: z
     .array(z.object({ x: z.number(), y: z.number() }))
     .describe('2-3 points (0-1) on IMAGE 3 (cut-out) where metal, glass or gloss would catch a sparkle'),
+  story: z
+    .array(
+      z.object({
+        role: z.enum(['hook', 'origin', 'ritual']).describe('hook: a sensory macro that stops the scroll; origin: where it comes from or how it is made; ritual: the moment it is used or enjoyed'),
+        imagePrompt: z
+          .string()
+          .describe('English prompt for a photorealistic 9:16 cinematic still of this scene, in the same colour world as the product. Concrete subject, lens and light (for example "macro 100mm, backlit by low morning sun"). The packaging may appear only if the scene naturally holds it; never invent a different package, logo or text'),
+        motionPrompt: z
+          .string()
+          .describe('English prompt for an 8s image-to-video shot of that still: one slow, graceful camera move plus one natural motion (powder falling in slow motion, steam curling, mist drifting over leaves, liquid swirling, hands moving calmly)'),
+        line: z.string().describe('one line of narration in the target language, quiet and emotional, max 16 characters; the three lines read as one short story leading to the product'),
+        kicker: z.string().describe('short English label, 1-3 words'),
+      }),
+    )
+    .describe('exactly 3 scenes in the order hook, origin, ritual: the world of the product before it is revealed. Only things that are true for this kind of product; no claims beyond the facts'),
   motionPrompt: z
     .string()
     .describe('English prompt for an 8s image-to-video shot of IMAGE 2 for a fast-paced Instagram ad: an energetic, continuous camera move (for example a fast dolly-in that arcs around the product, a crane move or a parallax slide past foreground elements), moving light and shadows, and atmospheric motion that suits the product (drifting leaves, steam, mist, sparkles) that never covers it. The product itself stays rigid and unchanged'),
@@ -120,7 +135,9 @@ export async function buildProductReel(brief: ProductBrief) {
 
   step(3, 'plan and copy');
   const planFile = path.join(dir, 'plan.json');
-  const raw = (await exists(planFile)) ? JSON.parse(await readFile(planFile, 'utf8')) : await askJson({
+  // Plans saved before story mode have no story scenes; those are planned again.
+  const cached = (await exists(planFile)) ? JSON.parse(await readFile(planFile, 'utf8')) : null;
+  const raw = cached?.story ? cached : await askJson({
     images: [original, studio, cut.file],
     jsonSchema: z.toJSONSchema(planSchema),
     usage,
@@ -130,13 +147,44 @@ export async function buildProductReel(brief: ProductBrief) {
       `Brand: ${brief.brand}. Product: ${brief.productName}.`,
       `Facts you may use (do not claim anything else, no numbers, awards or effects that are not listed): ${brief.facts || '(none)'}`,
       `Write natural copy for an Instagram reel. ${copyLanguage(lang)} Pick three close-up details that are clearly visible in IMAGE 2 and differ from each other.`,
+      'The reel opens like a short film: three cinematic scenes of the product\'s world (a sensory hook, its origin, the ritual of using it), each with one quiet line of narration, and only then the product itself. Make the viewer feel the moment before they see the package.',
     ].join('\n'),
   });
   const plan = planSchema.parse(raw);
   await writeFile(planFile, JSON.stringify(plan, null, 2));
 
   let clip: string | undefined;
+  let story: ProductShineProps['story'];
   if (brief.video) {
+    // Story scenes: a still per scene (Nano Banana, the client photo as the colour and product reference),
+    // then all Veo shots at once. Files already made are reused when a job is re-run.
+    step(4, 'story scenes');
+    const scenes = plan.story.slice(0, 3);
+    const stills = await Promise.all(
+      scenes.map(async (s, i) => {
+        const out = path.join(dir, `story-${i + 1}.png`);
+        if (await exists(out)) return out;
+        return editImage({
+          input: [original],
+          out,
+          prompt: [
+            `A cinematic advertising still for ${brief.productName} by ${brief.brand}: ${s.imagePrompt}`,
+            'Use the reference photo only for the colour palette, mood and, if the product appears, its exact look.',
+            KEEP_PRODUCT,
+            'Vertical 9:16, photorealistic, film-like grade, shallow depth of field, no added text, no watermark.',
+          ].join('\n'),
+          usage,
+          step: `story still ${i + 1}`,
+        });
+      }),
+    );
+    const shot = async (image: string, file: string, prompt: string, label: string) => {
+      if (!(await exists(path.join(dir, file)))) await imageToVideo({ image, out: path.join(dir, file), prompt, usage, step: label });
+      return rel(file);
+    };
+    const storyClips = scenes.map((s, i) =>
+      shot(stills[i], `story-${i + 1}.mp4`, `${s.motionPrompt} Slow, cinematic, natural physics, no text appears.`, `story clip ${i + 1}`),
+    );
     let source = studio;
     if (brief.onSkin) {
       step(4, 'on-skin model shot');
@@ -152,15 +200,18 @@ export async function buildProductReel(brief: ProductBrief) {
         step: 'on-skin shot',
       });
     }
-    step(4, 'motion clip (Veo)');
-    clip = rel('clip.mp4');
-    if (!(await exists(path.join(dir, 'clip.mp4')))) await imageToVideo({
-      image: source,
-      out: path.join(dir, 'clip.mp4'),
-      prompt: `${plan.motionPrompt} The product keeps its exact shape, logo and text throughout.`,
-      usage,
-      step: 'motion clip',
-    });
+    step(4, 'motion clips (Veo)');
+    const [hero, ...clips] = await Promise.all([
+      shot(source, 'clip.mp4', `${plan.motionPrompt} The product keeps its exact shape, logo and text throughout.`, 'motion clip'),
+      ...storyClips,
+    ]);
+    clip = hero;
+    story = scenes.map((s, i) => ({
+      clip: clips[i],
+      image: rel(`story-${i + 1}.png`),
+      line: s.line.slice(0, fit(lang, 22)),
+      kicker: s.kicker.slice(0, 24),
+    }));
   }
 
   step(5, brief.render === false ? 'build props' : 'render');
@@ -183,6 +234,7 @@ export async function buildProductReel(brief: ProductBrief) {
     bpm: 128,
     palette: style.palette,
     ...(clip ? { clip } : {}),
+    ...(story ? { story } : {}),
   });
   await writeFile(path.join(dir, 'props.json'), JSON.stringify(props, null, 2));
   await writeFile(path.join(dir, 'usage.json'), JSON.stringify(usage, null, 2));

@@ -2,7 +2,7 @@
 //   node server/cli.ts models
 //   node server/cli.ts product --photo path.jpg --brand ATO --name "ÉCLAT DE TEMPS" \
 //     --facts "18K rose gold case, sapphire crystal" [--style luxury|clean|cosmetic|natural] \
-//     [--video] [--on-skin] [--cta "詳しくはプロフィールへ"] [--handle @ato]
+//     [--video] [--on-skin] [--cta "詳しくはプロフィールへ"] [--handle @ato] [--lang ja] [--no-render]
 //   node server/cli.ts matte --video talk.mp4 --out public/uploads/talk-matte.webm [--model u2net_human_seg]
 //   node server/cli.ts fivepass --pass 1 --video talk.mp4 [--lang ja]        (prints the job id)
 //   node server/cli.ts fivepass --pass 2..5 --job <id> [--note "白い縁取りが偽物っぽい"]
@@ -37,8 +37,11 @@ if (cmd === 'models') {
       video: { type: 'boolean', default: false },
       'on-skin': { type: 'boolean', default: false },
       job: { type: 'string' },
+      lang: { type: 'string', default: 'ja' },
+      'no-render': { type: 'boolean', default: false },
     },
   });
+  if (!isLang(values.lang)) throw new Error('--lang must be one of ja, en, fr, id, zh, es, ta');
   if (!values.photo || !values.brand || !values.name) throw new Error('--photo, --brand and --name are required');
   if (!(values.style! in STYLES)) throw new Error(`--style must be one of ${Object.keys(STYLES).join(', ')}`);
   const res = await buildProductReel({
@@ -52,8 +55,10 @@ if (cmd === 'models') {
     video: values.video!,
     onSkin: values['on-skin']!,
     jobId: values.job,
+    lang: values.lang,
+    render: !values['no-render'],
   });
-  console.log(JSON.stringify({ out: res.out, usage: res.usage }, null, 2));
+  console.log(JSON.stringify({ jobId: res.jobId, out: res.out, usage: res.usage }, null, 2));
 } else if (cmd === 'matte') {
   const { values } = parseArgs({
     args: rest,
