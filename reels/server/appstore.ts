@@ -3,13 +3,15 @@
 //   REVENUECAT_WEBHOOK_AUTH      the Authorization value set on the RevenueCat webhook (secret)
 //   REVENUECAT_IOS_KEY           RevenueCat public SDK key for iOS (appl_...), handed to the app by /api/config
 //   REVENUECAT_ANDROID_KEY       the same for Android (goog_...), for later
-//   IAP_PRODUCT_TOPUP            consumable product that adds TOPUP_TOKENS (default reels_tokens_30)
+//   IAP_PRODUCT_TOPUP            consumable token pack (default reels_tokens_10000)
+//   IAP_TOPUP_TOKENS             tokens in that pack (default 10,000); the App Store can't sell any amount, so the app sells a fixed pack
 //   IAP_PRODUCT_STARTER / _STANDARD / _PRO   monthly auto-renewing subscriptions (default reels_<plan>_monthly)
 import { timingSafeEqual } from 'node:crypto';
-import { PLAN_TOKENS, TOPUP_TOKENS, getAccount, update, type PlanId } from './accounts.ts';
+import { PLAN_TOKENS, getAccount, update, type PlanId } from './accounts.ts';
 
+export const IAP_TOPUP_TOKENS = Number(process.env.IAP_TOPUP_TOKENS ?? 10_000);
 export const IAP_PRODUCTS = {
-  topup: process.env.IAP_PRODUCT_TOPUP || 'reels_tokens_30',
+  topup: process.env.IAP_PRODUCT_TOPUP || 'reels_tokens_10000',
   starter: process.env.IAP_PRODUCT_STARTER || 'reels_starter_monthly',
   standard: process.env.IAP_PRODUCT_STANDARD || 'reels_standard_monthly',
   pro: process.env.IAP_PRODUCT_PRO || 'reels_pro_monthly',
@@ -18,7 +20,7 @@ export const IAP_PRODUCTS = {
 /** What the app needs to sell in-app. Public values only; null until RevenueCat is set up. */
 export const iapConfig = () =>
   process.env.REVENUECAT_IOS_KEY || process.env.REVENUECAT_ANDROID_KEY
-    ? { ios: process.env.REVENUECAT_IOS_KEY || '', android: process.env.REVENUECAT_ANDROID_KEY || '', products: IAP_PRODUCTS }
+    ? { ios: process.env.REVENUECAT_IOS_KEY || '', android: process.env.REVENUECAT_ANDROID_KEY || '', products: IAP_PRODUCTS, topupTokens: IAP_TOPUP_TOKENS }
     : null;
 
 const planOfProduct = (id?: string): PlanId | undefined =>
@@ -49,7 +51,7 @@ export async function revenuecatWebhook(body: any, auth: string | undefined) {
     const plan = planOfProduct(ev.product_id);
     switch (ev.type) {
       case 'NON_RENEWING_PURCHASE':
-        if (ev.product_id === IAP_PRODUCTS.topup) a.extra += TOPUP_TOKENS;
+        if (ev.product_id === IAP_PRODUCTS.topup) a.extra += IAP_TOPUP_TOKENS;
         break;
       // First month and each renewal refill the monthly allowance, the same as a paid Stripe invoice.
       case 'INITIAL_PURCHASE':

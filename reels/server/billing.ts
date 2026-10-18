@@ -2,10 +2,10 @@
 //   STRIPE_SECRET_KEY        sk_live_... / sk_test_...
 //   STRIPE_WEBHOOK_SECRET    whsec_... (endpoint: /api/stripe/webhook)
 //   STRIPE_PRICE_STARTER, STRIPE_PRICE_STANDARD, STRIPE_PRICE_PRO   monthly prices
-//   STRIPE_PRICE_TOPUP       one-off price for TOPUP_TOKENS tokens
+//   STRIPE_PRICE_TOPUP       one-off price of PAYG_UNIT tokens; pay as you go buys any number of these
 //   STRIPE_TAX=1             turn on Stripe Tax (prices are tax-inclusive either way)
 import { createHmac, timingSafeEqual } from 'node:crypto';
-import { PLAN_TOKENS, TOPUP_TOKENS, findByCustomer, update, type Account, type PlanId } from './accounts.ts';
+import { PAYG_MAX, PAYG_MIN, PAYG_UNIT, PLAN_TOKENS, TOPUP_TOKENS, findByCustomer, update, type Account, type PlanId } from './accounts.ts';
 
 // A restricted key (rk_...) with only Checkout, Customer portal, Customers and Subscriptions is enough.
 const key = process.env.STRIPE_SECRET_KEY || '';
@@ -47,21 +47,29 @@ async function stripe<T = any>(pathname: string, body: Record<string, unknown>):
 export type Purchase = Exclude<PlanId, 'free'> | 'topup';
 export const isPurchase = (x: unknown): x is Purchase => typeof x === 'string' && x in PRICES;
 
-/** A Stripe Checkout page for a plan or a top-up. Returns its URL. */
-export async function checkout(a: Account, what: Purchase, origin: string) {
+/** Pay-as-you-go units the customer asked for, kept within PAYG_MIN..PAYG_MAX. */
+export const paygUnits = (tokens: unknown) => {
+  const n = Math.round(Number(tokens) / PAYG_UNIT);
+  if (!Number.isFinite(n) || n < PAYG_MIN || n > PAYG_MAX) throw new Error(`${(PAYG_MIN * PAYG_UNIT).toLocaleString('en-US')}〜${(PAYG_MAX * PAYG_UNIT).toLocaleString('en-US')}トークンの間で選んでください`);
+  return n;
+};
+
+/** A Stripe Checkout page for a plan or a top-up of `tokens` tokens. Returns its URL. */
+export async function checkout(a: Account, what: Purchase, origin: string, tokens?: unknown) {
   const price = PRICES[what];
   if (!price) throw new Error(`STRIPE_PRICE_${what.toUpperCase()} is not set`);
   const sub = what !== 'topup';
+  const units = sub ? 1 : paygUnits(tokens);
   const s = await stripe('checkout/sessions', {
     mode: sub ? 'subscription' : 'payment',
-    line_items: { 0: { price, quantity: 1 } },
+    line_items: { 0: { price, quantity: units } },
     success_url: `${origin}/#/me?paid=${what}`,
     cancel_url: `${origin}/#/me`,
     client_reference_id: a.uid,
     customer: a.customerId,
     customer_email: a.customerId ? undefined : a.email,
     customer_creation: !sub && !a.customerId ? 'always' : undefined,
-    metadata: { uid: a.uid, kind: what },
+    metadata: { uid: a.uid, kind: what, tokens: sub ? undefined : units * PAYG_UNIT },
     subscription_data: sub ? { metadata: { uid: a.uid } } : undefined,
     allow_promotion_codes: 'true',
     locale: 'auto',
@@ -125,7 +133,8 @@ export async function webhook(raw: Buffer, signature: string | undefined) {
       // Konbini and bank transfer finish later: completed arrives unpaid, async_payment_succeeded once the money is in.
       case 'checkout.session.async_payment_succeeded':
         if (o.mode === 'subscription' && o.subscription) a.subscriptionId = String(o.subscription);
-        if (o.mode === 'payment' && o.metadata?.kind === 'topup' && o.payment_status === 'paid') a.extra += TOPUP_TOKENS;
+        // Pay as you go carries its token count; a session from before that was the fixed 30 (now 30,000) pack.
+        if (o.mode === 'payment' && o.metadata?.kind === 'topup' && o.payment_status === 'paid') a.extra += Number(o.metadata.tokens) || TOPUP_TOKENS;
         break;
       case 'invoice.payment_failed':
         // Stripe retries the card; the account page asks the customer to update it meanwhile.

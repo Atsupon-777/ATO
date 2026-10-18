@@ -31,7 +31,8 @@ export type AuthState = { ready: boolean; enabled: boolean; email?: string | nul
 export type AppConfig = {
   firebase: { apiKey: string; authDomain: string; projectId: string } | null;
   billing: boolean;
-  topupTokens: number;
+  /** Pay as you go on the website: tokens come in units of `unit`, each `unitYen` yen, `min`..`max` units. */
+  payg?: { unit: number; unitYen: number; min: number; max: number };
   freeTokens: number;
   planTokens: Record<string, number>;
   /** In-app purchases (RevenueCat), for the iPhone / Android app. */

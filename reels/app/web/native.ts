@@ -162,7 +162,7 @@ export const pushAllowed = async () => isNative && (await FirebaseMessaging.chec
 
 // ---------- in-app purchases (RevenueCat → App Store / Google Play) ----------
 
-export type IapConfig = { ios: string; android: string; products: { topup: string; starter: string; standard: string; pro: string } };
+export type IapConfig = { ios: string; android: string; products: { topup: string; starter: string; standard: string; pro: string }; topupTokens?: number };
 export type IapProduct = { id: string; price: string; product: PurchasesStoreProduct };
 
 let iapUser = '';

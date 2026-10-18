@@ -20,8 +20,8 @@ import { buildSaasProps } from '../server/saas.ts';
 import { buildTalkProps } from '../server/talk.ts';
 import { isLang, type Lang } from '../src/lang.ts';
 import { authEnabled, LOCAL_USER, verifyIdToken, webConfig, type User } from '../server/auth.ts';
-import { FreeClaimError, NotEnoughTokens, balance, charge, claimFree, getAccount, refund, removeAccount, update, TOPUP_TOKENS, PLAN_TOKENS, FREE_TOKENS } from '../server/accounts.ts';
-import { billingEnabled, cancelSubscription, checkout, isPurchase, portal, webhook } from '../server/billing.ts';
+import { FreeClaimError, NotEnoughTokens, balance, charge, claimFree, getAccount, refund, removeAccount, update, PLAN_TOKENS, FREE_TOKENS, PAYG_UNIT, PAYG_UNIT_YEN, PAYG_MIN, PAYG_MAX, TOKEN_SCALE } from '../server/accounts.ts';
+import { billingEnabled, cancelSubscription, checkout, isPurchase, paygUnits, portal, webhook } from '../server/billing.ts';
 import { iapConfig, revenuecatWebhook } from '../server/appstore.ts';
 import { deleteFirebaseUser } from '../server/google.ts';
 import { dataDir } from '../server/paths.ts';
@@ -65,8 +65,8 @@ type Job = {
   tokens?: number;
 };
 
-/** Tokens each kind of reel takes: own footage only 2, AI photo or effects 5, with AI video 12. */
-const tokensFor = (t: Template, input: Record<string, any>) => (t === 'ProductShine' ? (input.video ? 12 : 5) : t === 'EffectsReel' || t === 'FivePass' || t === 'SaaSPromo' ? 5 : 2);
+/** Tokens each kind of reel takes: own footage only 2,000, AI photo or effects 5,000, with AI video 12,000. */
+const tokensFor = (t: Template, input: Record<string, any>) => (t === 'ProductShine' ? (input.video ? 12_000 : 5_000) : t === 'EffectsReel' || t === 'FivePass' || t === 'SaaSPromo' ? 5_000 : 2_000);
 
 const jobs = new Map<string, Job>();
 
@@ -83,6 +83,8 @@ async function loadJobs() {
         job.status = job.props ? 'ready' : 'error';
         job.error ??= job.props ? undefined : 'サーバー再起動で中断されました';
       }
+      // Jobs made before tokens were scaled up (2026-10-18) recorded 2 / 5 / 12.
+      if (job.tokens && job.tokens < TOKEN_SCALE) job.tokens *= TOKEN_SCALE;
       jobs.set(id, job);
     } catch {}
   }
@@ -436,7 +438,7 @@ const server = http.createServer(async (req, res) => {
       return sendFile(req, res, path.join(webDir, 'pwa', p));
     }
     if (p === '/api/config')
-      return json(res, 200, { firebase: webConfig(), billing: billingEnabled, topupTokens: TOPUP_TOKENS, freeTokens: FREE_TOKENS, planTokens: PLAN_TOKENS, iap: iapConfig(), appleWeb: process.env.APPLE_SIGNIN_WEB === '1' });
+      return json(res, 200, { firebase: webConfig(), billing: billingEnabled, payg: { unit: PAYG_UNIT, unitYen: PAYG_UNIT_YEN, min: PAYG_MIN, max: PAYG_MAX }, freeTokens: FREE_TOKENS, planTokens: PLAN_TOKENS, iap: iapConfig(), appleWeb: process.env.APPLE_SIGNIN_WEB === '1' });
     if (p === '/api/revenuecat/webhook' && req.method === 'POST') {
       try {
         return json(res, 200, await revenuecatWebhook(await readBody(req), req.headers.authorization));
@@ -511,9 +513,16 @@ const server = http.createServer(async (req, res) => {
       }
     }
     if (p === '/api/billing/checkout' && req.method === 'POST') {
-      const { what } = await readBody(req);
+      const { what, tokens } = await readBody(req);
       if (!isPurchase(what)) return json(res, 400, { error: 'unknown plan' });
-      return json(res, 200, { url: await checkout(await getAccount(user!.uid, user!.email), what, originOf(req)) });
+      if (what === 'topup') {
+        try {
+          paygUnits(tokens);
+        } catch (e: any) {
+          return json(res, 400, { error: e.message });
+        }
+      }
+      return json(res, 200, { url: await checkout(await getAccount(user!.uid, user!.email), what, originOf(req), tokens) });
     }
     if (p === '/api/billing/portal' && req.method === 'POST') {
       return json(res, 200, { url: await portal(await getAccount(user!.uid, user!.email), originOf(req)) });

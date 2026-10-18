@@ -169,9 +169,11 @@ const uploadFile = async (f: File) => {
   return j as { file: string; url: string };
 };
 
-// Tokens per reel, from the pricing plan (A: own material 2, B: AI photo 5, C: AI video 12).
+// Tokens per reel, the same table as the server (A: own material 2,000, B: AI photo or effects 5,000, C: AI video 12,000).
 const tokensFor = (t: TemplateId, input: Record<string, any>) =>
-  t === 'ProductShine' ? (input.video ? 12 : 5) : t === 'EffectsReel' || t === 'FivePass' ? 5 : 2;
+  t === 'ProductShine' ? (input.video ? 12_000 : 5_000) : t === 'EffectsReel' || t === 'FivePass' || t === 'SaaSPromo' ? 5_000 : 2_000;
+/** Token counts run into the hundreds of thousands, so they get separators in the viewer's language. */
+const fmtN = (n: number) => n.toLocaleString(lang);
 
 const STEP_LABELS: Record<string, string> = {
   'cut-out': tr("商品を切り抜き"),
@@ -452,7 +454,7 @@ const NewJob: React.FC<{ template: TemplateId; fx?: EffectId; mixArg?: string; o
               {busy ? tr("送信中…") : input.video && template !== 'ProductShine' ? tr("作成する") : tr("AIで作成する")}
             </button>
             <span className="cost">
-              {tr("消費:")}{' '}<b>{tokensFor(template, input)}{tr("トークン")}</b>
+              {tr("消費:")}{' '}<b>{fmtN(tokensFor(template, input))}{tr("トークン")}</b>
             </span>
           </div>
           {err ? <div className="err">{err}</div> : null}
@@ -538,7 +540,7 @@ const ProgressBar: React.FC<{ fraction: number; label: string; left: number }> =
 const Generating: React.FC<{ job: Job }> = ({ job }) => {
   const steps =
     job.template === 'ProductShine'
-      ? ['cut-out', 'studio shot', 'plan and copy', ...((job.tokens ?? 5) >= 12 ? ['motion clip (Veo)'] : []), 'build props']
+      ? ['cut-out', 'studio shot', 'plan and copy', ...(jobTokens(job) >= 12_000 ? ['motion clip (Veo)'] : []), 'build props']
       : job.template === 'SaaSPromo'
         ? ['copy and layout', 'build props']
         : job.template === 'EffectsReel'
@@ -674,7 +676,7 @@ const WebShare: React.FC<{ job: Job; compact?: boolean }> = ({ job, compact }) =
 };
 
 /** Tokens this reel used. Cost figures stay server-side (usage.json) and are never shown to customers. */
-const Cost: React.FC<{ job: Job }> = ({ job }) => <p className="cost">{tr("このリールで使ったトークン:")}{' '}{jobTokens(job)}</p>;
+const Cost: React.FC<{ job: Job }> = ({ job }) => <p className="cost">{tr("このリールで使ったトークン:")}{' '}{fmtN(jobTokens(job))}</p>;
 
 const Editor: React.FC<{ id: string }> = ({ id }) => {
   const [job, setJob, refreshJob] = useJob(id);
@@ -2129,23 +2131,25 @@ const FeedItem: React.FC<{ job: Job; onEdit: () => void }> = ({ job, onEdit }) =
 };
 
 const PLANS = [
-  { id: 'starter', name: tr("スターター"), price: tr("9,800円"), yen: 9800, tokens: 60, note: tr("週3投稿の目安") },
-  { id: 'standard', name: tr("スタンダード"), price: tr("29,800円"), yen: 29800, tokens: 200, note: tr("毎日投稿の目安") },
-  { id: 'pro', name: tr("プロ"), price: tr("79,800円"), yen: 79800, tokens: 600, note: tr("複数ブランド・優先書き出し") },
+  { id: 'starter', name: tr("スターター"), price: tr("9,800円"), yen: 9800, tokens: 60_000, note: tr("週3投稿の目安") },
+  { id: 'standard', name: tr("スタンダード"), price: tr("29,800円"), yen: 29800, tokens: 200_000, note: tr("毎日投稿の目安") },
+  { id: 'pro', name: tr("プロ"), price: tr("79,800円"), yen: 79800, tokens: 600_000, note: tr("複数ブランド・優先書き出し") },
 ] as const;
-/** The cheapest reel (2 tokens, own footage with captions) on a plan, rounded to 10 yen. */
-const perReel = (p: { yen: number; tokens: number }) => Math.round(((p.yen / p.tokens) * 2) / 10) * 10;
+/** The cheapest reel (2,000 tokens, own footage with captions) on a plan, rounded to 10 yen. */
+const perReel = (p: { yen: number; tokens: number }) => Math.round(((p.yen / p.tokens) * 2000) / 10) * 10;
 const MIN_PER_REEL = Math.min(...PLANS.map(perReel));
+/** Yen per `unit` tokens on a plan, to set pay as you go against. */
+const perUnit = (p: { yen: number; tokens: number }, unit: number) => Math.round((p.yen / p.tokens) * unit);
 
 const FAQ = [
-  { q: tr("トークンとは？"), a: tr("リールを1本作るときに使う単位です。自分の素材だけなら2、AIで写真やエフェクトを作ると5、AI動画を入れると12使います。") },
+  { q: tr("トークンとは？"), a: tr("リールを1本作るときに使う単位です。自分の素材だけなら2,000、AIで写真やエフェクトを作ると5,000、AI動画を入れると12,000使います。足りないときは、必要な分だけいつでも買い足せます。") },
   { q: tr("同じテンプレートでも毎回ちがう動画になりますか？"), a: tr("はい。ミックスはカットごとにエフェクト・字幕・カメラ・切り替えを組み合わせるので、シャッフルするたびに別の組み合わせになります。") },
   { q: tr("書き出した動画は商用で使えますか？"), a: tr("使えます。インスタのリール、TikTok、YouTubeショート、広告にそのまま使える縦型MP4です。") },
   { q: tr("書き出した後でも直せますか？"), a: tr("直せます。字幕・色・カットの演出を変えて、何度でも書き出し直せます。書き出し直しにトークンはかかりません。") },
   { q: tr("解約はいつでもできますか？"), a: tr("できます。アカウントの「お支払い・解約の管理」から、いつでも手続きできます。") },
 ];
 
-const jobTokens = (j: Job) => j.tokens ?? (j.template === 'ProductShine' ? (j.props?.clip ? 12 : 5) : j.template === 'EffectsReel' || j.template === 'FivePass' || j.template === 'SaaSPromo' ? 5 : 2);
+const jobTokens = (j: Job) => j.tokens ?? (j.template === 'ProductShine' ? (j.props?.clip ? 12_000 : 5_000) : j.template === 'EffectsReel' || j.template === 'FivePass' || j.template === 'SaaSPromo' ? 5_000 : 2_000);
 
 type Me = { email?: string; plan: 'free' | 'starter' | 'standard' | 'pro'; tokens: number; extra: number; balance: number; billing: boolean; subscribed: boolean; store?: 'stripe' | 'app_store' | 'play_store'; pastDue?: boolean; freePending?: boolean; displayName?: string; avatar?: string; auth: boolean };
 const PLAN_NAMES: Record<Me['plan'], string> = { free: tr("無料"), starter: tr("スターター"), standard: tr("スタンダード"), pro: tr("プロ") };
@@ -2177,7 +2181,7 @@ const FreeClaim: React.FC<{ onDone: () => void }> = ({ onDone }) => {
     setBusy(false);
   };
   const claim = async () => (await api('/api/free-tokens', { method: 'POST' }), onDone());
-  const n = appConfig?.freeTokens ?? 10;
+  const n = fmtN(appConfig?.freeTokens ?? 10_000);
   return (
     <div className="okmsg">
       <b>{tr("電話番号を確認すると、{0}トークンを無料でもらえます。", n)}</b>
@@ -2286,11 +2290,11 @@ const Account: React.FC<{ go: (h: string) => void }> = ({ go }) => {
   const used = made.reduce((a, j) => a + jobTokens(j), 0);
   const paid = new URLSearchParams(location.hash.split('?')[1] ?? '').get('paid');
   // Stripe pages: checkout for a plan or a top-up, the portal for changing plan, card or cancelling.
-  const open = async (what: string) => {
+  const open = async (what: string, tokens?: number) => {
     setBusy(what);
     setErr('');
     try {
-      const { url } = await api<{ url: string }>(what === 'portal' ? '/api/billing/portal' : '/api/billing/checkout', { method: 'POST', body: JSON.stringify({ what }) });
+      const { url } = await api<{ url: string }>(what === 'portal' ? '/api/billing/portal' : '/api/billing/checkout', { method: 'POST', body: JSON.stringify({ what, tokens }) });
       location.href = url;
     } catch (e: any) {
       setErr(e.message);
@@ -2335,11 +2339,11 @@ const Account: React.FC<{ go: (h: string) => void }> = ({ go }) => {
       ) : null}
       <div className="stats3">
         <div>
-          <b><CountUp to={me ? me.balance : made.length} /></b>
+          <b><CountUp to={me ? me.balance : made.length} format={fmtN} /></b>
           <span>{me ? tr("残りのトークン") : tr("作ったリール")}</span>
         </div>
         <div>
-          <b><CountUp to={used} /></b>
+          <b><CountUp to={used} format={fmtN} /></b>
           <span>{tr("使ったトークン")}</span>
         </div>
         <div>
@@ -2355,7 +2359,7 @@ const Account: React.FC<{ go: (h: string) => void }> = ({ go }) => {
       <p className="lead-price">
         {tr("リール1本")} <b>{tr("約{0}円", MIN_PER_REEL)}</b> {tr("から")}
       </p>
-      <p className="cost" style={{ marginTop: -6, marginBottom: 12 }}>{tr("※プロプランで字幕リール（2トークン）を作った場合")}</p>
+      <p className="cost" style={{ marginTop: -6, marginBottom: 12 }}>{tr("※プロプランで字幕リール（2,000トークン）を作った場合")}</p>
       <div className="plans">
         {PLANS.map((p) => {
           const current = me?.plan === p.id;
@@ -2367,7 +2371,7 @@ const Account: React.FC<{ go: (h: string) => void }> = ({ go }) => {
                 <small>{tr("/本から")}</small>
               </div>
               <div className="cost">
-                {tr("月{0}・毎月{1}トークン", p.price, p.tokens)}
+                {tr("月{0}・毎月{1}トークン", p.price, fmtN(p.tokens))}
                 <br />
                 {p.note}
               </div>
@@ -2393,12 +2397,10 @@ const Account: React.FC<{ go: (h: string) => void }> = ({ go }) => {
         })}
       </div>
       {inStore ? <p className="cost">{tr("このプランはiPhoneのアプリで契約しています。変更・解約はiPhoneの「設定」→ Apple ID →「サブスクリプション」からできます。")}</p> : null}
-      <p className="cost">{tr("消費トークン: 自分の素材だけ 2 ／ AI写真・エフェクト 5 ／ AI動画あり 12")}</p>
-      {billing ? (
+      <p className="cost">{tr("消費トークン: 自分の素材だけ 2,000 ／ AI写真・エフェクト 5,000 ／ AI動画あり 12,000")}</p>
+      {billing && appConfig?.payg ? <PayAsYouGo payg={appConfig.payg} busy={busy} onBuy={(tokens) => open('topup', tokens)} /> : null}
+      {billing && me?.subscribed ? (
         <div className="row" style={{ flexWrap: 'wrap', gap: 8, marginTop: 8 }}>
-          <button className="btn ghost small" disabled={!!busy} onClick={() => open('topup')}>
-            {tr("トークンを{0}追加する", appConfig?.topupTokens ?? 30)}
-          </button>
           {me?.subscribed ? (
             <button className="btn ghost small" disabled={!!busy} onClick={() => open('portal')}>
               {tr("お支払い・解約の管理")}
@@ -2428,6 +2430,52 @@ const Account: React.FC<{ go: (h: string) => void }> = ({ go }) => {
       <History onOpen={(id) => go(`#/job/${id}`)} />
       {me?.auth ? <DeleteAccount me={me} /> : null}
     </>
+  );
+};
+
+const PAYG_PRESETS = [5_000, 10_000, 30_000, 100_000];
+
+/**
+ * Pay as you go on the website: any amount of tokens, any time, no plan needed. A unit costs a little more
+ * than on a plan, and the card says how much a plan saves, so steady users still move to one.
+ */
+const PayAsYouGo: React.FC<{ payg: NonNullable<NonNullable<typeof appConfig>['payg']>; busy: string; onBuy: (tokens: number) => void }> = ({ payg, busy, onBuy }) => {
+  const min = payg.min * payg.unit;
+  const max = payg.max * payg.unit;
+  const [tokens, setTokens] = useState(10_000);
+  const units = Math.round(tokens / payg.unit);
+  const ok = units >= payg.min && units <= payg.max;
+  const yen = units * payg.unitYen;
+  const planRange = PLANS.map((p) => perUnit(p, payg.unit));
+  return (
+    <div className="payg">
+      <div className="name">{tr("トークンを都度購入")}</div>
+      <p className="cost">{tr("プランなしでも、好きなときに好きな量だけ買えます（{0}トークンあたり{1}円・期限なし）。", fmtN(payg.unit), fmtN(payg.unitYen))}</p>
+      <div className="row" style={{ flexWrap: 'wrap', gap: 6 }}>
+        {PAYG_PRESETS.filter((n) => n >= min && n <= max).map((n) => (
+          <button key={n} className={`fchip ${tokens === n ? 'on' : ''}`} onClick={() => setTokens(n)}>
+            {fmtN(n)}
+          </button>
+        ))}
+        <input
+          className="inp"
+          style={{ flex: '1 1 120px', width: 'auto' }}
+          type="number"
+          inputMode="numeric"
+          min={min}
+          max={max}
+          step={payg.unit}
+          value={tokens}
+          onChange={(e) => setTokens(Number(e.target.value) || 0)}
+          aria-label={tr("トークン数")}
+        />
+      </div>
+      <button className="btn small" style={{ marginTop: 10 }} disabled={!ok || !!busy} onClick={() => onBuy(units * payg.unit)}>
+        {busy === 'topup' ? tr("移動中…") : tr("{0}トークンを{1}円で購入", fmtN(units * payg.unit), fmtN(yen))}
+      </button>
+      {!ok ? <div className="cost">{tr("{0}〜{1}トークンの間で選んでください", fmtN(min), fmtN(max))}</div> : null}
+      <p className="cost">{tr("月額プランなら{0}トークンあたり約{1}〜{2}円でおトクです。", fmtN(payg.unit), Math.min(...planRange), Math.max(...planRange))}</p>
+    </div>
   );
 };
 
@@ -2494,7 +2542,7 @@ const StorePlans: React.FC<{ me: Me | null; onChanged: () => Promise<unknown> }>
               <div className="name">{p.name}</div>
               <div className="price">{prod ? prod.price : products ? '—' : '…'}<small>{tr("/月")}</small></div>
               <div className="cost">
-                {tr("毎月{0}トークン", p.tokens)}
+                {tr("毎月{0}トークン", fmtN(p.tokens))}
                 <br />
                 {p.note}
               </div>
@@ -2512,10 +2560,10 @@ const StorePlans: React.FC<{ me: Me | null; onChanged: () => Promise<unknown> }>
         })}
       </div>
       {webPlan ? <p className="cost">{tr("このプランはアプリ以外で契約しています。")}</p> : null}
-      <p className="cost">{tr("消費トークン: 自分の素材だけ 2 ／ AI写真・エフェクト 5 ／ AI動画あり 12")}</p>
+      <p className="cost">{tr("消費トークン: 自分の素材だけ 2,000 ／ AI写真・エフェクト 5,000 ／ AI動画あり 12,000")}</p>
       <div className="row" style={{ flexWrap: 'wrap', gap: 8, marginTop: 8 }}>
         <button className="btn ghost small" disabled={!products?.topup || !!busy} onClick={buy('topup')}>
-          {busy === 'topup' ? tr("処理中…") : tr("トークンを{0}追加する", appConfig?.topupTokens ?? 30)}
+          {busy === 'topup' ? tr("処理中…") : tr("トークンを{0}追加する", fmtN(iap.topupTokens ?? 10_000))}
           {products?.topup ? ` (${products.topup.price})` : ''}
         </button>
         {me?.store === 'app_store' || me?.store === 'play_store' ? (
@@ -2891,7 +2939,7 @@ const SignIn: React.FC = () => {
         ) : null}
       </div>
       {msg ? <div className="cost">{msg}</div> : null}
-      <p className="cost">{tr("登録して電話番号を確認すると、{0}トークン分を無料で試せます。", appConfig?.freeTokens ?? 10)}</p>
+      <p className="cost">{tr("登録して電話番号を確認すると、{0}トークン分を無料で試せます。", fmtN(appConfig?.freeTokens ?? 10_000))}</p>
       <p className="legal">
         <a href="/legal/terms.html" target="_blank" rel="noreferrer">{tr("利用規約")}</a>
         <a href="/legal/privacy.html" target="_blank" rel="noreferrer">{tr("プライバシーポリシー")}</a>

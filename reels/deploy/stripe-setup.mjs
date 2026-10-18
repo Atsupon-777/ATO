@@ -25,15 +25,18 @@ const post = async (path, body) => {
   return j;
 };
 
-const TOPUP_YEN = Number(process.env.TOPUP_YEN ?? 4800);
+// Pay as you go: one price per 1,000 tokens, bought in any quantity (PAYG_UNIT / PAYG_UNIT_YEN in env.yaml).
+const PAYG_UNIT_YEN = Number(process.env.PAYG_UNIT_YEN ?? 200);
+const only = process.env.ONLY ? process.env.ONLY.split(',') : null;
 const items = [
-  { env: 'STRIPE_PRICE_STARTER', name: 'Reels Studio スターター', yen: 9800, monthly: true, desc: '毎月60トークン' },
-  { env: 'STRIPE_PRICE_STANDARD', name: 'Reels Studio スタンダード', yen: 29800, monthly: true, desc: '毎月200トークン' },
-  { env: 'STRIPE_PRICE_PRO', name: 'Reels Studio プロ', yen: 79800, monthly: true, desc: '毎月600トークン' },
-  { env: 'STRIPE_PRICE_TOPUP', name: 'Reels Studio トークン追加（30）', yen: TOPUP_YEN, monthly: false, desc: '30トークン（期限なし）' },
+  { env: 'STRIPE_PRICE_STARTER', name: 'Reels Studio スターター', yen: 9800, monthly: true, desc: '毎月60,000トークン' },
+  { env: 'STRIPE_PRICE_STANDARD', name: 'Reels Studio スタンダード', yen: 29800, monthly: true, desc: '毎月200,000トークン' },
+  { env: 'STRIPE_PRICE_PRO', name: 'Reels Studio プロ', yen: 79800, monthly: true, desc: '毎月600,000トークン' },
+  { env: 'STRIPE_PRICE_TOPUP', name: 'Reels Studio トークン（1,000トークン単位）', yen: PAYG_UNIT_YEN, monthly: false, desc: '都度購入・1,000トークンごと（期限なし）' },
 ];
 const out = [];
-for (const it of webhookOnly ? [] : items) {
+// ONLY=STRIPE_PRICE_TOPUP creates just that one (e.g. when only the pay-as-you-go price changes).
+for (const it of webhookOnly ? [] : items.filter((i) => !only || only.includes(i.env))) {
   const product = await post('products', { name: it.name, description: it.desc });
   const price = await post('prices', {
     product: product.id,
