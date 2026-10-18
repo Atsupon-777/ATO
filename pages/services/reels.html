@@ -26,6 +26,12 @@
 <p class="svc-body ja">写真を選ぶだけ。たった3秒で、一流の動画編集を加えたショート動画に変身します。ATOが自社で開発したツールです。</p>
 <p class="svc-body en">Pick a photo. In just three seconds it becomes a short video with world-class editing. A tool ATO built in-house.</p>
 {% endblock %}
+{% block ctas %}
+      <div class="ctas">
+        <a class="btn btn-gold" href="https://reels.ato-sns.com" target="_blank" rel="noopener"><span class="ja">アプリを使ってみる</span><span class="en">Try the app</span><span class="arr" aria-hidden="true"><i>→</i><i>→</i></span></a>
+        <a class="btn btn-ghost" href="https://lin.ee/qmngoTF" target="_blank" rel="noopener"><span class="ja">LINEで相談する</span><span class="en">Chat on LINE</span></a>
+      </div>
+{% endblock %}
 {% block svc_media %}{{ m.vplayer('/static/media/reels-watch.mp4','/static/media/reels-watch.jpg','vert',True,'サンプル動画：時計のCM','Sample video: a watch commercial','サンプル動画（時計のCM）','Sample video (a watch commercial)','SAMPLE') }}{% endblock %}
 {% block pt_kicker %}HOW IT WORKS{% endblock %}
 {% block pt_hud %}HOW IT WORKS{% endblock %}
