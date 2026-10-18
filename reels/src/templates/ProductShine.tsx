@@ -1,5 +1,6 @@
 import React from 'react';
-import type { ProductShineProps } from '../schemas';
+import type { ProductFilmProps, ProductShineProps } from '../schemas';
+import { ProductFilm, productFilmDuration } from './ProductFilm';
 import {
   AbsoluteFill,
   Audio,
@@ -26,6 +27,10 @@ const BEATS = { open: 3, hero: 6, motion: 8, detail: 2, flash: 2, end: 6 };
 export const productShineBeats = (p: { clip?: string } | object) =>
   BEATS.open + BEATS.hero + ("clip" in p && p.clip ? BEATS.motion : 0) + BEATS.detail * 3 + BEATS.flash + BEATS.end;
 
+/** Length in frames: a story-mode reel runs as long as its film, the classic reel by beats. */
+export const productShineFrames = (p: { bpm: number; clip?: string; film?: ProductFilmProps }, fps: number) =>
+  p.film ? productFilmDuration(p.film, fps) : Math.round(productShineBeats(p) * beatFrames(p.bpm, fps));
+
 /** 1 on the beat, decaying fast: drives zoom punches and glow pulses in time with the music. */
 const beatHit = (frame: number, beat: number, decay = 5) => Math.exp(-(((frame % beat) + beat) % beat) / decay);
 
@@ -43,7 +48,15 @@ const rushIn = (frame: number, len = 9) => {
   return { scale: 1 + (1 - t) * 0.35, blur: (1 - t) * 22, t };
 };
 
-export const ProductShine: React.FC<ProductShineProps> = (p) => {
+/** Story-mode reels play as a film; the copy fields still come from the reel, so editor changes show up. */
+export const ProductShine: React.FC<ProductShineProps> = (p) =>
+  p.film ? (
+    <ProductFilm {...p.film} brand={p.brand} productName={p.productName} tagline={p.tagline} cta={p.cta} handle={p.handle} />
+  ) : (
+    <ProductShineClassic {...p} />
+  );
+
+const ProductShineClassic: React.FC<ProductShineProps> = (p) => {
   useFonts(p);
   const b = beatFrames(p.bpm);
   const f = (beats: number) => Math.round(beats * b);

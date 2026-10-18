@@ -4,7 +4,7 @@ import { createRoot } from 'react-dom/client';
 import { Player, Thumbnail, type PlayerRef } from '@remotion/player';
 import { accentColors, accents, cameraMoves, captionStyles, combinationCount, fontChoices, grades, textures, transitions } from '../../src/effects/axes';
 import { recipeById, recipes, rollStyles } from '../../src/effects/recipes';
-import { ProductShine, productShineBeats } from '../../src/templates/ProductShine';
+import { ProductShine, productShineFrames } from '../../src/templates/ProductShine';
 import { SaaSPromo, saasPromoBeats } from '../../src/templates/SaaSPromo';
 import { TalkCaptions, talkCaptionsDuration } from '../../src/templates/TalkCaptions';
 import { EffectsReel, effectsReelDuration } from '../../src/templates/EffectsReel';
@@ -42,7 +42,7 @@ const TEMPLATES: Record<
     tag: tr("写真1枚から"),
     desc: tr("商品写真を自動で切り抜き、AIでスタジオ撮影風に。光の反射とディテールのアップで高級感のあるリールに。"),
     component: ProductShine,
-    frames: (p) => Math.round(productShineBeats(p) * beatFrames(p.bpm)),
+    frames: (p) => productShineFrames(p, FPS),
     sample: productSample,
   },
   SaaSPromo: {

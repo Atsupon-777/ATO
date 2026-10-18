@@ -136,6 +136,27 @@ export async function imageToVideo(opts: {
   return opts.out;
 }
 
+/**
+ * Instrumental music with Lyria. Writes `out` plus the extension of the returned audio type and returns that path.
+ */
+export async function generateMusic(opts: { prompt: string; out: string; usage: Usage; step: string }): Promise<string> {
+  const res = await ai().models.generateContent({
+    model: models.music,
+    contents: [{ role: 'user', parts: [{ text: opts.prompt }] }],
+    config: { responseModalities: ['AUDIO'] },
+  });
+  const audio = res.candidates?.[0]?.content?.parts?.find((p) => p.inlineData?.data && p.inlineData.mimeType?.startsWith('audio/'))?.inlineData;
+  if (!audio?.data) {
+    const reason = res.candidates?.[0]?.finishReason ?? res.promptFeedback?.blockReason ?? 'no audio returned';
+    throw new Error(`${opts.step}: ${models.music} returned no audio (${reason})`);
+  }
+  const ext = audio.mimeType?.includes('wav') ? '.wav' : '.mp3';
+  const file = opts.out + ext;
+  await writeFile(file, Buffer.from(audio.data, 'base64'));
+  opts.usage.add({ step: opts.step, model: models.music, units: '1 clip', usd: prices.music });
+  return file;
+}
+
 /** Lists the models this key can use, to confirm the configured ids exist. */
 export async function listModels() {
   const names: string[] = [];

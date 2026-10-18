@@ -5,10 +5,10 @@ import { access, copyFile, mkdir, readFile, writeFile } from 'node:fs/promises';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { z } from 'zod';
-import { productShineSchema, type ProductShineProps } from '../src/schemas.ts';
-import { copyLanguage, fit, type Lang } from '../src/lang.ts';
+import { productShineSchema, type FilmShot, type ProductFilmProps, type ProductShineProps } from '../src/schemas.ts';
+import { copyLanguage, fit, isCJK, type Lang } from '../src/lang.ts';
 import { cutout } from './cutout.ts';
-import { askJson, editImage, imageToVideo } from './gemini.ts';
+import { askJson, editImage, generateMusic, imageToVideo } from './gemini.ts';
 import { renderTemplate } from './render.ts';
 import { Usage } from './usage.ts';
 
@@ -72,6 +72,12 @@ const planSchema = z.object({
       }),
     )
     .describe('exactly 3 scenes in the order hook, origin, ritual: the world of the product before it is revealed. Only things that are true for this kind of product; no claims beyond the facts'),
+  revealPrompt: z
+    .string()
+    .describe('English prompt for an 8s image-to-video shot of IMAGE 2 that is the emotional climax of a short film: the product revealed slowly and gracefully, for example a slow arc around it as a beam of light sweeps across the package, with gentle atmosphere (steam, mist, drifting petals or dust in the light) that suits the product and never covers it. The product itself stays rigid and unchanged'),
+  musicPrompt: z
+    .string()
+    .describe('English prompt for a 30s instrumental music bed for this film: genre and instruments that suit the product and its culture, tempo 70-90 BPM, starting intimate and sparse, swelling warmly at about 12 seconds where the product is revealed, then resolving softly. No vocals'),
   motionPrompt: z
     .string()
     .describe('English prompt for an 8s image-to-video shot of IMAGE 2 for a fast-paced Instagram ad: an energetic, continuous camera move (for example a fast dolly-in that arcs around the product, a crane move or a parallax slide past foreground elements), moving light and shadows, and atmospheric motion that suits the product (drifting leaves, steam, mist, sparkles) that never covers it. The product itself stays rigid and unchanged'),
@@ -137,7 +143,7 @@ export async function buildProductReel(brief: ProductBrief) {
   const planFile = path.join(dir, 'plan.json');
   // Plans saved before story mode have no story scenes; those are planned again.
   const cached = (await exists(planFile)) ? JSON.parse(await readFile(planFile, 'utf8')) : null;
-  const raw = cached?.story ? cached : await askJson({
+  const raw = cached?.story && cached?.musicPrompt ? cached : await askJson({
     images: [original, studio, cut.file],
     jsonSchema: z.toJSONSchema(planSchema),
     usage,
@@ -155,6 +161,7 @@ export async function buildProductReel(brief: ProductBrief) {
 
   let clip: string | undefined;
   let story: ProductShineProps['story'];
+  let musicFile: string | undefined;
   if (brief.video) {
     // Story scenes: a still per scene (Nano Banana, the client photo as the colour and product reference),
     // then all Veo shots at once. Files already made are reused when a job is re-run.
@@ -200,12 +207,24 @@ export async function buildProductReel(brief: ProductBrief) {
         step: 'on-skin shot',
       });
     }
+    // The music bed is written for this film and generated while Veo works.
+    const music = (async () => {
+      for (const f of ['music.mp3', 'music.wav']) if (await exists(path.join(dir, f))) return rel(f);
+      try {
+        const file = await generateMusic({ prompt: plan.musicPrompt, out: path.join(dir, 'music'), usage, step: 'music' });
+        return rel(path.basename(file));
+      } catch (e) {
+        console.warn(`music: ${(e as Error).message}; the film plays with the clips' own sound only`);
+        return undefined;
+      }
+    })();
     step(4, 'motion clips (Veo)');
     const [hero, ...clips] = await Promise.all([
-      shot(source, 'clip.mp4', `${plan.motionPrompt} The product keeps its exact shape, logo and text throughout.`, 'motion clip'),
+      shot(source, 'clip.mp4', `${plan.revealPrompt} The product keeps its exact shape, logo and text throughout.`, 'motion clip'),
       ...storyClips,
     ]);
     clip = hero;
+    musicFile = (await music) ?? undefined;
     story = scenes.map((s, i) => ({
       clip: clips[i],
       image: rel(`story-${i + 1}.png`),
@@ -235,6 +254,7 @@ export async function buildProductReel(brief: ProductBrief) {
     palette: style.palette,
     ...(clip ? { clip } : {}),
     ...(story ? { story } : {}),
+    ...(story && clip ? { film: filmProps({ story, clip, music: musicFile, brief, lang, style: brief.style, cutout: rel('cutout.png'), cutoutAspect: cut.aspect, tagline: plan.tagline }) } : {}),
   });
   await writeFile(path.join(dir, 'props.json'), JSON.stringify(props, null, 2));
   await writeFile(path.join(dir, 'usage.json'), JSON.stringify(usage, null, 2));
@@ -243,4 +263,54 @@ export async function buildProductReel(brief: ProductBrief) {
   const result = await renderTemplate('ProductShine', props, out);
   await writeFile(path.join(dir, 'usage.json'), JSON.stringify(usage, null, 2));
   return { jobId, dir, out, props, usage: usage.toJSON(), render: result };
+}
+
+const GRADE: Record<Style, ProductFilmProps['grade']> = { luxury: 'warm', clean: 'neutral', cosmetic: 'warm', natural: 'verdant' };
+
+/**
+ * The story scenes and the reveal clip cut as a short film: hook → origin → ritual → the product → end card.
+ * Veo shots are 8 s; each plays a slow-motion slice from its calmest middle part.
+ */
+function filmProps(o: {
+  story: NonNullable<ProductShineProps['story']>;
+  clip: string;
+  music?: string;
+  brief: ProductBrief;
+  lang: Lang;
+  style: Style;
+  cutout: string;
+  cutoutAspect: number;
+  tagline: string;
+}): ProductFilmProps {
+  const kinds: FilmShot['kind'][] = ['hook', 'craft', 'moment'];
+  const seconds = [3, 3.6, 3.6];
+  const shots: FilmShot[] = o.story.map((s, i) => ({
+    src: s.clip,
+    kind: kinds[i] ?? 'mood',
+    seconds: seconds[i] ?? 3.4,
+    trimStart: i === 0 ? 0.4 : 1,
+    rate: 0.8,
+    audio: 0.55,
+    line: s.line,
+    kicker: s.kicker,
+    focusY: 0.5,
+  }));
+  shots.push({ src: o.clip, kind: 'hero', seconds: 4.6, trimStart: 0.6, rate: 0.9, audio: 0.35, line: '', kicker: '', focusY: 0.5 });
+  const palette = STYLES[o.style].palette;
+  return {
+    brand: o.brief.brand,
+    productName: o.brief.productName,
+    tagline: o.tagline,
+    lang: o.lang,
+    vertical: isCJK(o.lang),
+    shots,
+    cutout: o.cutout,
+    cutoutAspect: o.cutoutAspect,
+    cta: o.brief.cta,
+    handle: o.brief.handle,
+    ...(o.music ? { music: o.music } : {}),
+    musicVolume: 0.75,
+    grade: GRADE[o.style],
+    palette: { ...palette, ink: o.style === 'clean' ? '#1F2A44' : '#F6EFE3' },
+  };
 }

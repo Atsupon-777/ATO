@@ -1,10 +1,12 @@
 import React from 'react';
 import { Composition } from 'remotion';
 import { FPS, beatFrames } from './lib/timing';
-import { ProductShine, productShineBeats } from './templates/ProductShine';
+import { ProductShine, productShineFrames } from './templates/ProductShine';
 import {
   effectsReelSchema,
   fivePassSchema,
+  productFilmSchema,
+  type ProductFilmProps,
   type FivePassProps,
   productShineSchema,
   saasPromoSchema,
@@ -21,6 +23,8 @@ import { EffectsReel, effectsReelDuration } from './templates/EffectsReel';
 import effectsDemo from '../props/effects-demo.json';
 import { FivePass, fivePassDuration } from './templates/FivePass';
 import fivePassDemo from '../props/fivepass-demo.json';
+import { ProductFilm, productFilmDuration } from './templates/ProductFilm';
+import filmDemo from '../props/film-demo.json';
 
 export const RemotionRoot: React.FC = () => (
   <>
@@ -32,9 +36,9 @@ export const RemotionRoot: React.FC = () => (
       fps={FPS}
       width={1080}
       height={1920}
-      durationInFrames={Math.round(productShineBeats(productWatch) * beatFrames(productWatch.bpm))}
+      durationInFrames={productShineFrames(productWatch, FPS)}
       calculateMetadata={({ props }) => ({
-        durationInFrames: Math.round(productShineBeats(props) * beatFrames(props.bpm)),
+        durationInFrames: productShineFrames(props, FPS),
       })}
     />
     <Composition
@@ -82,6 +86,17 @@ export const RemotionRoot: React.FC = () => (
       height={1920}
       durationInFrames={fivePassDuration(fivePassDemo as FivePassProps, FPS)}
       calculateMetadata={({ props }) => ({ durationInFrames: fivePassDuration(props, FPS) })}
+    />
+    <Composition
+      id="ProductFilm"
+      component={ProductFilm}
+      schema={productFilmSchema}
+      defaultProps={filmDemo as ProductFilmProps}
+      fps={FPS}
+      width={1080}
+      height={1920}
+      durationInFrames={productFilmDuration(filmDemo as ProductFilmProps, FPS)}
+      calculateMetadata={({ props }) => ({ durationInFrames: productFilmDuration(props, FPS) })}
     />
   </>
 );

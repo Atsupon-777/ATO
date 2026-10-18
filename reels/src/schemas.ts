@@ -7,6 +7,51 @@ import { langs } from './lang.ts';
 
 const point = z.object({ x: z.number().min(0).max(1), y: z.number().min(0).max(1) });
 
+/** One shot of a cinematic product film: an AI video clip (or a still) with an optional line of copy. */
+export const filmShotSchema = z.object({
+  /** Video clip (mp4) or still image. Stills get a slow push-in. */
+  src: z.string(),
+  /** hook = sensory opener, craft = how it is made / used, mood = atmosphere, hero = the product, moment = a person enjoying it. */
+  kind: z.enum(['hook', 'craft', 'mood', 'hero', 'moment']),
+  /** Seconds on screen. */
+  seconds: z.number().min(1).max(8),
+  /** Where in the clip to start (seconds) and how fast to play it (0.5 = slow motion). */
+  trimStart: z.number().min(0).max(8),
+  rate: z.number().min(0.25).max(2),
+  /** Volume of the clip's own sound (Veo makes ambient sound: whisking, pouring, birds). */
+  audio: z.number().min(0).max(1),
+  /** Line of copy shown over the shot (empty: none). */
+  line: z.string().max(40),
+  /** Small English kicker above the line. */
+  kicker: z.string().max(28),
+  /** Vertical framing of a 9:16 crop (0 top, 1 bottom). */
+  focusY: z.number().min(0).max(1),
+});
+
+export const productFilmSchema = z.object({
+  brand: z.string().max(16),
+  productName: z.string().max(24),
+  tagline: z.string().max(40),
+  lang: z.enum(langs).optional(),
+  /** Japanese and Chinese copy can run vertically (tategaki). */
+  vertical: z.boolean(),
+  shots: z.array(filmShotSchema).min(2).max(8),
+  /** Transparent PNG of the product for the end card, and its width / height. */
+  cutout: z.string(),
+  cutoutAspect: z.number().positive(),
+  cta: z.string().max(30),
+  handle: z.string().max(30),
+  /** Music bed (e.g. Lyria). Plays under the clips' own sound. */
+  music: z.string().optional(),
+  musicVolume: z.number().min(0).max(1),
+  /** Colour grade over every shot. */
+  grade: z.enum(['warm', 'cool', 'neutral', 'verdant', 'noir']),
+  palette: z.object({ accent: zColor(), glow: zColor(), base: zColor(), ink: zColor() }),
+});
+
+export type FilmShot = z.infer<typeof filmShotSchema>;
+export type ProductFilmProps = z.infer<typeof productFilmSchema>;
+
 export const productShineSchema = z.object({
   brand: z.string().max(16),
   productName: z.string().max(24),
@@ -43,6 +88,11 @@ export const productShineSchema = z.object({
     .min(2)
     .max(4)
     .optional(),
+  /**
+   * Story-mode reels are rendered as a short film (templates/ProductFilm) built from the story scenes and `clip`.
+   * Brand, name, tagline, CTA and handle always come from the fields above, so the editor still changes them.
+   */
+  film: productFilmSchema.optional(),
   palette: z.object({ accent: zColor(), glow: zColor(), base: zColor() }),
 });
 

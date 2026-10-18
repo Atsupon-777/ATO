@@ -10,6 +10,8 @@ export const models = {
   image: env('REELS_IMAGE_MODEL', 'gemini-nano-banana-2.1'),
   /** Image-to-video. */
   video: env('REELS_VIDEO_MODEL', 'veo-3.1-fast-generate-preview'),
+  /** Instrumental music beds for product films. */
+  music: env('REELS_MUSIC_MODEL', 'lyria-3-clip-preview'),
 };
 
 export const prices = {
@@ -21,6 +23,8 @@ export const prices = {
     lite: { '720p': 0.03, '1080p': 0.05 },
     standard: { '720p': 0.2, '1080p': 0.2 },
   } as Record<string, Record<string, number>>,
+  /** per music clip (estimate) */
+  music: Number(env('REELS_MUSIC_PRICE', '0.04')),
   /** per million tokens, input / output (estimate for the default text model) */
   text: { input: Number(env('REELS_TEXT_PRICE_IN', '0.5')), output: Number(env('REELS_TEXT_PRICE_OUT', '3')) },
 };

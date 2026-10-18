@@ -1,0 +1,18 @@
+{
+  "brand": "Lumina",
+  "productName": "ÉCLAT",
+  "tagline": "時を纏う、金の輝き。",
+  "lang": "ja",
+  "vertical": true,
+  "shots": [
+    { "src": "samples/watch.jpg", "kind": "hook", "seconds": 3, "trimStart": 0, "rate": 1, "audio": 0, "line": "一秒に、光を。", "kicker": "Crafted time", "focusY": 0.4 },
+    { "src": "samples/watch.jpg", "kind": "hero", "seconds": 3.5, "trimStart": 0, "rate": 1, "audio": 0, "line": "時を纏う、金の輝き。", "kicker": "Rose gold", "focusY": 0.6 }
+  ],
+  "cutout": "samples/watch-cutout.png",
+  "cutoutAspect": 0.5938,
+  "cta": "詳しくはプロフィールへ",
+  "handle": "@lumina",
+  "musicVolume": 0.8,
+  "grade": "warm",
+  "palette": { "accent": "#D8B57A", "glow": "#FFC98A", "base": "#070605", "ink": "#F6EFE3" }
+}
