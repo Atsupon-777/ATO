@@ -23,4 +23,5 @@ RUN rm -rf public/jobs public/uploads && ln -s /data/jobs public/jobs && ln -s /
 
 ENV NODE_ENV=production DATA_DIR=/data PORT=8080
 EXPOSE 8080
-CMD ["node", "app/server.ts"]
+# A fresh bucket has no folders yet, so create the symlink targets before starting.
+CMD ["sh", "-c", "mkdir -p /data/jobs /data/uploads && exec node app/server.ts"]
