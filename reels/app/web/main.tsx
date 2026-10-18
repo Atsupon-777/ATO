@@ -2747,6 +2747,87 @@ const AppleLogo = () => (
   </svg>
 );
 
+/** Splits a line into words (Japanese too) that animate in one by one but never break inside a word. */
+const splitWords = (text: string) => {
+  const Seg = (Intl as any).Segmenter;
+  const parts: string[] = Seg ? [...new Seg(lang, { granularity: 'word' }).segment(text)].map((x: any) => x.segment) : text.split(/(\s+)/);
+  return parts.map((w, i) => (
+    <span key={i} className="w" style={{ '--i': i } as React.CSSProperties}>
+      {w}
+    </span>
+  ));
+};
+
+/** The three steps of the app, lit one after another. */
+const SignInSteps = () => {
+  const steps = [tr("素材を入れる"), tr("AIが編集"), tr("選ぶだけ")];
+  const [on, setOn] = useState(0);
+  useEffect(() => {
+    const t = setInterval(() => setOn((i) => (i + 1) % steps.length), 1600);
+    return () => clearInterval(t);
+  }, []);
+  return (
+    <div className="signsteps" aria-hidden>
+      {steps.map((s, i) => (
+        <React.Fragment key={i}>
+          {i ? <i /> : null}
+          <span className={i === on ? 'on' : ''}>
+            <b>{i + 1}</b>
+            {s}
+          </span>
+        </React.Fragment>
+      ))}
+    </div>
+  );
+};
+
+/** Real renders behind the sign-in form: tilted columns of reels drifting past, and a phone playing the samples. */
+const STAGE_FEATURED = [
+  { key: 'ProductShine', name: () => tr("商品を魅せる") },
+  { key: 'SaaSPromo', name: () => tr("サービス紹介") },
+  { key: 'TalkCaptions', name: () => tr("トーク動画＋字幕") },
+  { key: 'mix-hype', name: () => tr("ミックス") },
+];
+const SignInStage = () => {
+  const keys = useShowcaseKeys();
+  const featured = STAGE_FEATURED.filter((f) => keys?.has(f.key));
+  const [cur, setCur] = useState(0);
+  if (!keys) return <div className="signstage" aria-hidden />;
+  // base keys only (per-language copies are picked by showcase()), templates and mixes first
+  const base = [...keys].filter((k) => !/\.[a-z]{2}$/.test(k));
+  const ranked = [...featured.map((f) => f.key), ...base.filter((k) => k.startsWith('mix-')), ...effectIds.filter((k) => keys.has(k))];
+  const pool = [...new Set(ranked)];
+  const cols = [0, 1, 2].map((c) => {
+    const list = pool.filter((_, i) => i % 3 === c);
+    return list.length ? [...list, ...list, ...list].slice(0, 6) : [];
+  });
+  const f = featured.length ? featured[cur % featured.length] : null;
+  return (
+    <div className="signstage" aria-hidden>
+      <div className="blob b1" />
+      <div className="blob b2" />
+      <div className="cols">
+        {cols.map((list, c) => (
+          <div key={c} className={`col c${c}`}>
+            {/* the list twice, so the loop wraps without a seam */}
+            {[...list, ...list].map((k, i) => (
+              <img key={i} src={showcase(k).poster} alt="" loading="lazy" />
+            ))}
+          </div>
+        ))}
+      </div>
+      {f ? (
+        <div className="phone">
+          <video key={f.key} src={showcase(f.key).video} poster={showcase(f.key).poster} autoPlay muted playsInline onEnded={() => setCur((i) => i + 1)} />
+          <span key={`l${cur}`} className="phonetag">
+            {f.name()}
+          </span>
+        </div>
+      ) : null}
+    </div>
+  );
+};
+
 /** Shown instead of the app while login is on and nobody is signed in. */
 const SignIn: React.FC = () => {
   const [mode, setMode] = useState<'in' | 'up'>('in');
@@ -2776,12 +2857,15 @@ const SignIn: React.FC = () => {
     setBusy(false);
   };
   return (
-    <div className="signin">
+    <div className="signwrap">
+      <SignInStage />
+      <div className="signin">
       <div className="logo">
         <img className="mark" src="/icons/icon.svg" alt="" /> Reels <span>Studio</span>
       </div>
-      <h1>{tr("編集しない、動画編集アプリ。")}</h1>
+      <h1 className="splith">{splitWords(tr("編集しない、動画編集アプリ。"))}</h1>
       <p className="sub">{tr("素材を入れるだけで、AIが編集まで仕上げます。あなたは出てきた案から選ぶだけ。")}</p>
+      <SignInSteps />
       {isNative || appConfig?.appleWeb ? (
         <button className="btn apple" disabled={busy} onClick={run(signInApple)}>
           <AppleLogo /> {tr("Appleでサインイン")}
@@ -2823,6 +2907,7 @@ const SignIn: React.FC = () => {
           ))}
         </select>
       </label>
+      </div>
     </div>
   );
 };
@@ -2867,7 +2952,8 @@ const VerifyEmail: React.FC<{ email?: string | null }> = ({ email }) => {
 /** Login gate: the app itself once signed in (or when login is off, or in the static preview). */
 const Gate = () => {
   const auth = useAuth();
-  if (DEMO) return <App />;
+  // The static preview opens the sign-in page at #/signin, to show it without a login server.
+  if (DEMO) return location.hash === '#/signin' ? <SignIn /> : <App />;
   if (!auth.ready) return null;
   if (auth.enabled && !auth.signedIn) return <SignIn />;
   if (auth.enabled && !auth.verified) return <VerifyEmail email={auth.email} />;
