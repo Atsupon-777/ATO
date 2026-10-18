@@ -4,6 +4,9 @@ import { useEffect, useState } from 'react';
 import { initializeApp } from 'firebase/app';
 import {
   GoogleAuthProvider,
+  RecaptchaVerifier,
+  linkWithPhoneNumber,
+  type ConfirmationResult,
   createUserWithEmailAndPassword,
   getAuth,
   onIdTokenChanged,
@@ -82,3 +85,30 @@ export async function checkVerified() {
 }
 export const resetPassword = (email: string) => sendPasswordResetEmail(auth!, email);
 export const signOut = () => (auth ? fbSignOut(auth) : Promise.resolve());
+
+/** "090-1234-5678" → "+819012345678"; numbers typed with a + and country code are kept. */
+export const toE164 = (s: string) => {
+  const d = s.replace(/[^\d+]/g, '');
+  return d.startsWith('+') ? d : d.startsWith('0') ? `+81${d.slice(1)}` : `+${d}`;
+};
+export const linkedPhone = () => auth?.currentUser?.phoneNumber ?? null;
+
+let verifier: RecaptchaVerifier | null = null;
+let confirmation: ConfirmationResult | null = null;
+/** Sends the SMS code. `button` is the id of the button that was pressed (invisible reCAPTCHA). */
+export async function sendPhoneCode(phone: string, button: string) {
+  verifier ??= new RecaptchaVerifier(auth!, button, { size: 'invisible' });
+  try {
+    confirmation = await linkWithPhoneNumber(auth!.currentUser!, toE164(phone), verifier);
+  } catch (e) {
+    verifier.clear();
+    verifier = null;
+    throw e;
+  }
+}
+/** Checks the code and refreshes the ID token so the server sees the phone number. */
+export async function confirmPhoneCode(code: string) {
+  await confirmation!.confirm(code.trim());
+  token = await auth!.currentUser!.getIdToken(true);
+  setCookie(token);
+}

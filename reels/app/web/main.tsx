@@ -20,7 +20,7 @@ import fivePassSample from '../../props/fivepass-demo.json';
 
 import { LANG_NAMES, langs, type Lang } from '../../src/lang';
 import { lang, setLang, tr } from './i18n';
-import { authHeader, checkVerified, config as appConfig, resendVerification, resetPassword, signInEmail, signInGoogle, signOut, signUpEmail, startAuth, useAuth } from './auth';
+import { authHeader, checkVerified, config as appConfig, confirmPhoneCode, linkedPhone, resendVerification, sendPhoneCode, resetPassword, signInEmail, signInGoogle, signOut, signUpEmail, startAuth, useAuth } from './auth';
 
 // 億 only reads naturally in Japanese and Chinese; other languages get a compact number ("96.3B").
 function mixCount() {
@@ -1962,10 +1962,13 @@ const FeedItem: React.FC<{ job: Job; onEdit: () => void }> = ({ job, onEdit }) =
 };
 
 const PLANS = [
-  { id: 'starter', name: tr("スターター"), price: tr("9,800円"), tokens: 60, note: tr("週3投稿の目安") },
-  { id: 'standard', name: tr("スタンダード"), price: tr("29,800円"), tokens: 200, note: tr("毎日投稿の目安") },
-  { id: 'pro', name: tr("プロ"), price: tr("79,800円"), tokens: 600, note: tr("複数ブランド・優先書き出し") },
+  { id: 'starter', name: tr("スターター"), price: tr("9,800円"), yen: 9800, tokens: 60, note: tr("週3投稿の目安") },
+  { id: 'standard', name: tr("スタンダード"), price: tr("29,800円"), yen: 29800, tokens: 200, note: tr("毎日投稿の目安") },
+  { id: 'pro', name: tr("プロ"), price: tr("79,800円"), yen: 79800, tokens: 600, note: tr("複数ブランド・優先書き出し") },
 ] as const;
+/** The cheapest reel (2 tokens, own footage with captions) on a plan, rounded to 10 yen. */
+const perReel = (p: { yen: number; tokens: number }) => Math.round(((p.yen / p.tokens) * 2) / 10) * 10;
+const MIN_PER_REEL = Math.min(...PLANS.map(perReel));
 
 const FAQ = [
   { q: tr("トークンとは？"), a: tr("リールを1本作るときに使う単位です。自分の素材だけなら2、AIで写真やエフェクトを作ると5、AI動画を入れると12使います。") },
@@ -1975,19 +1978,79 @@ const FAQ = [
   { q: tr("解約はいつでもできますか？"), a: tr("できます。アカウントの「お支払い・解約の管理」から、いつでも手続きできます。") },
 ];
 
-const jobTokens = (j: Job) => j.tokens ?? (j.template === 'ProductShine' ? (j.props?.clip ? 12 : 5) : j.template === 'EffectsReel' || j.template === 'FivePass' ? 5 : 2);
+const jobTokens = (j: Job) => j.tokens ?? (j.template === 'ProductShine' ? (j.props?.clip ? 12 : 5) : j.template === 'EffectsReel' || j.template === 'FivePass' || j.template === 'SaaSPromo' ? 5 : 2);
 
-type Me = { email?: string; plan: 'free' | 'starter' | 'standard' | 'pro'; tokens: number; extra: number; balance: number; billing: boolean; subscribed: boolean; pastDue?: boolean; auth: boolean };
+type Me = { email?: string; plan: 'free' | 'starter' | 'standard' | 'pro'; tokens: number; extra: number; balance: number; billing: boolean; subscribed: boolean; pastDue?: boolean; freePending?: boolean; auth: boolean };
 const PLAN_NAMES: Record<Me['plan'], string> = { free: tr("無料"), starter: tr("スターター"), standard: tr("スタンダード"), pro: tr("プロ") };
+
+// Free tokens are claimed once per phone number: SMS code, then the server checks the number is new.
+const phoneError = (e: any) => {
+  const c = String(e?.code ?? '');
+  if (c === 'auth/invalid-phone-number') return tr("電話番号の形を確認してください。");
+  if (c === 'auth/invalid-verification-code') return tr("確認コードがちがいます。");
+  if (c === 'auth/credential-already-in-use' || c === 'auth/account-exists-with-different-credential') return tr("この電話番号はすでに別のアカウントで使われています。");
+  if (c === 'auth/too-many-requests') return tr("回数が多すぎます。しばらくしてからもう一度お試しください。");
+  return e?.message ?? String(e);
+};
+
+const FreeClaim: React.FC<{ onDone: () => void }> = ({ onDone }) => {
+  const [phone, setPhone] = useState('');
+  const [code, setCode] = useState('');
+  const [sent, setSent] = useState(false);
+  const [busy, setBusy] = useState(false);
+  const [err, setErr] = useState('');
+  const run = (fn: () => Promise<unknown>) => async () => {
+    setBusy(true);
+    setErr('');
+    try {
+      await fn();
+    } catch (e) {
+      setErr(phoneError(e));
+    }
+    setBusy(false);
+  };
+  const claim = async () => (await api('/api/free-tokens', { method: 'POST' }), onDone());
+  const n = appConfig?.freeTokens ?? 10;
+  return (
+    <div className="okmsg">
+      <b>{tr("電話番号を確認すると、{0}トークンを無料でもらえます。", n)}</b>
+      <div className="cost" style={{ margin: '4px 0 10px' }}>{tr("SMSで届く6桁のコードを入れるだけです。1つの電話番号につき1回までです。")}</div>
+      {linkedPhone() ? (
+        <button className="btn small" disabled={busy} onClick={run(claim)}>
+          {tr("{0}トークンを受け取る", n)}
+        </button>
+      ) : !sent ? (
+        <div className="row" style={{ gap: 8, flexWrap: 'wrap' }}>
+          <input className="inp" style={{ flex: '1 1 180px', width: 'auto' }} type="tel" autoComplete="tel" placeholder="090-1234-5678" value={phone} onChange={(e) => setPhone(e.target.value)} aria-label={tr("電話番号")} />
+          <button id="sms-send" className="btn small" disabled={busy || phone.replace(/\D/g, '').length < 9} onClick={run(async () => (await sendPhoneCode(phone, 'sms-send'), setSent(true)))}>
+            {tr("コードを送る")}
+          </button>
+        </div>
+      ) : (
+        <div className="row" style={{ gap: 8, flexWrap: 'wrap' }}>
+          <input className="inp" style={{ flex: '1 1 140px', width: 'auto' }} inputMode="numeric" autoComplete="one-time-code" placeholder="123456" value={code} onChange={(e) => setCode(e.target.value)} aria-label={tr("確認コード")} />
+          <button className="btn small" disabled={busy || code.trim().length < 6} onClick={run(async () => (await confirmPhoneCode(code), await claim()))}>
+            {tr("確認して受け取る")}
+          </button>
+          <button className="linkbtn" disabled={busy} onClick={() => (setSent(false), setCode(''))}>
+            {tr("番号を入れ直す")}
+          </button>
+        </div>
+      )}
+      {err ? <div className="err" style={{ marginTop: 8 }}>{err}</div> : null}
+    </div>
+  );
+};
 
 const Account: React.FC<{ go: (h: string) => void }> = ({ go }) => {
   const [jobs, setJobs] = useState<Job[]>([]);
   const [me, setMe] = useState<Me | null>(null);
   const [busy, setBusy] = useState('');
   const [err, setErr] = useState('');
+  const loadMe = () => api<Me>('/api/me').then(setMe).catch(() => null);
   useEffect(() => {
     api<Job[]>('/api/jobs').then(async (list) => setJobs(await Promise.all(list.map((j) => api<Job>(`/api/jobs/${j.id}`).catch(() => j)))));
-    if (!DEMO) api<Me>('/api/me').then(setMe).catch(() => null);
+    if (!DEMO) loadMe();
   }, []);
   const made = jobs.filter((j) => j.props);
   const used = made.reduce((a, j) => a + jobTokens(j), 0);
@@ -2020,6 +2083,7 @@ const Account: React.FC<{ go: (h: string) => void }> = ({ go }) => {
           </button>
         ) : null}
       </div>
+      {me?.freePending ? <FreeClaim onDone={loadMe} /> : null}
       {paid ? <div className="okmsg">{tr("お支払いありがとうございます。トークンは数秒で反映されます。")}</div> : null}
       {me?.pastDue ? (
         <div className="err">
@@ -2044,6 +2108,10 @@ const Account: React.FC<{ go: (h: string) => void }> = ({ go }) => {
         </div>
       </div>
       <h2>{tr("プラン")}</h2>
+      <p className="lead-price">
+        {tr("リール1本")} <b>{tr("約{0}円", MIN_PER_REEL)}</b> {tr("から")}
+      </p>
+      <p className="cost" style={{ marginTop: -6, marginBottom: 12 }}>{tr("※プロプランで字幕リール（2トークン）を作った場合")}</p>
       <div className="plans">
         {PLANS.map((p) => {
           const current = me?.plan === p.id;
@@ -2051,11 +2119,13 @@ const Account: React.FC<{ go: (h: string) => void }> = ({ go }) => {
             <div key={p.id} className={`plan ${current ? 'on' : ''}`}>
               <div className="name">{p.name}</div>
               <div className="price">
-                {p.price}
-                <small>{tr("/月")}</small>
+                {tr("約{0}円", perReel(p))}
+                <small>{tr("/本から")}</small>
               </div>
               <div className="cost">
-                {tr("毎月")}{' '}{p.tokens}{tr("トークン ・")}{' '}{p.note}
+                {tr("月{0}・毎月{1}トークン", p.price, p.tokens)}
+                <br />
+                {p.note}
               </div>
               {!billing ? (
                 <button className="btn ghost small" disabled title={tr("課金の接続後に選べます")}>
@@ -2313,7 +2383,7 @@ const SignIn: React.FC = () => {
         ) : null}
       </div>
       {msg ? <div className="cost">{msg}</div> : null}
-      <p className="cost">{tr("登録すると{0}トークン分を無料で試せます。", appConfig?.freeTokens ?? 10)}</p>
+      <p className="cost">{tr("登録して電話番号を確認すると、{0}トークン分を無料で試せます。", appConfig?.freeTokens ?? 10)}</p>
       <p className="legal">
         <a href="/legal/terms.html" target="_blank" rel="noreferrer">{tr("利用規約")}</a>
         <a href="/legal/privacy.html" target="_blank" rel="noreferrer">{tr("プライバシーポリシー")}</a>

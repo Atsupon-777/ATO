@@ -3,7 +3,7 @@
 //   FIREBASE_PROJECT_ID   turns login on. Without it the app runs as a single local user (development).
 import { createPublicKey, createVerify } from 'node:crypto';
 
-export type User = { uid: string; email?: string };
+export type User = { uid: string; email?: string; /** E.164, set once the user confirmed a phone number by SMS. */ phone?: string };
 
 export const projectId = process.env.FIREBASE_PROJECT_ID || '';
 export const authEnabled = Boolean(projectId);
@@ -40,7 +40,7 @@ export async function verifyIdToken(token: string): Promise<User> {
   if (!(claims.exp > now) || !(claims.iat <= now + 300) || !claims.sub) throw new Error('token expired');
   // Email sign-ups must click the link in their confirmation mail first (Google accounts arrive verified).
   if (claims.email_verified !== true) throw new Error('email not verified');
-  return { uid: String(claims.sub), email: typeof claims.email === 'string' ? claims.email : undefined };
+  return { uid: String(claims.sub), email: typeof claims.email === 'string' ? claims.email : undefined, phone: typeof claims.phone_number === 'string' ? claims.phone_number : undefined };
 }
 
 /** Browser config for the Firebase JS SDK; these values are public by design. */

@@ -20,7 +20,7 @@ import { buildSaasProps } from '../server/saas.ts';
 import { buildTalkProps } from '../server/talk.ts';
 import { isLang, type Lang } from '../src/lang.ts';
 import { authEnabled, LOCAL_USER, verifyIdToken, webConfig, type User } from '../server/auth.ts';
-import { NotEnoughTokens, balance, charge, getAccount, refund, TOPUP_TOKENS, PLAN_TOKENS, FREE_TOKENS } from '../server/accounts.ts';
+import { FreeClaimError, NotEnoughTokens, balance, charge, claimFree, getAccount, refund, TOPUP_TOKENS, PLAN_TOKENS, FREE_TOKENS } from '../server/accounts.ts';
 import { billingEnabled, checkout, isPurchase, portal, webhook } from '../server/billing.ts';
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
@@ -379,7 +379,18 @@ const server = http.createServer(async (req, res) => {
 
     if (p === '/api/me') {
       const a = await getAccount(user!.uid, user!.email);
-      return json(res, 200, { email: a.email, plan: a.plan, tokens: a.tokens, extra: a.extra, balance: balance(a), billing: billingEnabled, subscribed: Boolean(a.subscriptionId), pastDue: Boolean(a.pastDue), auth: authEnabled });
+      return json(res, 200, { email: a.email, plan: a.plan, tokens: a.tokens, extra: a.extra, balance: balance(a), billing: billingEnabled, subscribed: Boolean(a.subscriptionId), pastDue: Boolean(a.pastDue), freePending: Boolean(a.freePending), auth: authEnabled });
+    }
+    // Free tokens: the browser links a phone number by SMS first, so the ID token carries it.
+    if (p === '/api/free-tokens' && req.method === 'POST') {
+      if (!user!.phone) return json(res, 400, { error: '電話番号を確認してください' });
+      try {
+        const a = await claimFree(user!.uid, user!.phone);
+        return json(res, 200, { balance: balance(a) });
+      } catch (e) {
+        if (e instanceof FreeClaimError) return json(res, 409, { error: e.message });
+        throw e;
+      }
     }
     if (p === '/api/billing/checkout' && req.method === 'POST') {
       const { what } = await readBody(req);

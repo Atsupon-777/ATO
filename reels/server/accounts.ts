@@ -1,14 +1,16 @@
 // Accounts and token balances, kept in one JSON file (DATA_DIR/accounts.json).
 // The server runs as a single instance, so one in-memory copy written after every change is enough.
+import { createHash } from 'node:crypto';
 import { mkdir, readFile, rename, writeFile } from 'node:fs/promises';
 import path from 'node:path';
+import { authEnabled } from './auth.ts';
 import { dataDir } from './paths.ts';
 
 export type PlanId = 'free' | 'starter' | 'standard' | 'pro';
 
 /** Monthly token allowance of each plan. Prices live in Stripe (STRIPE_PRICE_<PLAN>). */
 export const PLAN_TOKENS: Record<PlanId, number> = { free: 0, starter: 60, standard: 200, pro: 600 };
-/** Tokens a new account starts with, so people can try it before paying. */
+/** Free tokens a new account can claim once, after confirming a phone number by SMS. */
 export const FREE_TOKENS = Number(process.env.FREE_TOKENS ?? 10);
 /** Tokens in one top-up purchase (STRIPE_PRICE_TOPUP). */
 export const TOPUP_TOKENS = Number(process.env.TOPUP_TOKENS ?? 30);
@@ -26,6 +28,10 @@ export type Account = {
   subscriptionId?: string;
   /** The last renewal payment failed and Stripe is retrying it. */
   pastDue?: boolean;
+  /** The free tokens are still waiting to be claimed with a phone number. */
+  freePending?: boolean;
+  /** Hash of the phone number that claimed the free tokens, so one number claims once. */
+  phoneHash?: string;
   /** Stripe events already applied, so a retried webhook is not counted twice. */
   events?: string[];
 };
@@ -58,7 +64,7 @@ export async function getAccount(uid: string, email?: string): Promise<Account> 
   const all = await load();
   let a = all.get(uid);
   if (!a) {
-    a = { uid, email, createdAt: new Date().toISOString(), plan: 'free', tokens: 0, extra: FREE_TOKENS };
+    a = { uid, email, createdAt: new Date().toISOString(), plan: 'free', tokens: 0, ...(authEnabled ? { extra: 0, freePending: true } : { extra: FREE_TOKENS }) };
     all.set(uid, a);
     await persist();
   } else if (email && a.email !== email) {
@@ -79,6 +85,22 @@ export async function charge(uid: string, n: number) {
   const fromPlan = Math.min(a.tokens, n);
   a.tokens -= fromPlan;
   a.extra -= n - fromPlan;
+  await persist();
+  return a;
+}
+
+export class FreeClaimError extends Error {}
+
+/** Gives the free tokens to an account whose phone number was just confirmed by SMS. */
+export async function claimFree(uid: string, phone: string) {
+  const all = await load();
+  const a = await getAccount(uid);
+  if (!a.freePending) throw new FreeClaimError('無料トークンはすでに受け取り済みです');
+  const hash = createHash('sha256').update(`reels-phone:${phone}`).digest('hex');
+  if ([...all.values()].some((o) => o.phoneHash === hash)) throw new FreeClaimError('この電話番号はすでに無料トークンを受け取っています');
+  a.phoneHash = hash;
+  a.freePending = false;
+  a.extra += FREE_TOKENS;
   await persist();
   return a;
 }
