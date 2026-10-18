@@ -2474,7 +2474,7 @@ const App = () => {
     <SelContext.Provider value={{ sel, setSel }}>
       <div className="top">
         <div className="logo" onClick={() => go('#/')}>
-          <span className="mark" aria-hidden>▶</span> Reels <span>Studio</span>
+          <img className="mark" src="/icons/icon.svg" alt="" /> Reels <span>Studio</span>
         </div>
         <div className="nav">
           {tabs.map((t) => (
@@ -2550,7 +2550,7 @@ const SignIn: React.FC = () => {
   return (
     <div className="signin">
       <div className="logo">
-        <span className="mark" aria-hidden>▶</span> Reels <span>Studio</span>
+        <img className="mark" src="/icons/icon.svg" alt="" /> Reels <span>Studio</span>
       </div>
       <h1>{tr("編集しない、動画編集アプリ。")}</h1>
       <p className="sub">{tr("素材を入れるだけで、AIが編集まで仕上げます。あなたは出てきた案から選ぶだけ。")}</p>
@@ -2611,7 +2611,7 @@ const VerifyEmail: React.FC<{ email?: string | null }> = ({ email }) => {
   return (
     <div className="signin">
       <div className="logo">
-        <span className="mark" aria-hidden>▶</span> Reels <span>Studio</span>
+        <img className="mark" src="/icons/icon.svg" alt="" /> Reels <span>Studio</span>
       </div>
       <h1>{tr("メールアドレスを確認してください")}</h1>
       <p className="sub">{tr("{0} に確認メールを送りました。メールのリンクを押してから、下のボタンを押してください。", email ?? '')}</p>

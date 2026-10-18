@@ -365,6 +365,7 @@ const server = http.createServer(async (req, res) => {
       return res.writeHead(200, { 'Content-Type': types['.js'] }).end(await appJs);
     }
     if (/^\/legal\/[\w-]+\.html$/.test(p)) return sendFile(req, res, path.join(webDir, p));
+    if (/^\/icons\/icon(-\d+)?\.(svg|png)$/.test(p)) return sendFile(req, res, path.join(webDir, p));
     if (p === '/api/config') return json(res, 200, { firebase: webConfig(), billing: billingEnabled, topupTokens: TOPUP_TOKENS, freeTokens: FREE_TOKENS, planTokens: PLAN_TOKENS });
     if (p === '/api/stripe/webhook' && req.method === 'POST') {
       try {
