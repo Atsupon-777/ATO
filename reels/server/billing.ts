@@ -2,10 +2,10 @@
 //   STRIPE_SECRET_KEY        sk_live_... / sk_test_...
 //   STRIPE_WEBHOOK_SECRET    whsec_... (endpoint: /api/stripe/webhook)
 //   STRIPE_PRICE_STARTER, STRIPE_PRICE_STANDARD, STRIPE_PRICE_PRO   monthly prices
-//   STRIPE_PRICE_TOPUP       one-off price of PAYG_UNIT tokens; pay as you go buys any number of these
+//   Pay as you go needs no Stripe price: each Checkout carries PAYG_UNIT_YEN per PAYG_UNIT tokens inline.
 //   STRIPE_TAX=1             turn on Stripe Tax (prices are tax-inclusive either way)
 import { createHmac, timingSafeEqual } from 'node:crypto';
-import { PAYG_MAX, PAYG_MIN, PAYG_UNIT, PLAN_TOKENS, TOPUP_TOKENS, findByCustomer, update, type Account, type PlanId } from './accounts.ts';
+import { PAYG_MAX, PAYG_MIN, PAYG_UNIT, PAYG_UNIT_YEN, PLAN_TOKENS, TOPUP_TOKENS, findByCustomer, update, type Account, type PlanId } from './accounts.ts';
 
 // A restricted key (rk_...) with only Checkout, Customer portal, Customers and Subscriptions is enough.
 const key = process.env.STRIPE_SECRET_KEY || '';
@@ -19,7 +19,8 @@ const PRICES: Record<Exclude<PlanId, 'free'> | 'topup', string> = {
   starter: process.env.STRIPE_PRICE_STARTER || '',
   standard: process.env.STRIPE_PRICE_STANDARD || '',
   pro: process.env.STRIPE_PRICE_PRO || '',
-  topup: process.env.STRIPE_PRICE_TOPUP || '',
+  // Not a Stripe price: pay as you go is priced inline (see checkout), so the app's label and the charge can't drift apart.
+  topup: 'inline',
 };
 const planOfPrice = (price?: string): PlanId | undefined =>
   (Object.entries(PRICES).find(([k, v]) => v && v === price && k !== 'topup')?.[0] as PlanId | undefined) ?? undefined;
@@ -60,9 +61,20 @@ export async function checkout(a: Account, what: Purchase, origin: string, token
   if (!price) throw new Error(`STRIPE_PRICE_${what.toUpperCase()} is not set`);
   const sub = what !== 'topup';
   const units = sub ? 1 : paygUnits(tokens);
+  const line = sub
+    ? { price, quantity: 1 }
+    : {
+        quantity: units,
+        price_data: {
+          currency: 'jpy',
+          unit_amount: PAYG_UNIT_YEN,
+          tax_behavior: 'inclusive',
+          product_data: { name: `Reels Studio トークン（${PAYG_UNIT.toLocaleString('en-US')}トークン）`, description: '都度購入・期限なし' },
+        },
+      };
   const s = await stripe('checkout/sessions', {
     mode: sub ? 'subscription' : 'payment',
-    line_items: { 0: { price, quantity: units } },
+    line_items: { 0: line },
     success_url: `${origin}/#/me?paid=${what}`,
     cancel_url: `${origin}/#/me`,
     client_reference_id: a.uid,

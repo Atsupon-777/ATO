@@ -19,7 +19,7 @@ export const PLAN_TOKENS: Record<PlanId, number> = { free: 0, starter: 60_000, s
 export const FREE_TOKENS = Number(process.env.FREE_TOKENS ?? 10_000);
 /**
  * Pay as you go: tokens are bought in units of PAYG_UNIT, any number of units between PAYG_MIN and PAYG_MAX.
- * STRIPE_PRICE_TOPUP is the price of one unit; PAYG_UNIT_YEN only labels it in the app and must match it.
+ * PAYG_UNIT_YEN is the price of one unit (tax included), charged inline at Checkout; no Stripe price to keep in step.
  * A unit costs a little more than the same tokens on any plan, so a plan stays the better deal.
  */
 export const PAYG_UNIT = Number(process.env.PAYG_UNIT ?? 1000);
