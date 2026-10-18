@@ -25,17 +25,15 @@ const post = async (path, body) => {
   return j;
 };
 
-// Pay as you go: one price per 1,000 tokens, bought in any quantity (PAYG_UNIT / PAYG_UNIT_YEN in env.yaml).
-const PAYG_UNIT_YEN = Number(process.env.PAYG_UNIT_YEN ?? 200);
+// Pay as you go needs no price here: the app prices it inline (PAYG_UNIT / PAYG_UNIT_YEN in env.yaml).
 const only = process.env.ONLY ? process.env.ONLY.split(',') : null;
 const items = [
   { env: 'STRIPE_PRICE_STARTER', name: 'Reels Studio スターター', yen: 9800, monthly: true, desc: '毎月60,000トークン' },
   { env: 'STRIPE_PRICE_STANDARD', name: 'Reels Studio スタンダード', yen: 29800, monthly: true, desc: '毎月200,000トークン' },
   { env: 'STRIPE_PRICE_PRO', name: 'Reels Studio プロ', yen: 79800, monthly: true, desc: '毎月600,000トークン' },
-  { env: 'STRIPE_PRICE_TOPUP', name: 'Reels Studio トークン（1,000トークン単位）', yen: PAYG_UNIT_YEN, monthly: false, desc: '都度購入・1,000トークンごと（期限なし）' },
 ];
 const out = [];
-// ONLY=STRIPE_PRICE_TOPUP creates just that one (e.g. when only the pay-as-you-go price changes).
+// ONLY=STRIPE_PRICE_PRO (comma-separated) creates just those.
 for (const it of webhookOnly ? [] : items.filter((i) => !only || only.includes(i.env))) {
   const product = await post('products', { name: it.name, description: it.desc });
   const price = await post('prices', {
