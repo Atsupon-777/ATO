@@ -16,10 +16,12 @@
       <h1 class="sub-title svc-title" id="svcH1">{% block svc_title %}{% endblock %}</h1>
       <p class="svc-lede">{% block svc_lede %}{% endblock %}</p>
       {% block svc_body %}{% endblock %}
+      {% block ctas %}
       <div class="ctas">
         <a class="btn btn-gold" href="https://lin.ee/qmngoTF" target="_blank" rel="noopener"><span class="line-dot" aria-hidden="true"></span><span class="ja">LINEで相談する</span><span class="en">Chat on LINE</span><span class="arr" aria-hidden="true"><i>→</i><i>→</i></span></a>
         <a class="btn btn-ghost" href="{{ P or '' }}/#contact"><span class="ja">フォームで相談する</span><span class="en">Send us a message</span></a>
       </div>
+      {% endblock %}
     </div>
     <div class="svc-hero-media" data-reveal>
       {% block svc_media %}{% endblock %}
