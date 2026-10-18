@@ -7,6 +7,7 @@ import {
   OffthreadVideo,
   Sequence,
   interpolate,
+  random,
   staticFile,
   useCurrentFrame,
   useVideoConfig,
@@ -303,26 +304,30 @@ const EndCard: React.FC<ProductFilmProps> = (p) => {
         }}
       />
       <Dust count={26} color={hexToRgb(p.palette.glow)} seed="film-end" />
-      {/* ink stroke: a rough brush path drawn on behind the product */}
+      {/* ink stroke: a dry brush drawn on behind the product, built from bristle lines that run out at different points */}
       <svg width={1080} height={1920} style={{ position: 'absolute', inset: 0 }}>
         <defs>
-          <filter id="brush" x="-10%" y="-30%" width="120%" height="160%">
-            <feTurbulence type="fractalNoise" baseFrequency="0.035 0.6" numOctaves={3} seed={4} />
-            <feDisplacementMap in="SourceGraphic" scale={38} />
+          <filter id="brush" x="-10%" y="-40%" width="120%" height="180%">
+            <feTurbulence type="fractalNoise" baseFrequency="0.02 0.05" numOctaves={2} seed={7} />
+            <feDisplacementMap in="SourceGraphic" scale={12} />
           </filter>
         </defs>
-        <path
-          d="M 120 930 C 330 760, 610 1010, 960 700"
-          fill="none"
-          stroke={accent}
-          strokeOpacity={0.5}
-          strokeWidth={150}
-          strokeLinecap="round"
-          pathLength={1}
-          strokeDasharray={1}
-          strokeDashoffset={1 - ink}
-          filter="url(#brush)"
-        />
+        <g filter="url(#brush)">
+          {BRISTLES.map((b, i) => (
+            <path
+              key={i}
+              d={`M 90 ${960 + b.off} C 330 ${790 + b.off}, 620 ${1020 + b.off}, 990 ${690 + b.off}`}
+              fill="none"
+              stroke={accent}
+              strokeOpacity={b.o}
+              strokeWidth={b.w}
+              strokeLinecap="round"
+              pathLength={1}
+              strokeDasharray={`${b.len} 2`}
+              strokeDashoffset={b.len * (1 - Math.min(1, Math.max(0, (ink - b.delay) / (1 - b.delay))))}
+            />
+          ))}
+        </g>
       </svg>
       <div
         style={{
@@ -406,6 +411,19 @@ const EndCard: React.FC<ProductFilmProps> = (p) => {
     </AbsoluteFill>
   );
 };
+
+/** Bristles of the end-card brush stroke: dense in the middle, thin and broken at the edges. */
+const BRISTLES = new Array(26).fill(0).map((_, i) => {
+  const u = i / 25 - 0.5;
+  const edge = Math.abs(u) * 2;
+  return {
+    off: u * 170 + random(`bo${i}`) * 8,
+    w: 6 + (1 - edge) * 14 * random(`bw${i}`) + 4,
+    o: (0.25 + 0.5 * (1 - edge)) * (0.6 + 0.4 * random(`bp${i}`)),
+    len: 1 - edge * 0.45 * random(`bl${i}`),
+    delay: 0.12 * random(`bd${i}`),
+  };
+});
 
 const hexToRgb = (hex: string) => {
   const m = hex.replace('#', '');
