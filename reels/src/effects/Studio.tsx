@@ -7,7 +7,7 @@ import { AbsoluteFill, Easing, OffthreadVideo, interpolate, useCurrentFrame, use
 import { asset } from '../lib/assets';
 import { fonts } from '../lib/fonts';
 import { clamp, easeInOut, easeOutExpo, pop, progress } from '../lib/timing';
-import { Caption, FONT_FAMILY, Footage, Sandwich, splitWords, useSource, type EffectProps } from './layers';
+import { Caption, captionY, FONT_FAMILY, Footage, Sandwich, splitWords, useSource, type EffectProps } from './layers';
 
 /** GSAP's power4.out, the ease most text reveals use. */
 const power4 = Easing.bezier(0.25, 1, 0.5, 1);
@@ -49,8 +49,9 @@ const SpeakerBubble: React.FC<{ x?: number; y?: number; size?: number; ring?: st
 };
 
 /** A dark plate behind the caption, for scenes on light backgrounds where white captions would vanish. */
-const CaptionPlate: React.FC<{ y: number }> = ({ y }) => {
+const CaptionPlate: React.FC<{ y: number }> = ({ y: y0 }) => {
   const frame = useCurrentFrame();
+  const y = captionY(useSource(), y0);
   return (
     <div
       style={{

@@ -252,6 +252,10 @@ export const effectsReelSchema = z.object({
   recipe: z.string().optional(),
   /** Language of captions and on-screen text; picks Chinese glyph shapes for zh. */
   lang: z.enum(langs).optional(),
+  /** Footage brightness (1 = as shot). Applied on top of the grade, to the person and the wall alike. */
+  brightness: z.number().min(0.5).max(1.5).optional(),
+  /** Caption height for the whole reel (0 top, 1 bottom); when set it wins over each beat's captionPos. */
+  captionY: z.number().min(0.05).max(0.9).optional(),
 });
 
 export type EffectSegment = z.infer<typeof effectSegmentSchema>;

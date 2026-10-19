@@ -146,6 +146,32 @@
   .cutrow { display: grid; gap: 8px; padding: 12px 0; border-top: 1px solid var(--line); }
   .cutlabel { font-size: 13px; color: var(--mute); }
   .cutlabel b { color: var(--ink); margin-left: 6px; }
+  /* look builder: step tabs over live cards of the user's own footage */
+  .buildsteps { display: flex; gap: 4px; overflow-x: auto; border-bottom: 1px solid var(--line); margin: 10px 0 0; scrollbar-width: none; }
+  .buildstep { flex: none; background: none; border: 0; border-bottom: 2px solid transparent; color: var(--mute); padding: 8px 10px; font: inherit; font-size: 13px; cursor: pointer; white-space: nowrap; }
+  .buildstep small { font-size: 11px; opacity: .7; }
+  .buildstep.on { color: var(--ink); font-weight: 700; border-bottom-color: var(--accent-line); }
+  .buildhint { color: var(--mute); font-size: 12px; margin: 10px 0 12px; }
+  .livegrid { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 10px; }
+  .livecard { display: grid; gap: 6px; border: 1px solid var(--line); border-radius: 12px; padding: 8px; background: var(--panel); transition: border-color .2s, box-shadow .2s; }
+  .livecard.on { border-color: var(--accent-line); box-shadow: 0 0 0 1px var(--accent-line) inset; }
+  .livehead { display: flex; justify-content: space-between; font-size: 11px; color: var(--mute); }
+  .livehead b { color: var(--accent-text); }
+  .livethumb { border-radius: 8px; overflow: hidden; background: #000; cursor: pointer; }
+  .livename { display: grid; gap: 2px; min-height: 34px; }
+  .livename b { font-size: 13px; display: flex; align-items: center; gap: 6px; }
+  .liveswatch { width: 12px; height: 12px; border-radius: 50%; border: 1px solid var(--line); flex: none; }
+  .livename small { color: var(--mute); font-size: 11px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .liveact { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; }
+  .liveact .btn { padding: 7px 4px; }
+  .liveact .btn:only-child { grid-column: 1 / -1; }
+  .rangeends { display: flex; justify-content: space-between; color: var(--mute); font-size: 11px; }
+  .buildsum { display: grid; gap: 6px; margin-top: 16px; }
+  .buildsum button { display: grid; grid-template-columns: 80px 1fr auto; gap: 8px; align-items: center; text-align: left; background: var(--panel2); border: 1px solid var(--line); border-radius: 10px; padding: 9px 12px; font: inherit; color: var(--ink); cursor: pointer; }
+  .buildsum span { color: var(--mute); font-size: 12px; }
+  .buildsum b { font-size: 13px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .buildsum small { color: var(--accent-text); font-size: 12px; }
+  @media (max-width: 600px) { .livegrid { grid-template-columns: 1fr 1fr; } }
   .posopts { display: flex; gap: 10px; }
   .posopt { display: grid; gap: 6px; background: none; border: 0; color: var(--ink); cursor: pointer; padding: 0; font: inherit; font-size: 12px; text-align: center; }
   .posframe { position: relative; width: 54px; aspect-ratio: 9 / 16; border-radius: 8px; border: 2px solid var(--line); background: var(--panel2); display: grid; place-items: center; }

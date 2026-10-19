@@ -40,6 +40,8 @@ export const EffectsReel: React.FC<EffectsReelProps> = (p) => {
                 style,
                 reelFrom: from,
                 reelTotal: total,
+                brightness: p.brightness,
+                captionY: p.captionY,
               }}
             >
               {/* scene × camera × transition × grade/caption/font (read from context) × texture × accents */}

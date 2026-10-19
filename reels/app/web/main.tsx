@@ -1095,78 +1095,6 @@ const MixPanel: React.FC<PanelProps<EffectsReelProps>> = ({ p, update }) => {
   );
 };
 
-/**
- * The AI makes the reel first; the user only chooses. Three more AI takes of the whole look,
- * then caption / camera / transition / grade / texture options shown as real renders, applied to every cut.
- */
-const LookPicker: React.FC<PanelProps<EffectsReelProps>> = ({ p, update }) => {
-  useShowcaseKeys();
-  type Look = { effect: EffectsReelProps['segments'][number]['effect']; style?: BeatStyle };
-  const [first] = useState<Look[]>(() => p.segments.map((s) => ({ effect: s.effect, style: s.style })));
-  const [seed, setSeed] = useState(() => Math.floor(Math.random() * 1e5));
-  const takes = useMemo(
-    () => [first, ...[1, 2, 3].map((k) => rollStyles(recipeById(p.recipe), p.segments.length, seed + k * 7919, { hasMatte: !!p.matte }).map((l) => ({ effect: l.scene, style: l.style })))],
-    [first, seed, p.recipe, p.segments.length, p.matte],
-  );
-  const [take, setTake] = useState(0);
-  const [axis, setAxis] = useState<LockAxis>('caption');
-  const lock = LOCKS.find((l) => l.axis === axis)!;
-  const vals = new Set(p.segments.map((s) => s.style?.[axis]));
-  const current = vals.size === 1 ? [...vals][0] : undefined;
-  const pickTake = (k: number) => {
-    setTake(k);
-    update((x) => {
-      x.segments.forEach((s, i) => {
-        const l = takes[k][i];
-        if (l) (s.effect = l.effect), (s.style = l.style);
-      });
-      return x;
-    });
-  };
-  // "Auto" puts back what the chosen take had on each cut.
-  const pickValue = (v?: string) =>
-    update((x) => {
-      x.segments.forEach((s, i) => (s.style = { ...(s.style ?? {}), [axis]: v ?? takes[take][i]?.style?.[axis] }));
-      return x;
-    });
-  return (
-    <div className="panel">
-      <h2>{tr("仕上がりを選ぶ")}</h2>
-      <p className="cost" style={{ marginTop: -4 }}>{tr("AIが作った案から選ぶだけです。選ぶとすぐプレビューに反映されます。")}</p>
-      <div className="takes">
-        {takes.map((t, k) => (
-          <button key={k} className={`take ${take === k ? 'on' : ''}`} onClick={() => pickTake(k)}>
-            <b>{k === 0 ? tr("最初の案") : tr("案{0}", k + 1)}</b>
-            <small>
-              {lbl('grade', t[0]?.style?.grade)} · {lbl('caption', t[0]?.style?.caption)}
-            </small>
-          </button>
-        ))}
-        <button className="take more" onClick={() => (setSeed((n) => n + 1), setTake(0))}>
-          <b>🎲 {tr("ほかの案")}</b>
-          <small>{tr("AIに作り直してもらう")}</small>
-        </button>
-      </div>
-      <div className="chipbar" style={{ marginTop: 14 }}>
-        {LOCKS.map((l) => (
-          <button key={l.axis} className={`fchip ${axis === l.axis ? 'on' : ''}`} onClick={() => setAxis(l.axis)}>
-            {l.name} <small>{l.values.length}</small>
-          </button>
-        ))}
-      </div>
-      <div className="lookopts">
-        <button className={`lookopt ${current === undefined ? 'on' : ''}`} onClick={() => pickValue()}>
-          <div className="lookthumb auto">AI</div>
-          <span>{tr("おまかせ")}</span>
-        </button>
-        {lock.values.map((v) => (
-          <LookOption key={v} k={`${lock.prefix}-${v}`} name={lbl(axis, v)} on={current === v} onPick={() => pickValue(v)} />
-        ))}
-      </div>
-    </div>
-  );
-};
-
 const LookOption: React.FC<{ k: string; name: string; on: boolean; onPick: () => void }> = ({ k, name, on, onPick }) => {
   const [hover, setHover] = useState(false);
   const has = showcaseList?.has(k);
@@ -1293,13 +1221,404 @@ const CutPicker: React.FC<PanelProps<EffectsReelProps> & { playerRef: React.RefO
   );
 };
 
+// ---------- look builder: upload once, then just pick ----------
+
+/**
+ * The reel the AI made, rebuilt step by step like a look book: whole-look takes, colours, font, opening,
+ * captions, elements, motion, then a final check with caption height and brightness.
+ * Every card plays the user's own footage with that option applied; "これにする" takes it,
+ * "似た案" keeps it and deals new cards that differ in the details.
+ */
+type LookOpt = { id: string; name: string; note?: string; swatch?: string; apply: (x: EffectsReelProps) => void; on: (x: EffectsReelProps) => boolean; seg?: number };
+type BuildStep = { key: string; name: string; hint: string; multi?: boolean; deal: (p: EffectsReelProps, seed: number, like?: LookOpt) => LookOpt[] };
+
+const rng = (seed: number) => () => ((seed = (seed * 16807) % 2147483647) - 1) / 2147483646;
+const pickN = <T,>(arr: readonly T[], n: number, r: () => number) => [...arr].sort(() => r() - 0.5).slice(0, n);
+const allStyle = (x: EffectsReelProps, patch: Partial<BeatStyle>) => x.segments.forEach((s) => (s.style = { ...(s.style ?? {}), ...patch }));
+const sameAll = <K extends keyof BeatStyle>(x: EffectsReelProps, k: K, v: BeatStyle[K]) => x.segments.every((s) => s.style?.[k] === v);
+/** A beat with a spoken line, so caption-related cards have something to show. */
+const talkingSeg = (p: EffectsReelProps) => Math.max(0, p.segments.findIndex((s, i) => i > 0 && s.caption)) || 0;
+const effectLabel = (fx: EffectId) => EFFECT_NAMES[fx].replace(/^\d+\s*/, '').replace(/\s*[（(].*[）)]/, '');
+
+const THEMES: { id: string; name: string; accent: string; ink: string; paper: string; grade: (typeof grades)[number] }[] = [
+  { id: 'yellow', name: tr("イエロー×黒"), accent: '#E9F06B', ink: '#FFFFFF', paper: '#111111', grade: 'natural' },
+  { id: 'sunset', name: tr("夕焼け"), accent: '#FF5A36', ink: '#FFF6EC', paper: '#1A0F0A', grade: 'warm' },
+  { id: 'mint', name: tr("ミント"), accent: '#3DDC97', ink: '#FFFFFF', paper: '#0E1A14', grade: 'cool' },
+  { id: 'blue', name: tr("ブルー"), accent: '#5B8CFF', ink: '#FFFFFF', paper: '#0B1020', grade: 'punchy' },
+  { id: 'pink', name: tr("ピンク"), accent: '#FF6FB5', ink: '#FFFFFF', paper: '#1E0F18', grade: 'pastel' },
+  { id: 'gold', name: tr("ゴールド"), accent: '#F2E3A0', ink: '#FFFFFF', paper: '#16130B', grade: 'film' },
+  { id: 'neon', name: tr("ネオン"), accent: '#29D3F0', ink: '#FFFFFF', paper: '#0A0A14', grade: 'neon' },
+  { id: 'mono', name: tr("モノクロ"), accent: '#FFFFFF', ink: '#FFFFFF', paper: '#000000', grade: 'mono' },
+  { id: 'midnight', name: tr("ミッドナイト"), accent: '#B18CFF', ink: '#FFFFFF', paper: '#0B0A0D', grade: 'midnight' },
+  { id: 'teal', name: tr("ティール＆オレンジ"), accent: '#FFC542', ink: '#FFFFFF', paper: '#0E1416', grade: 'tealOrange' },
+];
+const themeOpt = (t: { id: string; name: string; accent: string; ink: string; paper: string; grade: (typeof grades)[number] }): LookOpt => ({
+  id: `${t.id}-${t.accent}-${t.grade}`,
+  name: t.name,
+  note: lbl('grade', t.grade) === t.name ? undefined : lbl('grade', t.grade),
+  swatch: t.accent,
+  apply: (x) => ((x.palette = { accent: t.accent, ink: t.ink, paper: t.paper }), allStyle(x, { color: t.accent, grade: t.grade })),
+  on: (x) => x.palette.accent === t.accent && sameAll(x, 'grade', t.grade) && sameAll(x, 'color', t.accent),
+});
+
+const HOOK_FX: EffectId[] = ['coverStory', 'kineticType', 'glassType', 'textReveal', 'paperCut', 'frameBreak', 'zoomThrough', 'digitalZoom', 'headlineWall', 'doodleBoil', 'vertigo', 'particles3d'];
+const MOTIONS: { id: string; name: string; cams: (typeof cameraMoves)[number][]; trs: (typeof transitions)[number][] }[] = [
+  { id: 'calm', name: tr("静か"), cams: ['drift', 'push', 'pull'], trs: ['blurDissolve', 'dip'] },
+  { id: 'punchy', name: tr("勢い"), cams: ['punch', 'shake', 'push'], trs: ['whipLeft', 'whipUp', 'flash'] },
+  { id: 'cinema', name: tr("シネマ"), cams: ['dollyIn', 'crane', 'tracking'], trs: ['dip', 'blurDissolve'] },
+  { id: 'vlog', name: tr("手持ちVlog"), cams: ['handheld', 'drift'], trs: ['cut', 'slide'] },
+  { id: 'dynamic', name: tr("ダイナミック"), cams: ['orbitCam', 'spinIn', 'dollyIn'], trs: ['zoomBlur', 'spin'] },
+  { id: 'glitch', name: tr("グリッチ"), cams: ['shake', 'punch'], trs: ['glitch', 'flash'] },
+  { id: 'float', name: tr("ふわっと"), cams: ['crane', 'tiltUp', 'drift'], trs: ['slide', 'iris'] },
+  { id: 'hitch', name: tr("めまい"), cams: ['dollyZoom', 'rack'], trs: ['zoomBlur', 'split'] },
+];
+const motionOpt = (id: string, name: string, cams: readonly string[], trs: readonly string[], note?: string): LookOpt => ({
+  id,
+  name,
+  note: note ?? `${lbl('camera', cams[0])} · ${lbl('transition', trs[0])}`,
+  apply: (x) => x.segments.forEach((s, i) => (s.style = { ...(s.style ?? {}), camera: cams[i % cams.length] as never, transition: trs[i % trs.length] as never })),
+  on: (x) => x.segments.every((s, i) => s.style?.camera === cams[i % cams.length] && s.style?.transition === trs[i % trs.length]),
+});
+
+const BUILD_STEPS: BuildStep[] = [
+  {
+    key: 'take',
+    name: tr("全体の案"),
+    hint: tr("AIがあなたの動画で作った、まるごと違う案です。気に入ったものを選ぶと、次のステップはそれをもとに進みます。"),
+    deal: (p, seed, like) =>
+      [0, 1, 2, 3, 4, 5].map((k) => {
+        const recipe = like ? recipeById(like.id.split(':')[0]) : recipes[(k + seed) % recipes.length];
+        const looks = rollStyles(recipe, p.segments.length, seed * 31 + k * 7919, { hasMatte: !!p.matte });
+        const sig = looks.map((l) => l.scene + l.style.caption + l.style.grade).join();
+        return {
+          id: `${recipe.id}:${seed}:${k}`,
+          name: tr(recipe.name),
+          note: `${lbl('grade', looks[0].style.grade)} · ${lbl('caption', looks[0].style.caption)}`,
+          seg: 0,
+          apply: (x: EffectsReelProps) => {
+            x.recipe = recipe.id;
+            x.segments.forEach((s, i) => ((s.effect = looks[i].scene), (s.style = looks[i].style)));
+          },
+          on: (x: EffectsReelProps) => x.segments.map((s) => s.effect + s.style?.caption + s.style?.grade).join() === sig,
+        };
+      }),
+  },
+  {
+    key: 'colors',
+    name: tr("色"),
+    hint: tr("文字の差し色と映像の色味です。フォントや字幕もこの色で作られます。"),
+    deal: (p, seed, like) => {
+      const r = rng(seed + 11);
+      if (!like) return pickN(THEMES, 8, r).map(themeOpt);
+      const base = THEMES.find((t) => like.id.startsWith(t.id + '-')) ?? THEMES[0];
+      const grade = (like.id.split('-').pop() ?? base.grade) as (typeof grades)[number];
+      const accent = like.id.split('-')[1] ?? base.accent;
+      return [
+        ...pickN(accentColors.filter((c) => c !== accent), 4, r).map((c) => themeOpt({ ...base, accent: c, grade })),
+        ...pickN(grades.filter((g) => g !== grade), 4, r).map((g) => themeOpt({ ...base, accent, grade: g })),
+      ];
+    },
+  },
+  {
+    key: 'font',
+    name: tr("フォント"),
+    hint: tr("フック・字幕・カードに使う書体です。似た案を押すと、その書体に合う字幕の組み合わせが出ます。"),
+    deal: (p, seed, like) => {
+      const r = rng(seed + 23);
+      const fontOpt = (f: (typeof fontChoices)[number], cap?: (typeof captionStyles)[number]): LookOpt => ({
+        id: `${f}-${cap ?? ''}`,
+        name: lbl('font', f),
+        note: cap ? lbl('caption', cap) : undefined,
+        seg: talkingSeg(p),
+        apply: (x) => allStyle(x, cap ? { font: f, caption: cap } : { font: f }),
+        on: (x) => sameAll(x, 'font', f) && (!cap || sameAll(x, 'caption', cap)),
+      });
+      if (!like) return fontChoices.map((f) => fontOpt(f));
+      const f = like.id.split('-')[0] as (typeof fontChoices)[number];
+      return pickN(captionStyles, 6, r).map((c) => fontOpt(f, c));
+    },
+  },
+  {
+    key: 'hook',
+    name: tr("冒頭"),
+    hint: tr("最初の1〜2秒の見せ方です。ここで止まってもらえるかが決まります。"),
+    deal: (p, seed, like) => {
+      const r = rng(seed + 37);
+      const hookOpt = (fx: EffectId, tr0?: (typeof transitions)[number], cam?: (typeof cameraMoves)[number]): LookOpt => ({
+        id: `${fx}-${tr0 ?? ''}-${cam ?? ''}`,
+        name: effectLabel(fx),
+        note: tr0 || cam ? [cam && lbl('camera', cam), tr0 && lbl('transition', tr0)].filter(Boolean).join(' · ') : EFFECT_DESC[fx],
+        seg: 0,
+        apply: (x) => {
+          x.segments[0].effect = fx;
+          if (!x.segments[0].text) x.segments[0].text = (x.segments[0].caption ?? '').split(/[、。,.!?！？]/)[0].slice(0, 24) || undefined;
+          if (tr0 || cam) x.segments[0].style = { ...(x.segments[0].style ?? {}), ...(tr0 ? { transition: tr0 } : {}), ...(cam ? { camera: cam } : {}) };
+        },
+        on: (x) => x.segments[0].effect === fx && (!tr0 || x.segments[0].style?.transition === tr0) && (!cam || x.segments[0].style?.camera === cam),
+      });
+      if (!like) return pickN(HOOK_FX, 8, r).map((fx) => hookOpt(fx));
+      const fx = like.id.split('-')[0] as EffectId;
+      return [0, 1, 2, 3, 4, 5].map(() => hookOpt(fx, pickN(transitions, 1, r)[0], pickN(cameraMoves, 1, r)[0]));
+    },
+  },
+  {
+    key: 'captions',
+    name: tr("字幕"),
+    hint: tr("話している言葉の出し方です。選んだ色とフォントで描いています。"),
+    deal: (p, seed, like) => {
+      const r = rng(seed + 41);
+      const capOpt = (c: (typeof captionStyles)[number], acc?: (typeof accents)[number]): LookOpt => ({
+        id: `${c}-${acc ?? ''}`,
+        name: lbl('caption', c),
+        note: acc ? `+ ${lbl('accent', acc)}` : undefined,
+        seg: talkingSeg(p),
+        apply: (x) =>
+          x.segments.forEach((s) => {
+            const a = new Set(s.style?.accents ?? []);
+            if (acc) a.add(acc);
+            s.style = { ...(s.style ?? {}), caption: c, accents: [...a] as never };
+          }),
+        on: (x) => sameAll(x, 'caption', c) && (!acc || x.segments.every((s) => s.style?.accents?.includes(acc))),
+      });
+      if (!like) return pickN(captionStyles, 8, r).map((c) => capOpt(c));
+      const c = like.id.split('-')[0] as (typeof captionStyles)[number];
+      return (['underline', 'emoji', 'echo', 'beatFlash', 'sparkles', 'stickers'] as const).map((a) => capOpt(c, a));
+    },
+  },
+  {
+    key: 'elements',
+    name: tr("飾り"),
+    hint: tr("入れたいものに全部チェックしてください。あなたの色とフォントで表示しています。"),
+    multi: true,
+    deal: (p) =>
+      accents
+        .filter((a) => p.matte || (a !== 'outline' && a !== 'glow'))
+        .map((a) => ({
+          id: a,
+          name: lbl('accent', a),
+          seg: talkingSeg(p),
+          apply: (x: EffectsReelProps) => {
+            const has = x.segments.every((s) => s.style?.accents?.includes(a));
+            x.segments.forEach((s) => {
+              const set = new Set(s.style?.accents ?? []);
+              has ? set.delete(a) : set.add(a);
+              s.style = { ...(s.style ?? {}), accents: [...set] as never };
+            });
+          },
+          on: (x: EffectsReelProps) => x.segments.every((s) => s.style?.accents?.includes(a)),
+        })),
+  },
+  {
+    key: 'motion',
+    name: tr("動き"),
+    hint: tr("カメラの動きとカットのつなぎ方です。カットごとに少しずつ変えてあります。"),
+    deal: (p, seed, like) => {
+      const r = rng(seed + 53);
+      if (!like) return MOTIONS.map((m) => motionOpt(m.id, m.name, m.cams, m.trs));
+      const m = MOTIONS.find((x) => like.id.startsWith(x.id)) ?? MOTIONS[0];
+      return [0, 1, 2, 3, 4, 5].map((k) => {
+        const trs = pickN(transitions, 2, r);
+        return motionOpt(`${m.id}-${k}-${trs.join()}`, m.name, m.cams, trs, trs.map((t) => lbl('transition', t)).join(' · '));
+      });
+    },
+  },
+];
+
+/** A small live preview: one beat of the user's reel with the option applied. Plays while hovered or tapped. */
+const LiveCard: React.FC<{ base: EffectsReelProps; opt: LookOpt; n: number; multi?: boolean; onTake: () => void; onMore?: () => void }> = ({ base, opt, n, multi, onTake, onMore }) => {
+  const ref = useRef<PlayerRef | null>(null);
+  const props = useMemo(() => {
+    const x = structuredClone(base);
+    opt.apply(x);
+    const seg = x.segments[Math.min(opt.seg ?? talkingSeg(x), x.segments.length - 1)];
+    return { ...x, segments: [seg], music: undefined };
+  }, [base, opt]);
+  const frames = Math.max(1, effectsReelDuration(props, FPS));
+  const still = Math.min(frames - 1, Math.round(frames * 0.6));
+  const on = opt.on(base);
+  const play = () => ref.current?.play();
+  const stop = () => (ref.current?.pause(), ref.current?.seekTo(still));
+  return (
+    <div className={`livecard ${on ? 'on' : ''}`}>
+      <div className="livehead">
+        <span>{n}</span>
+        {on ? <b>{multi ? '✓' : tr("選択中")}</b> : null}
+      </div>
+      <div className="livethumb" onPointerEnter={(e) => e.pointerType === 'mouse' && play()} onPointerLeave={(e) => e.pointerType === 'mouse' && stop()} onClick={() => (ref.current?.isPlaying() ? stop() : play())}>
+        <Player
+          ref={ref}
+          component={EffectsReel}
+          inputProps={props}
+          durationInFrames={frames}
+          fps={FPS}
+          compositionWidth={1080}
+          compositionHeight={1920}
+          initialFrame={still}
+          style={{ width: '100%', aspectRatio: '9 / 16' }}
+          loop
+          initiallyMuted
+          acknowledgeRemotionLicense
+        />
+      </div>
+      <div className="livename">
+        <b>
+          {opt.swatch ? <i className="liveswatch" style={{ background: opt.swatch }} /> : null}
+          {opt.name}
+        </b>
+        {opt.note ? <small>{opt.note}</small> : null}
+      </div>
+      <div className="liveact">
+        <button className={`btn small ${on ? '' : 'ghost'}`} onClick={onTake}>
+          {multi ? (on ? tr("外す") : tr("入れる")) : on ? tr("選択中") : tr("選ぶ")}
+        </button>
+        {onMore ? (
+          <button className="btn small ghost" onClick={onMore}>
+            {tr("似た案")}
+          </button>
+        ) : null}
+      </div>
+    </div>
+  );
+};
+
+const LookBuilder: React.FC<PanelProps<EffectsReelProps>> = ({ p, update }) => {
+  const [step, setStep] = useState(0);
+  const [seed, setSeed] = useState(() => 1 + Math.floor(Math.random() * 1e5));
+  const [like, setLike] = useState<LookOpt | undefined>();
+  const last = BUILD_STEPS.length; // the check step comes after the picking steps
+  const s = BUILD_STEPS[step];
+  // the cards are dealt once per step / reshuffle, so taking one does not reshuffle the rest
+  const dealt = useMemo(() => (s ? s.deal(p, seed, like) : []), [step, seed, like, p.segments.length, !!p.matte]);
+  const go = (k: number) => (setStep(k), setLike(undefined));
+  const take = (o: LookOpt) => update((x) => (o.apply(x), x));
+  const top = useRef<HTMLDivElement>(null);
+  const scrollTop = () => top.current?.scrollIntoView({ block: 'nearest', behavior: reduceMotion() ? 'auto' : 'smooth' });
+  return (
+    <div className="panel builder" ref={top}>
+      {/* role keeps the accordion from folding it: this is where the editor starts */}
+      <h2 role="heading" aria-level={2}>{tr("見た目を選ぶ")}</h2>
+      <p className="cost" style={{ marginTop: -4 }}>{tr("ステップごとに、あなたの動画で作った案から選ぶだけです。前のステップで選んだものが次の案に引き継がれます。")}</p>
+      <div className="buildsteps">
+        {[...BUILD_STEPS.map((b) => b.name), tr("仕上げ")].map((name, k) => (
+          <button key={k} className={`buildstep ${k === step ? 'on' : ''}`} onClick={() => go(k)}>
+            <small>{k + 1}</small> {name}
+          </button>
+        ))}
+      </div>
+      {s ? (
+        <>
+          <p className="buildhint">
+            {tr("ステップ{0}/{1}", step + 1, last + 1)} · {like ? tr("「{0}」に近い案です。", like.name) : s.hint}
+          </p>
+          <div className="livegrid">
+            {dealt.map((o, k) => (
+              <LiveCard key={o.id + k} base={p} opt={o} n={k + 1} multi={s.multi} onTake={() => take(o)} onMore={s.multi ? undefined : () => (take(o), setLike(o), scrollTop())} />
+            ))}
+          </div>
+          <div className="row" style={{ justifyContent: 'space-between', marginTop: 12 }}>
+            <button className="btn small ghost" disabled={step === 0} onClick={() => (go(step - 1), scrollTop())}>
+              {tr("戻る")}
+            </button>
+            <div className="row" style={{ gap: 8 }}>
+              {s.multi ? null : (
+                <button className="btn small ghost" onClick={() => (setLike(undefined), setSeed((n) => n + 1))}>
+                  🎲 {tr("ほかの案")}
+                </button>
+              )}
+              <button className="btn small" onClick={() => (go(step + 1), scrollTop())}>
+                {tr("次へ")}
+              </button>
+            </div>
+          </div>
+        </>
+      ) : (
+        <FinishStep p={p} update={update} onBack={() => go(step - 1)} onJump={go} />
+      )}
+    </div>
+  );
+};
+
+/** Last step: what was picked, plus the two fine adjustments (caption height, brightness). */
+const FinishStep: React.FC<PanelProps<EffectsReelProps> & { onBack: () => void; onJump: (k: number) => void }> = ({ p, update, onBack, onJump }) => {
+  const st = p.segments[1]?.style ?? p.segments[0]?.style ?? {};
+  const set = (fn: (x: EffectsReelProps) => void) => update((x) => (fn(x), x));
+  const capY = p.captionY;
+  const bright = p.brightness ?? 1;
+  const summary: [number, string, string][] = [
+    [0, tr("全体の案"), tr(recipeById(p.recipe).name)],
+    [1, tr("色"), `${lbl('grade', st.grade)}`],
+    [2, tr("フォント"), lbl('font', st.font)],
+    [3, tr("冒頭"), effectLabel(p.segments[0].effect)],
+    [4, tr("字幕"), lbl('caption', st.caption)],
+    [5, tr("飾り"), (st.accents ?? []).map((a) => lbl('accent', a)).join('、') || tr("なし")],
+    [6, tr("動き"), `${lbl('camera', st.camera)} · ${lbl('transition', st.transition)}`],
+  ];
+  return (
+    <>
+      <p className="buildhint">{tr("ステップ{0}/{1}", 8, 8)} · {tr("最後に字幕の高さと明るさを整えます。プレビューにすぐ反映されます。")}</p>
+      <div className="field">
+        <label>
+          <span>{tr("テロップの位置")}</span>
+          <span>{capY === undefined ? tr("おまかせ") : `${Math.round(capY * 100)}%`}</span>
+        </label>
+        <div className="posopts" style={{ marginBottom: 8 }}>
+          {([undefined, 0.16, 0.46, 0.72] as const).map((v) => (
+            <button key={v ?? 'auto'} className={`posopt ${capY === v ? 'on' : ''}`} onClick={() => set((x) => void (x.captionY = v))}>
+              <div className="posframe">{v !== undefined ? <i style={{ top: `${Math.round(v * 100) - 2}%` }} /> : <em>AI</em>}</div>
+              <span>{v === undefined ? tr("おまかせ") : v < 0.3 ? tr("上") : v < 0.6 ? tr("中央") : tr("下")}</span>
+            </button>
+          ))}
+        </div>
+        <input type="range" min={0.05} max={0.9} step={0.01} value={capY ?? 0.62} aria-label={tr("テロップの位置")} onChange={(e) => set((x) => void (x.captionY = Number(e.target.value)))} />
+        <div className="rangeends">
+          <span>{tr("上")}</span>
+          <span>{tr("下")}</span>
+        </div>
+      </div>
+      <div className="field" style={{ marginTop: 14 }}>
+        <label>
+          <span>{tr("明るさ")}</span>
+          <span>
+            {bright === 1 ? tr("そのまま") : `${bright > 1 ? '+' : ''}${Math.round((bright - 1) * 100)}`}
+            {bright !== 1 ? (
+              <button className="iconbtn" style={{ marginLeft: 8 }} onClick={() => set((x) => void (x.brightness = undefined))}>
+                {tr("元に戻す")}
+              </button>
+            ) : null}
+          </span>
+        </label>
+        <input type="range" min={0.6} max={1.4} step={0.02} value={bright} aria-label={tr("明るさ")} onChange={(e) => set((x) => void (x.brightness = Number(e.target.value) === 1 ? undefined : Number(e.target.value)))} />
+        <div className="rangeends">
+          <span>{tr("暗く")}</span>
+          <span>{tr("明るく")}</span>
+        </div>
+      </div>
+      <div className="buildsum">
+        {summary.map(([k, name, value]) => (
+          <button key={k} onClick={() => onJump(k)}>
+            <span>{name}</span>
+            <b>{value}</b>
+            <small>{tr("変える")}</small>
+          </button>
+        ))}
+      </div>
+      <div className="row" style={{ justifyContent: 'space-between', marginTop: 12 }}>
+        <button className="btn small ghost" onClick={onBack}>
+          {tr("戻る")}
+        </button>
+        <span className="cost">{tr("できあがったら「動画を書き出す」を押してください。")}</span>
+      </div>
+    </>
+  );
+};
+
 const EffectsPanel: React.FC<PanelProps<EffectsReelProps> & { playerRef: React.RefObject<PlayerRef | null> }> = ({ p, update, playerRef }) => {
   const set = (fn: (p: EffectsReelProps) => void) => mut(update, fn)();
   // Segments play back to back, so a segment's place on the timeline is the sum of the ones before it.
   const startFrame = (i: number) => p.segments.slice(0, i).reduce((a, s) => a + Math.max(1, Math.round((s.end - s.start) * FPS)), 0);
   return (
     <>
-      <LookPicker p={p} update={update} />
+      <LookBuilder p={p} update={update} />
       <MixPanel p={p} update={update} />
       <CutPicker p={p} update={update} playerRef={playerRef} startFrame={startFrame} />
       <div className="panel">

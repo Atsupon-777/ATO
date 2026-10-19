@@ -28,6 +28,9 @@ export type Source = {
   /** Where this beat sits in the whole reel, for accents such as the progress bar. */
   reelFrom: number;
   reelTotal: number;
+  /** Reel-level fine adjustments from the editor. */
+  brightness?: number;
+  captionY?: number;
 };
 
 export const SourceContext = createContext<Source | null>(null);
@@ -98,6 +101,8 @@ export const GRADES: Record<Grade, { filter: string; overlay?: { background: str
   },
 };
 
+const bright = (s: Source) => (s.brightness && s.brightness !== 1 ? `brightness(${s.brightness})` : '');
+
 const GradeOverlay: React.FC = () => {
   const g = GRADES[useSource().style.grade ?? 'natural'];
   return g.overlay ? <AbsoluteFill style={{ background: g.overlay.background, mixBlendMode: g.overlay.blend, opacity: g.overlay.opacity }} /> : null;
@@ -106,7 +111,7 @@ const GradeOverlay: React.FC = () => {
 /** The talking video (always muted: the template plays the segment's sound once, so copies never double it). */
 export const Footage: React.FC<{ style?: React.CSSProperties; muted?: boolean }> = ({ style }) => {
   const s = useSource();
-  const grade = GRADES[s.style.grade ?? 'natural'].filter;
+  const grade = [GRADES[s.style.grade ?? 'natural'].filter, bright(s)].filter(Boolean).join(' ');
   const { bg } = useContext(DepthContext);
   return (
     <AbsoluteFill style={style}>
@@ -126,7 +131,7 @@ export const Subject: React.FC<{ style?: React.CSSProperties; filter?: string }>
   // An outline filter replaces the person with their outline, so grade and glow only apply to the plain cut-out.
   const plain = !filter;
   const glow = plain && s.style.accents?.includes('glow') ? `drop-shadow(0 0 28px ${s.accent}) drop-shadow(0 0 60px ${s.accent}88)` : '';
-  const grade = plain ? GRADES[s.style.grade ?? 'natural'].filter : '';
+  const grade = plain ? [GRADES[s.style.grade ?? 'natural'].filter, bright(s)].filter(Boolean).join(' ') : '';
   return (
     <AbsoluteFill style={style}>
       <AbsoluteFill style={{ transform: fg }}>
@@ -160,6 +165,8 @@ export const Sandwich: React.FC<{
 export const FONT_FAMILY = { display: fonts.display, sansJP: fonts.sansJP, serif: fonts.serif, mincho: fonts.minchoJP };
 /** Caption heights the editor offers (fraction of the frame). */
 const CAPTION_Y = { top: 0.16, middle: 0.46, bottom: 0.72 } as const;
+/** Where a caption the effect lays out at `y` actually goes, after the editor's position picks. */
+export const captionY = (s: Source, y: number) => s.captionY ?? (s.style.captionPos ? CAPTION_Y[s.style.captionPos] : y);
 const LEGACY: Record<string, CaptionStyle> = { bold: 'pop', spaced: 'spaced', upper: 'upper' };
 const EMOJI = ['🔥', '✨', '👀', '🚀', '💡', '🙌', '📈', '😳'];
 
@@ -180,7 +187,7 @@ export const Caption: React.FC<{
   const { fps, durationInFrames } = useVideoConfig();
   const s = useSource();
   if (!text) return null;
-  if (s.style.captionPos) y = CAPTION_Y[s.style.captionPos];
+  y = captionY(s, y);
   const look: CaptionStyle = s.style.caption ?? LEGACY[variant];
   const family = s.style.font ? FONT_FAMILY[s.style.font] : look === 'script' ? fonts.serif : fonts.display;
   if (look === 'keyword') {
