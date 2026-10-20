@@ -1236,8 +1236,13 @@ const rng = (seed: number) => () => ((seed = (seed * 16807) % 2147483647) - 1) /
 const pickN = <T,>(arr: readonly T[], n: number, r: () => number) => [...arr].sort(() => r() - 0.5).slice(0, n);
 const allStyle = (x: EffectsReelProps, patch: Partial<BeatStyle>) => x.segments.forEach((s) => (s.style = { ...(s.style ?? {}), ...patch }));
 const sameAll = <K extends keyof BeatStyle>(x: EffectsReelProps, k: K, v: BeatStyle[K]) => x.segments.every((s) => s.style?.[k] === v);
-/** A beat with a spoken line, so caption-related cards have something to show. */
-const talkingSeg = (p: EffectsReelProps) => Math.max(0, p.segments.findIndex((s, i) => i > 0 && s.caption)) || 0;
+/** Effects that draw their own type instead of the caption layer, so caption picks would not show on them. */
+const OWN_TYPE = new Set<EffectId>(['kineticType', 'infographic', 'notifications', 'tiles', 'sourceCard']);
+/** A beat with a spoken line on the caption layer, so caption-related cards have something to show. */
+const talkingSeg = (p: EffectsReelProps) => {
+  const i = p.segments.findIndex((s, k) => k > 0 && s.caption && !OWN_TYPE.has(s.effect));
+  return i > 0 ? i : Math.max(0, p.segments.findIndex((s) => s.caption));
+};
 const effectLabel = (fx: EffectId) => EFFECT_NAMES[fx].replace(/^\d+\s*/, '').replace(/\s*[（(].*[）)]/, '');
 
 const THEMES: { id: string; name: string; accent: string; ink: string; paper: string; grade: (typeof grades)[number] }[] = [
