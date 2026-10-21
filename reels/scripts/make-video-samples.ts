@@ -5,7 +5,7 @@
 // Output: public/showcase/tpl-<id>.mp4 + .jpg, and showcase/index.json updated.
 import { execFile } from 'node:child_process';
 import { existsSync } from 'node:fs';
-import { mkdir, readFile, readdir, writeFile } from 'node:fs/promises';
+import { copyFile, mkdir, readFile, readdir, writeFile } from 'node:fs/promises';
 import path from 'node:path';
 import { promisify } from 'node:util';
 import { bundle } from '@remotion/bundler';
@@ -87,6 +87,8 @@ for (const [n, v] of todo.entries()) {
     const out = path.join(showcaseDir, `tpl-${v.id}.mp4`);
     await run('ffmpeg', ['-y', '-loglevel', 'error', '-i', raw, '-c:v', 'libx264', '-preset', 'veryfast', '-crf', '27', '-pix_fmt', 'yuv420p', '-af', 'loudnorm=I=-14:TP=-1', '-c:a', 'aac', '-b:a', '96k', '-movflags', '+faststart', out]);
     await run('ffmpeg', ['-y', '-loglevel', 'error', '-ss', String(Math.min(3, composition.durationInFrames / 60)), '-i', out, '-frames:v', '1', '-q:v', '4', out.replace(/\.mp4$/, '.jpg')]);
+    // keep a copy in the project folder: deploys rebuild public/showcase from there (scripts/make-showcase.py)
+    for (const ext of ['.mp4', '.jpg']) await copyFile(out.replace(/\.mp4$/, ext), path.join('/mnt/project-files/reels-tests/templates', `tpl-${v.id}${ext}`)).catch(() => {});
     index.add(`tpl-${v.id}`);
     await writeFile(path.join(showcaseDir, 'index.json'), JSON.stringify([...index].sort()));
     console.log(`${n + 1}/${todo.length} ${v.id} in ${((Date.now() - t0) / 1000).toFixed(0)}s`);

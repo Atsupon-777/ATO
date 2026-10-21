@@ -59,6 +59,10 @@ for f in sorted(src.glob('subtypes-*.mp4')):
 # Product films (story mode, ProductFilm): <name>-film.mp4 → film-<name>, shown first on the sign-in page.
 for f in sorted(src.glob('*-film.mp4')):
     enc(f, 'film-' + f.stem.removesuffix('-film'), t=16)
+# Template samples (tpl-<id>.mp4/.jpg) are already encoded by scripts/make-*-samples; copied as they are.
+import shutil
+for f in sorted((src / 'templates').glob('tpl-*.*')):
+    shutil.copyfile(f, out / f.name)
 # The app hides gallery items that have no real render yet.
 json.dump(sorted(p.stem for p in out.glob('*.mp4')), open(out / 'index.json', 'w'))
 print('done')
