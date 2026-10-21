@@ -604,7 +604,7 @@ const NativeShare: React.FC<{ job: Job; compact?: boolean }> = ({ job, compact }
       } else await shareVideo(url, name, job.title);
     } catch (e: any) {
       const m = String(e?.message ?? e);
-      setMsg(/denied|permission|access/i.test(m) ? tr("写真へのアクセスが許可されていません。設定アプリで Reels Studio の「写真」を許可してください。") : m);
+      setMsg(/denied|permission|access/i.test(m) ? tr("写真へのアクセスが許可されていません。設定アプリで Zero Edit の「写真」を許可してください。") : m);
     }
     setBusy('');
   };
@@ -3576,7 +3576,7 @@ const App = () => {
     <SelContext.Provider value={{ sel, setSel }}>
       <div className="top">
         <div className="logo" onClick={() => go('#/')}>
-          <img className="mark" src="/icons/icon.svg" alt="" /> Reels <span>Studio</span>
+          <img className="mark" src="/icons/icon.svg" alt="" /> Zero <span>Edit</span>
         </div>
         <div className="nav">
           {tabs.map((t) => (
@@ -3749,7 +3749,7 @@ const SignIn: React.FC = () => {
       <SignInStage />
       <div className="signin">
       <div className="logo">
-        <img className="mark" src="/icons/icon.svg" alt="" /> Reels <span>Studio</span>
+        <img className="mark" src="/icons/icon.svg" alt="" /> Zero <span>Edit</span>
       </div>
       <h1 className="splith">{splitWords(tr("編集しない、動画編集アプリ。"))}</h1>
       <p className="sub">{tr("素材を入れるだけで、AIが編集まで仕上げます。あなたは出てきた案から選ぶだけ。")}</p>
@@ -3817,7 +3817,7 @@ const VerifyEmail: React.FC<{ email?: string | null }> = ({ email }) => {
   return (
     <div className="signin">
       <div className="logo">
-        <img className="mark" src="/icons/icon.svg" alt="" /> Reels <span>Studio</span>
+        <img className="mark" src="/icons/icon.svg" alt="" /> Zero <span>Edit</span>
       </div>
       <h1>{tr("メールアドレスを確認してください")}</h1>
       <p className="sub">{tr("{0} に確認メールを送りました。メールのリンクを押してから、下のボタンを押してください。", email ?? '')}</p>

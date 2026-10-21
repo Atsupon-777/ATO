@@ -5,7 +5,7 @@ import type { CapacitorConfig } from '@capacitor/cli';
 const config: CapacitorConfig = {
   // Bundle ID: must match the App ID registered in Apple Developer and the iOS app in Firebase.
   appId: 'com.atosns.reelsstudio',
-  appName: 'Reels Studio',
+  appName: 'Zero Edit',
   webDir: 'app/native/www',
   backgroundColor: '#0a0a0b',
   ios: {

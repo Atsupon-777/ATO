@@ -548,7 +548,7 @@
  "プランは1か月ごとの自動更新です。Google Playの定期購入からいつでも解約できます。": "Plans renew monthly. Cancel anytime from Subscriptions in Google Play.",
  "プランは1か月ごとの自動更新です。お支払いはApple IDに請求されます。期間終了の24時間前までに解約しない限り自動で更新され、解約はiPhoneの「設定」→ Apple ID →「サブスクリプション」からいつでもできます。": "Plans renew automatically every month and are charged to your Apple ID. They renew unless cancelled at least 24 hours before the end of the period; cancel anytime in iPhone Settings → Apple ID → Subscriptions.",
  "作ったリール、アップロードした素材、残りのトークン、ログイン情報がすべて削除され、元に戻せません。Webで契約中のプランは解約されます。": "Your Reels, uploads, remaining tokens and login will all be deleted. This can't be undone. Any plan subscribed on the web will be cancelled.",
- "写真へのアクセスが許可されていません。設定アプリで Reels Studio の「写真」を許可してください。": "Reels Studio can't access Photos. Allow \"Photos\" for Reels Studio in the Settings app.",
+ "写真へのアクセスが許可されていません。設定アプリで Zero Edit の「写真」を許可してください。": "Zero Edit can't access Photos. Allow \"Photos\" for Zero Edit in the Settings app.",
  "写真ライブラリから選ぶ": "Choose from your photo library",
  "処理中…": "Processing…",
  "削除する": "Delete",

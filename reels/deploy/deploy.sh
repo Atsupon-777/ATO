@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Builds the container and deploys Reels Studio to Cloud Run (Tokyo), with user data on a Cloud Storage bucket.
+# Builds the container and deploys Zero Edit to Cloud Run (Tokyo), with user data on a Cloud Storage bucket.
 # First time: see deploy/README.md for the accounts and secrets this needs.
 #   PROJECT_ID=my-project ./deploy/deploy.sh
 set -euo pipefail

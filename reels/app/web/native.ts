@@ -100,13 +100,13 @@ async function download(url: string, name: string) {
   return (await Filesystem.getUri({ path, directory: Directory.Cache })).uri;
 }
 
-const ALBUM = 'Reels Studio';
+const ALBUM = 'Zero Edit';
 async function androidAlbum() {
   const find = async () => (await Media.getAlbums()).albums.find((a) => a.name === ALBUM)?.identifier;
   return (await find()) ?? (await Media.createAlbum({ name: ALBUM }), await find());
 }
 
-/** Saves the reel to the camera roll (Photos on iPhone; a "Reels Studio" album on Android). */
+/** Saves the reel to the camera roll (Photos on iPhone; a "Zero Edit" album on Android). */
 export async function saveToCameraRoll(url: string, name: string) {
   const path = await download(url, name);
   await Media.saveVideo({ path, albumIdentifier: platform === 'android' ? await androidAlbum() : undefined });

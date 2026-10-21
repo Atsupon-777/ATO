@@ -1,4 +1,4 @@
-// Creates the Reels Studio products, prices and webhook in Stripe, and prints the values for deploy/env.yaml.
+// Creates the Zero Edit products, prices and webhook in Stripe, and prints the values for deploy/env.yaml.
 //   STRIPE_SECRET_KEY=sk_live_... node deploy/stripe-setup.mjs https://app.example.com
 // Without the URL it creates only the products and prices; run with `--webhook-only <url>` once the app is live.
 // Run once per Stripe account (test mode first with sk_test_...). Prices are in yen, tax included.
@@ -28,9 +28,9 @@ const post = async (path, body) => {
 // Pay as you go needs no price here: the app prices it inline (PAYG_UNIT / PAYG_UNIT_YEN in env.yaml).
 const only = process.env.ONLY ? process.env.ONLY.split(',') : null;
 const items = [
-  { env: 'STRIPE_PRICE_STARTER', name: 'Reels Studio スターター', yen: 9800, monthly: true, desc: '毎月60,000トークン' },
-  { env: 'STRIPE_PRICE_STANDARD', name: 'Reels Studio スタンダード', yen: 29800, monthly: true, desc: '毎月200,000トークン' },
-  { env: 'STRIPE_PRICE_PRO', name: 'Reels Studio プロ', yen: 79800, monthly: true, desc: '毎月600,000トークン' },
+  { env: 'STRIPE_PRICE_STARTER', name: 'Zero Edit スターター', yen: 9800, monthly: true, desc: '毎月60,000トークン' },
+  { env: 'STRIPE_PRICE_STANDARD', name: 'Zero Edit スタンダード', yen: 29800, monthly: true, desc: '毎月200,000トークン' },
+  { env: 'STRIPE_PRICE_PRO', name: 'Zero Edit プロ', yen: 79800, monthly: true, desc: '毎月600,000トークン' },
 ];
 const out = [];
 // ONLY=STRIPE_PRICE_PRO (comma-separated) creates just those.
