@@ -42,6 +42,9 @@ export type Recipe = {
   /** Mood words for the generated music bed. */
   mood?: string;
   premium?: boolean;
+  /** Catalog row for server-added templates. */
+  en?: string;
+  categories?: string[];
 };
 
 export const recipes: Recipe[] = [
@@ -234,7 +237,11 @@ function templateRecipe(id: string): Recipe | undefined {
   };
 }
 
-export const recipeById = (id?: string): Recipe => (id && templateRecipe(id)) || recipes.find((r) => r.id === id) || recipes[recipes.length - 1];
+/** Mixes the server adds at run time (DATA_DIR/templates.json), so new templates need no app update. */
+export const extraRecipes: Recipe[] = [];
+
+export const recipeById = (id?: string): Recipe =>
+  (id && templateRecipe(id)) || recipes.find((r) => r.id === id) || extraRecipes.find((r) => r.id === id) || recipes[recipes.length - 1];
 
 /** The lists a recipe allows on each axis (an empty list in the recipe means every option). */
 export const recipeAxes = (r: Recipe) => ({

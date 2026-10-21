@@ -13,6 +13,7 @@ import * as esbuild from 'esbuild';
 import { effectIds, effectsReelSchema, productShineSchema, saasPromoSchema, talkCaptionsSchema, fivePassSchema, type EffectsReelProps } from '../src/schemas.ts';
 import { pass1, restoreVersion, runPass } from '../server/fivepass.ts';
 import { loudnorm } from '../server/loudnorm.ts';
+import { catalog, countUse } from '../server/catalog.ts';
 import { buildEffectsProps } from '../server/effects.ts';
 import { buildProductReel, STYLES, type Style } from '../server/product.ts';
 import { renderTemplate } from '../server/render.ts';
@@ -453,6 +454,10 @@ const server = http.createServer(async (req, res) => {
     }
     if (p === '/api/config')
       return json(res, 200, { firebase: webConfig(), billing: billingEnabled, payg: { unit: PAYG_UNIT, unitYen: PAYG_UNIT_YEN, min: PAYG_MIN, max: PAYG_MAX }, freeTokens: FREE_TOKENS, planTokens: PLAN_TOKENS, iap: iapConfig(), appleWeb: process.env.APPLE_SIGNIN_WEB === '1' });
+    if (p === '/api/catalog' && req.method === 'GET') {
+      res.setHeader('Cache-Control', 'public, max-age=300');
+      return json(res, 200, await catalog());
+    }
     if (p === '/api/revenuecat/webhook' && req.method === 'POST') {
       try {
         return json(res, 200, await revenuecatWebhook(await readBody(req), req.headers.authorization));
@@ -559,7 +564,10 @@ const server = http.createServer(async (req, res) => {
       const body = await readBody(req);
       if (!(body.template in schemas)) return json(res, 400, { error: 'unknown template' });
       try {
-        return json(res, 200, await startJob(body.template, body.input ?? {}, user!));
+        const started = await startJob(body.template, body.input ?? {}, user!);
+        const tpl = body.input?.recipe ?? body.input?.templateId;
+        if (typeof tpl === 'string' && tpl !== 'all') countUse(tpl).catch(() => {});
+        return json(res, 200, started);
       } catch (e) {
         if (e instanceof NotEnoughTokens) return json(res, 402, { error: e.message, code: 'tokens' });
         throw e;

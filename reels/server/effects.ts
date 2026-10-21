@@ -175,12 +175,50 @@ export async function buildEffectsProps(brief: {
   await matte(source, matteFile, usage);
 
   brief.onStep?.(4, total, 'plan effects');
+  const props = await planEffectsReel({
+    jobId: talk.jobId,
+    dir: talk.dir,
+    video: talk.props.video,
+    words: talk.props.words,
+    duration: talk.props.sourceDuration,
+    language: talk.language,
+    recipe: brief.recipe,
+    prefer: brief.prefer,
+    lang: brief.lang,
+    usage,
+  });
+  await writeFile(path.join(talk.dir, 'props.json'), JSON.stringify(props, null, 2));
+  await writeFile(path.join(talk.dir, 'usage.json'), JSON.stringify(usage, null, 2));
+  return { jobId: talk.jobId, props, usage: usage.toJSON(), title: talk.props.title };
+}
+
+/**
+ * Plans one reel over an already transcribed and matted talk: beats, scenes and looks from the mix, plus a
+ * music bed. Reused for the gallery samples, where one talk is dressed in every template.
+ */
+export async function planEffectsReel(t: {
+  jobId: string;
+  dir: string;
+  video: string;
+  words: { text: string; start: number; end: number }[];
+  duration: number;
+  language: string;
+  recipe?: string;
+  prefer?: EffectId[];
+  lang?: Lang;
+  usage: Usage;
+  /** Reuse this music file instead of making one. */
+  music?: string;
+}): Promise<EffectsReelProps> {
+  const brief = t;
+  const usage = t.usage;
+  const talk = { jobId: t.jobId, dir: t.dir, language: t.language, props: { video: t.video, words: t.words, sourceDuration: t.duration } };
   const words = talk.props.words;
   const duration = talk.props.sourceDuration;
   const recipe = recipeById(brief.recipe);
   const ax = recipeAxes(recipe);
   // The music bed is made while the plan is written; a failure only means no music.
-  const music = generateMusic({
+  const music = t.music !== undefined ? Promise.resolve(t.music) : generateMusic({
     prompt: `Instrumental background music for a ${Math.round(duration)}-second vertical social video. Mood: ${recipe.mood ?? recipe.desc}. No vocals, loopable, modern production, leaves room for a voice over it.`,
     out: path.join(talk.dir, 'music'),
     usage,
@@ -263,7 +301,5 @@ export async function buildEffectsProps(brief: {
     recipe: recipe.id,
     lang: brief.lang ?? (langs as readonly string[]).find((l) => talk.language.startsWith(l)) as Lang | undefined,
   });
-  await writeFile(path.join(talk.dir, 'props.json'), JSON.stringify(props, null, 2));
-  await writeFile(path.join(talk.dir, 'usage.json'), JSON.stringify(usage, null, 2));
-  return { jobId: talk.jobId, props, usage: usage.toJSON(), title: talk.props.title };
+  return props;
 }

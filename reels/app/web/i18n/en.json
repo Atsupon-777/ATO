@@ -682,5 +682,14 @@
  "BGMの大きさ": "Music volume",
  "話す間は自動で下げる": "Lower while talking",
  "声を優先": "Voice first",
- "BGMを優先": "Music first"
+ "BGMを優先": "Music first",
+ "プレミアム": "Premium",
+ "この条件のテンプレートは準備中です。": "Templates for this filter are coming soon.",
+ "人気": "Popular",
+ "{0}枚": "{0} photos",
+ "新着": "New",
+ "枚数すべて": "Any number",
+ "動画": "Video",
+ "写真": "Photos",
+ "おすすめ": "For you"
 }

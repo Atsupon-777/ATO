@@ -682,5 +682,14 @@
  "BGMの大きさ": "Volume de la musique",
  "話す間は自動で下げる": "Baisser pendant la parole",
  "声を優先": "Voix d'abord",
- "BGMを優先": "Musique d'abord"
+ "BGMを優先": "Musique d'abord",
+ "プレミアム": "Premium",
+ "この条件のテンプレートは準備中です。": "Des modèles pour ce filtre arrivent bientôt.",
+ "人気": "Populaires",
+ "{0}枚": "{0} photos",
+ "新着": "Nouveautés",
+ "枚数すべて": "Tous nombres",
+ "動画": "Vidéo",
+ "写真": "Photos",
+ "おすすめ": "Pour vous"
 }

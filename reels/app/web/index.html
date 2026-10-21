@@ -686,6 +686,15 @@
   .layeredit .swatches { grid-column: 1 / -1; }
   .layeredit .swatches button { width: 28px; height: 28px; border-radius: 999px; border: 2px solid var(--line); cursor: pointer; padding: 0; }
   .layeredit .swatches button.on { border-color: var(--ink); box-shadow: 0 0 0 2px var(--accent-line); }
+  /* ---- template catalog ---- */
+  .kindtabs { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 4px; padding: 4px; border-radius: 16px; background: var(--panel); border: 1px solid var(--line); margin-bottom: 12px; max-width: 560px; }
+  .kindtabs button { border: 0; background: none; color: var(--mute); padding: 10px 6px; border-radius: 12px; cursor: pointer; font-weight: 700; font-size: 14px; }
+  .kindtabs button small { font-weight: 500; opacity: .7; margin-left: 2px; font-size: 11px; }
+  .kindtabs button.on { background: var(--ink); color: var(--bg); }
+  .chipsep { flex: none; width: 1px; background: var(--line); margin: 4px 2px; }
+  .tprem { position: absolute; left: 8px; bottom: 8px; font-size: 10px; font-weight: 800; letter-spacing: .04em; padding: 3px 8px; border-radius: 99px; color: #0a0a0b; background: linear-gradient(120deg, #f3e3b3, #cbb68a); }
+  .premiumtag { color: #0a0a0b; background: linear-gradient(120deg, #f3e3b3, #cbb68a); }
+  .tmore { height: 1px; }
   .themebtn svg { width: 18px; height: 18px; }
   @media (max-width: 420px) { .stickers { grid-template-columns: repeat(4, minmax(0, 1fr)); } .pickgridlist { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
   @media (max-width: 520px) { .langbtn .lname { display: none; } .langbtn { padding: 8px; } .top { gap: 10px; } }

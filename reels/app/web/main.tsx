@@ -4,6 +4,7 @@ import { createRoot } from 'react-dom/client';
 import { Player, Thumbnail, type PlayerRef } from '@remotion/player';
 import { accentColors, accents, cameraMoves, captionStyles, combinationCount, fontChoices, grades, textures, transitions } from '../../src/effects/axes';
 import { recipeById, recipes, rollStyles } from '../../src/effects/recipes';
+import { videoCategories, videoTemplates } from '../../src/effects/video-catalog';
 import { ProductShine, productShineFrames } from '../../src/templates/ProductShine';
 import { SaaSPromo, saasPromoBeats } from '../../src/templates/SaaSPromo';
 import { TalkCaptions, talkCaptionsDuration } from '../../src/templates/TalkCaptions';
@@ -2783,7 +2784,7 @@ const EFFECT_DESC: Record<EffectId, string> = {
   flatBoard: tr("番号付きの柱が立ち上がるフラットなイラスト図解"),
 };
 
-type CatalogItem = { key: string; template: TemplateId; effect?: EffectId; mix?: string; name: string; desc: string; group: Group };
+type CatalogItem = { key: string; template: TemplateId; effect?: EffectId; mix?: string; name: string; desc: string; group: Group; href?: string; premium?: boolean; tags?: string[] };
 
 /** Finishing options the user picks after the AI has made the reel. Each value has a real render at showcase/<prefix>-<value>. */
 type LockAxis = 'caption' | 'camera' | 'transition' | 'grade' | 'texture';
@@ -2842,6 +2843,7 @@ const TemplateCard: React.FC<{ it: CatalogItem; onOpen: () => void; i?: number }
         <span className="tplay" aria-hidden>
           ▶
         </span>
+        {it.premium ? <span className="tprem">{tr("プレミアム")}</span> : null}
         {it.effect ? <span className="tnum">{String(effectIds.indexOf(it.effect) + 1).padStart(2, '0')}</span> : null}
       </div>
       <div className="tname">{it.name}</div>
@@ -2857,7 +2859,14 @@ const PreviewSheet: React.FC<{ it: CatalogItem; onClose: () => void; onUse: () =
           <ShowVideo k={it.key} controls />
         </div>
         <div className="sheetinfo">
-          <span className="tag">{GROUPS.find((g) => g.id === it.group)!.name}</span>
+          <div className="row" style={{ gap: 6, flexWrap: 'wrap' }}>
+            {it.premium ? <span className="tag premiumtag">{tr("プレミアム")}</span> : null}
+            {(it.tags ?? [GROUPS.find((g) => g.id === it.group)!.name]).map((t) => (
+              <span key={t} className="tag">
+                {t}
+              </span>
+            ))}
+          </div>
           <div className="name">{it.name}</div>
           <div className="desc">{it.desc}</div>
           <p className="cost">
@@ -2884,9 +2893,125 @@ const PreviewSheet: React.FC<{ it: CatalogItem; onClose: () => void; onUse: () =
 const useCatalogPicker = (go: (h: string) => void) => {
   const [open, setOpen] = useState<CatalogItem | null>(null);
   const sheet = open ? (
-    <PreviewSheet it={open} onClose={() => setOpen(null)} onUse={() => go(open.effect ? `#/new/EffectsReel/${open.effect}` : open.mix ? `#/new/EffectsReel/mix-${open.mix}` : `#/new/${open.template}`)} />
+    <PreviewSheet it={open} onClose={() => setOpen(null)} onUse={() => go(open.href ? open.href : open.effect ? `#/new/EffectsReel/${open.effect}` : open.mix ? `#/new/EffectsReel/mix-${open.mix}` : `#/new/${open.template}`)} />
   ) : null;
   return { setOpen, sheet };
+};
+
+// ---------- template catalog: video, photo and service templates by combination ----------
+
+type CatalogKind = 'video' | 'photo' | 'service';
+type CatalogEntry = { id: string; kind: CatalogKind; ja: string; en: string; categories: string[]; premium?: boolean; count?: number; sample?: string; uses: number; added: string };
+type CatalogData = { entries: CatalogEntry[]; categories: Record<CatalogKind, { id: string; ja: string; en: string }[]> };
+const KINDS: { id: CatalogKind; name: string }[] = [
+  { id: 'video', name: tr("動画") },
+  { id: 'photo', name: tr("写真") },
+  { id: 'service', name: tr("サービス紹介") },
+];
+const HREF: Record<CatalogKind, (id: string) => string> = {
+  video: (id) => `#/new/EffectsReel/mix-${id}`,
+  photo: (id) => `#/new/PhotoReel/tpl-${id}`,
+  service: (id) => `#/new/ServiceReel/tpl-${id}`,
+};
+const PAGE = 24;
+
+/** The catalog from the server (with use counts and server-added templates); the bundled lists stand in offline. */
+let catalogData: Promise<CatalogData> | null = null;
+const loadCatalog = () =>
+  (catalogData ??= api<CatalogData>('/api/catalog').catch(() => ({
+    entries: videoTemplates.map((v) => ({ id: v.id, kind: 'video' as const, ja: v.ja, en: v.en, categories: v.categories, premium: v.premium, uses: 0, added: '', sample: `tpl-${v.id}` })),
+    categories: { video: videoCategories, photo: [], service: [] },
+  })));
+
+/** Same order for everyone on a given day, different the next: "おすすめ" keeps changing without being random per tap. */
+const dayRank = (id: string) => {
+  let h = 2166136261 ^ Number(new Date().toISOString().slice(0, 10).replace(/-/g, ''));
+  for (let i = 0; i < id.length; i++) h = Math.imul(h ^ id.charCodeAt(i), 16777619);
+  return (h >>> 0) / 4294967296;
+};
+
+const TemplateBrowser: React.FC<{ onOpen: (it: CatalogItem) => void }> = ({ onOpen }) => {
+  const [data, setData] = useState<CatalogData | null>(null);
+  const keys = useShowcaseKeys();
+  const [kind, setKind] = useState<CatalogKind>('video');
+  const [sort, setSort] = useState<'pick' | 'popular' | 'new'>('pick');
+  const [cat, setCat] = useState<string>('');
+  const [count, setCount] = useState<number>(0);
+  const [shown, setShown] = useState(PAGE);
+  const more = useRef<HTMLDivElement>(null);
+  useEffect(() => void loadCatalog().then(setData), []);
+  useEffect(() => setShown(PAGE), [kind, sort, cat, count]);
+  const nm = (x: { ja: string; en: string }) => (lang === 'ja' ? x.ja : x.en);
+  // Only templates with a real render are shown: the sample must be what the template actually makes.
+  const all = (data?.entries ?? []).filter((e) => e.sample && (!keys || keys.has(e.sample)));
+  const cats = data?.categories[kind] ?? [];
+  const list = all
+    .filter((e) => e.kind === kind && (!cat || e.categories.includes(cat)) && (!count || e.count === count))
+    .sort((a, b) => (sort === 'popular' ? b.uses - a.uses : sort === 'new' ? b.added.localeCompare(a.added) : 0) || dayRank(a.id) - dayRank(b.id));
+  useEffect(() => {
+    const el = more.current;
+    if (!el) return;
+    const io = new IntersectionObserver(([e]) => e.isIntersecting && setShown((n) => n + PAGE), { rootMargin: '600px' });
+    io.observe(el);
+    return () => io.disconnect();
+  }, [list.length > shown]);
+  if (!all.length) return null;
+  const catName = (id: string) => nm(cats.find((c) => c.id === id) ?? { ja: id, en: id });
+  const items: CatalogItem[] = list.slice(0, shown).map((e) => ({
+    key: e.sample!,
+    template: 'EffectsReel',
+    mix: e.id,
+    name: nm(e),
+    desc: e.categories.map(catName).join(' ・ '),
+    group: 'mix',
+    href: HREF[e.kind](e.id),
+    premium: e.premium,
+    tags: [KINDS.find((k) => k.id === e.kind)!.name, ...e.categories.slice(0, 3).map(catName), ...(e.count ? [tr("{0}枚", e.count)] : [])],
+  }));
+  return (
+    <section className="tsection tbrowser">
+      <div className="thead">
+        <h2>{tr("テンプレート")}</h2>
+        <span className="cost">{tr("{0}種", fmtN(all.length))}</span>
+      </div>
+      <div className="kindtabs" role="tablist">
+        {KINDS.map((k) => (
+          <button key={k.id} role="tab" aria-selected={kind === k.id} className={kind === k.id ? 'on' : ''} onClick={() => (setKind(k.id), setCat(''), setCount(0))}>
+            {k.name} <small>{fmtN(all.filter((e) => e.kind === k.id).length)}</small>
+          </button>
+        ))}
+      </div>
+      <div className="chipbar">
+        {([['pick', tr("おすすめ")], ['popular', tr("人気")], ['new', tr("新着")]] as const).map(([id, name]) => (
+          <button key={id} className={`fchip ${sort === id ? 'on' : ''}`} onClick={() => setSort(id)}>
+            {name}
+          </button>
+        ))}
+        <span className="chipsep" />
+        <button className={`fchip ${!cat ? 'on' : ''}`} onClick={() => setCat('')}>
+          {tr("すべて")}
+        </button>
+        {cats
+          .filter((c) => all.some((e) => e.kind === kind && e.categories.includes(c.id)))
+          .map((c) => (
+            <button key={c.id} className={`fchip ${cat === c.id ? 'on' : ''}`} onClick={() => setCat(cat === c.id ? '' : c.id)}>
+              {nm(c)}
+            </button>
+          ))}
+      </div>
+      {kind === 'photo' ? (
+        <div className="chipbar">
+          {[0, 1, 3, 5, 10].map((n) => (
+            <button key={n} className={`fchip ${count === n ? 'on' : ''}`} onClick={() => setCount(n)}>
+              {n ? tr("{0}枚", n) : tr("枚数すべて")}
+            </button>
+          ))}
+        </div>
+      ) : null}
+      {items.length ? <Grid items={items} onOpen={onOpen} /> : <p className="cost">{tr("この条件のテンプレートは準備中です。")}</p>}
+      {list.length > shown ? <div ref={more} className="tmore" /> : null}
+    </section>
+  );
 };
 
 /** Keys with a real render in public/showcase (index.json, written by scripts/make-showcase.py). */
@@ -3102,7 +3227,8 @@ const Home: React.FC<{ go: (h: string) => void; initialGroup?: string }> = ({ go
       <div className="thead" style={{ marginTop: 8 }}>
         <h2>{tr("見本から選ぶ")}</h2>
       </div>
-      {GROUPS.filter((g) => (g.id === 'base' || g.id === 'mix') && has(g.id)).map(section)}
+      {GROUPS.filter((g) => g.id === 'base' && has(g.id)).map(section)}
+      <TemplateBrowser onOpen={setOpen} />
       {effectGroups.length ? (
         <section className="tsection">
           <div className="thead">
