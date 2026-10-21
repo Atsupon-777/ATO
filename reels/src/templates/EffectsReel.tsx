@@ -53,17 +53,40 @@ export const EffectsReel: React.FC<EffectsReelProps> = (p) => {
                 </CameraMotion>
                 <TextureOverlay kind={style.texture} />
               </TransitionIn>
-              <Audio src={asset(p.video)} trimBefore={trimBefore} />
+              <Audio src={asset(p.video)} trimBefore={trimBefore} volume={p.voiceVolume ?? 1} />
               {p.counter ? <Counter n={effectIds.indexOf(seg.effect) + 1} /> : null}
             </SourceContext.Provider>
           </Sequence>
         );
       })}
       <Overlays items={p.overlays} accent={p.palette.accent} />
-      {p.music ? <Audio src={asset(p.music)} volume={0.25} loop /> : null}
+      {p.music ? <Audio src={asset(p.music)} volume={(f) => musicLevel(p, f / fps, total / fps)} loop /> : null}
     </AbsoluteFill>
   );
 };
+
+export const MUSIC_DEFAULT = 0.35;
+/** How far the music drops under speech, and how long it takes to get there. */
+const DUCK = 0.3;
+const RAMP = 0.25;
+
+/** Music volume at time t: full in pauses, ducked under speech, faded out over the last second. */
+export function musicLevel(p: Pick<EffectsReelProps, 'musicVolume' | 'duck' | 'speech'>, t: number, total: number) {
+  const base = p.musicVolume ?? MUSIC_DEFAULT;
+  const tail = Math.min(1, Math.max(0, (total - t) / 1));
+  if (p.duck === false || !p.speech?.length) return base * tail;
+  // distance to the nearest stretch of speech, so the dip eases in and out instead of pumping
+  let d = Infinity;
+  for (const [a, b] of p.speech) {
+    if (t >= a && t <= b) {
+      d = 0;
+      break;
+    }
+    d = Math.min(d, t < a ? a - t : t - b);
+  }
+  const k = Math.min(1, d / RAMP);
+  return base * (DUCK + (1 - DUCK) * k) * tail;
+}
 
 const Counter: React.FC<{ n: number }> = ({ n }) => (
   <div

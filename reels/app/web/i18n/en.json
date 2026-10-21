@@ -677,5 +677,10 @@
  "色を選ぶ": "Pick the color",
  "話している動画、お店や商品の動画から": "From a talking video, or footage of your shop or product",
  "足す": "Add",
- "選択肢": "Options"
+ "選択肢": "Options",
+ "声の大きさ": "Voice volume",
+ "BGMの大きさ": "Music volume",
+ "話す間は自動で下げる": "Lower while talking",
+ "声を優先": "Voice first",
+ "BGMを優先": "Music first"
 }

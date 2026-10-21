@@ -141,6 +141,8 @@ export async function buildTalkProps(brief: TalkBrief) {
     '-y', '-hide_banner', '-loglevel', 'error', '-i', original,
     '-vf', "scale='if(gt(iw,ih),min(1920,iw),-2)':'if(gt(iw,ih),-2,min(1920,ih))'",
     '-c:v', 'libx264', '-preset', 'veryfast', '-crf', '20', '-pix_fmt', 'yuv420p', '-g', '30',
+    // phone voice made clean and even: rumble cut, light noise reduction, gentle compression
+    '-af', 'highpass=f=80,afftdn=nf=-25,acompressor=threshold=-20dB:ratio=3:attack=5:release=120:makeup=2',
     '-c:a', 'aac', '-b:a', '160k', '-movflags', '+faststart', video,
   ]);
   const info = await probe(video);

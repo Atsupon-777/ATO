@@ -7,7 +7,7 @@ import { z } from 'zod';
 import { effectIds, effectsReelSchema, type EffectId, type EffectSegment, type EffectsReelProps } from '../src/schemas.ts';
 import { LANG_NAMES, fit, langs, type Lang } from '../src/lang.ts';
 import { recipeAxes, recipeById, rollStyles } from '../src/effects/recipes.ts';
-import { askJson } from './gemini.ts';
+import { askJson, generateMusic } from './gemini.ts';
 import { matte } from './matte.ts';
 import { buildTalkProps } from './talk.ts';
 import { Usage } from './usage.ts';
@@ -120,6 +120,26 @@ export function autoSegments(words: { text: string; start: number; end: number }
   );
 }
 
+/** Where words are spoken, on the reel's own clock (segments play back to back), merged across short gaps. */
+export function speechOnReel(words: { start: number; end: number }[], segments: { start: number; end: number }[]) {
+  const out: [number, number][] = [];
+  let at = 0;
+  for (const s of segments) {
+    for (const w of words) {
+      const a = Math.max(w.start, s.start);
+      const b = Math.min(w.end, s.end);
+      if (b <= a) continue;
+      const ra = Math.round((at + a - s.start) * 100) / 100;
+      const rb = Math.round((at + b - s.start) * 100) / 100;
+      const last = out[out.length - 1];
+      if (last && ra - last[1] < 0.35) last[1] = rb;
+      else out.push([ra, rb]);
+    }
+    at += s.end - s.start;
+  }
+  return out.slice(0, 400);
+}
+
 /** Segments play back to back, so make them contiguous over the speech and keep each at least 0.8 s. */
 function closeGaps(segs: EffectSegment[], duration: number) {
   const sorted = [...segs].sort((a, b) => a.start - b.start);
@@ -159,6 +179,16 @@ export async function buildEffectsProps(brief: {
   const duration = talk.props.sourceDuration;
   const recipe = recipeById(brief.recipe);
   const ax = recipeAxes(recipe);
+  // The music bed is made while the plan is written; a failure only means no music.
+  const music = generateMusic({
+    prompt: `Instrumental background music for a ${Math.round(duration)}-second vertical social video. Mood: ${recipe.mood ?? recipe.desc}. No vocals, loopable, modern production, leaves room for a voice over it.`,
+    out: path.join(talk.dir, 'music'),
+    usage,
+    step: 'music',
+  }).then(
+    (f) => `jobs/${talk.jobId}/${path.basename(f)}`,
+    (e) => (console.warn(`music: ${(e as Error).message}`), undefined),
+  );
   // Effects picked in the gallery are always allowed, even outside the mix.
   for (const e of brief.prefer ?? []) if (!ax.scenes.includes(e)) ax.scenes.push(e);
   const planSchema = planSchemaFor(ax);
@@ -173,7 +203,7 @@ export async function buildEffectsProps(brief: {
       jsonSchema: z.toJSONSchema(planSchema),
       prompt: [
         'You are editing a short vertical talking-head reel, the way a professional editor mixes many effects in one video.',
-        'Split the transcript into 6-12 consecutive beats of 1-3.5 seconds. For each beat pick one scene effect that fits what is said,',
+        `Split the transcript into ${recipe.beats ?? '6-12'} consecutive beats of ${recipe.beat ?? '1-3.5 seconds'}. For each beat pick one scene effect that fits what is said,`,
         'and dress it with a caption style, a camera move, a transition in and 0-3 accents. Mix freely: vary scenes, never use the same',
         'scene or the same transition twice in a row, put the strongest effects on the key moments (hook, numbers, punchline) and',
         'calmer ones (camera move + caption only, e.g. digitalZoom or vertigo) in between. Pick one look (grade, texture, font, colour)',
@@ -222,6 +252,8 @@ export async function buildEffectsProps(brief: {
   }
 
   const props: EffectsReelProps = effectsReelSchema.parse({
+    music: await music,
+    speech: speechOnReel(words, segments),
     video: talk.props.video,
     matte: `jobs/${talk.jobId}/matte.webm`,
     focusX: 0.5,

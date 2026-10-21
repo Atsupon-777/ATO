@@ -243,8 +243,8 @@ function startRender(job: Job, cost = 0) {
       await renderTemplate(job.template, absolutize(job.props) as Record<string, unknown>, out, (p) => {
         job.renderProgress = p;
       });
-      // The 5-pass edit carries cue sounds and music, so it is normalised to -14 LUFS for Instagram.
-      if (job.template === 'FivePass') await loudnorm(out);
+      // Voice, music and cue sounds end up at -14 LUFS, the level Instagram and TikTok play back at.
+      await loudnorm(out).catch((e) => console.warn(`loudnorm ${job.id}: ${(e as Error).message}`));
       job.video = `jobs/${job.id}/${path.basename(out)}`;
       job.status = 'done';
       if (cost > EXPORT_TOKENS) job.premiumPaid = true;

@@ -677,5 +677,10 @@
  "色を選ぶ": "Pilih warna",
  "話している動画、お店や商品の動画から": "Dari video bicara, atau video toko atau produk Anda",
  "足す": "Tambah",
- "選択肢": "Pilihan"
+ "選択肢": "Pilihan",
+ "声の大きさ": "Volume suara",
+ "BGMの大きさ": "Volume musik",
+ "話す間は自動で下げる": "Pelankan saat bicara",
+ "声を優先": "Utamakan suara",
+ "BGMを優先": "Utamakan musik"
 }

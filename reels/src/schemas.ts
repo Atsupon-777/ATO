@@ -274,6 +274,13 @@ export const effectsReelSchema = z.object({
   captionY: z.number().min(0.05).max(0.9).optional(),
   /** Premium edit: stickers and hand-written telops laid over the whole reel, placed by the user. */
   overlays: z.array(overlaySchema).max(12).optional(),
+  /** Loudness of the speaker (1 = as recorded, normalised) and of the music bed. */
+  voiceVolume: z.number().min(0).max(1.5).optional(),
+  musicVolume: z.number().min(0).max(1).optional(),
+  /** Lower the music while someone speaks (ducking) so both stay audible. On unless set to false. */
+  duck: z.boolean().optional(),
+  /** Seconds on the reel's own timeline where someone is speaking; drives ducking. */
+  speech: z.array(z.tuple([z.number(), z.number()])).max(400).optional(),
 });
 
 export type Overlay = z.infer<typeof overlaySchema>;

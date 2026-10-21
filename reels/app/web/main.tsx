@@ -7,7 +7,7 @@ import { recipeById, recipes, rollStyles } from '../../src/effects/recipes';
 import { ProductShine, productShineFrames } from '../../src/templates/ProductShine';
 import { SaaSPromo, saasPromoBeats } from '../../src/templates/SaaSPromo';
 import { TalkCaptions, talkCaptionsDuration } from '../../src/templates/TalkCaptions';
-import { EffectsReel, effectsReelDuration } from '../../src/templates/EffectsReel';
+import { EffectsReel, MUSIC_DEFAULT, effectsReelDuration } from '../../src/templates/EffectsReel';
 import { FivePass, fivePassDuration } from '../../src/templates/FivePass';
 import { FPS, beatFrames } from '../../src/lib/timing';
 import { keepSegments, paginate, placeWords } from '../../src/lib/edit';
@@ -2077,6 +2077,28 @@ const PickTune: React.FC<{ p: EffectsReelProps; update: PanelProps<EffectsReelPr
             <span>{tr("明るく")}</span>
           </div>
         </div>
+        <div className="field">
+          <label>
+            <span>{tr("声の大きさ")}</span>
+            <span>{Math.round((p.voiceVolume ?? 1) * 100)}%</span>
+          </label>
+          <input type="range" min={0} max={1.5} step={0.05} value={p.voiceVolume ?? 1} aria-label={tr("声の大きさ")} onChange={(e) => set((x) => void (x.voiceVolume = Number(e.target.value) === 1 ? undefined : Number(e.target.value)))} />
+        </div>
+        {p.music ? (
+          <div className="field">
+            <label>
+              <span>{tr("BGMの大きさ")}</span>
+              <button className={`chipbtn ${p.duck !== false ? 'on' : ''}`} onClick={() => set((x) => void (x.duck = x.duck === false ? undefined : false))}>
+                {tr("話す間は自動で下げる")}
+              </button>
+            </label>
+            <input type="range" min={0} max={1} step={0.05} value={p.musicVolume ?? MUSIC_DEFAULT} aria-label={tr("BGMの大きさ")} onChange={(e) => set((x) => void (x.musicVolume = Number(e.target.value)))} />
+            <div className="rangeends">
+              <span>{tr("声を優先")}</span>
+              <span>{tr("BGMを優先")}</span>
+            </div>
+          </div>
+        ) : null}
         <div className="premium">
           <div className="premiumhead">
             <b>

@@ -19,6 +19,7 @@ import {
   type Texture,
   type Transition,
 } from './axes.ts';
+import { editTypes, tempos, videoStyles, videoTemplateById, type TempoId } from './video-catalog.ts';
 
 export type Recipe = {
   id: string;
@@ -35,6 +36,12 @@ export type Recipe = {
   accentRate: number;
   fonts: FontChoice[];
   colors: string[];
+  /** Beat length the planner aims for, e.g. '1.5-3 seconds', and how many beats. */
+  beat?: string;
+  beats?: string;
+  /** Mood words for the generated music bed. */
+  mood?: string;
+  premium?: boolean;
 };
 
 export const recipes: Recipe[] = [
@@ -190,7 +197,44 @@ export const recipes: Recipe[] = [
   },
 ];
 
-export const recipeById = (id?: string) => recipes.find((r) => r.id === id) ?? recipes[recipes.length - 1];
+const STYLE_MOOD: Record<string, string> = {
+  clean: 'bright, modern, clean electronic pop',
+  film: 'warm, cinematic, analog, emotional',
+  pop: 'playful, upbeat, colourful pop',
+  night: 'dark, moody, synthwave, late-night',
+  mono: 'minimal, stylish, lo-fi, understated',
+};
+const TEMPO_BPM: Record<TempoId, string> = { slow: '80-95 BPM, slow and spacious', normal: '100-115 BPM', fast: '120-135 BPM, driving, punchy drums on every beat' };
+
+/** A video template (src/effects/video-catalog.ts) as a mix: its edit type narrows the motion, its style the look. */
+function templateRecipe(id: string): Recipe | undefined {
+  const v = videoTemplateById(id);
+  if (!v) return undefined;
+  const t = editTypes.find((x) => x.id === v.type)!;
+  const m = tempos.find((x) => x.id === v.tempo)!;
+  const st = videoStyles.find((x) => x.id === v.style)!;
+  return {
+    id,
+    name: v.ja,
+    desc: `${t.desc}（テンポ: ${m.ja}、スタイル: ${st.ja}）`,
+    scenes: t.scenes,
+    captions: t.captions,
+    cameras: t.cameras,
+    transitions: t.transitions,
+    grades: st.grades,
+    textures: st.textures,
+    accents: t.accents,
+    accentRate: t.accentRate,
+    fonts: st.fonts,
+    colors: st.colors,
+    beat: m.beat,
+    beats: m.beats,
+    mood: `${STYLE_MOOD[st.id] ?? ''}, ${TEMPO_BPM[m.id]}`,
+    premium: t.premium,
+  };
+}
+
+export const recipeById = (id?: string): Recipe => (id && templateRecipe(id)) || recipes.find((r) => r.id === id) || recipes[recipes.length - 1];
 
 /** The lists a recipe allows on each axis (an empty list in the recipe means every option). */
 export const recipeAxes = (r: Recipe) => ({
