@@ -716,5 +716,9 @@
  "写真を1〜10枚載せるだけ。選んだテンプレートの動きで、タイトル・キャプション・BGMまでAIが仕上げます。": "Just add 1 to 10 photos. AI finishes the title, captions and music in the motion of the template you picked.",
  "写真を見せる": "Show photos",
  "数字・料金・お客様の声・キャンペーン（動画ではここに書いたことだけを使います）": "Numbers, prices, reviews, offers (the video uses only what you write here)",
- "見せ方": "Layout"
+ "見せ方": "Layout",
+ "曲を作っています…": "Making a song…",
+ "別の曲にする": "Try another song",
+ "曲を作れませんでした。トークンは戻しました。もう一度お試しください。": "Couldn't make a song. Your tokens were returned. Please try again.",
+ "この動画には曲を付けられません": "This video can't have music"
 }

@@ -716,5 +716,9 @@
  "写真を1〜10枚載せるだけ。選んだテンプレートの動きで、タイトル・キャプション・BGMまでAIが仕上げます。": "Cukup unggah 1 sampai 10 foto. AI menyelesaikan judul, keterangan, dan musik dengan gerakan template pilihan Anda.",
  "写真を見せる": "Tampilkan foto",
  "数字・料金・お客様の声・キャンペーン（動画ではここに書いたことだけを使います）": "Angka, harga, ulasan, promo (video hanya memakai yang Anda tulis di sini)",
- "見せ方": "Tampilan"
+ "見せ方": "Tampilan",
+ "曲を作っています…": "Membuat lagu…",
+ "別の曲にする": "Coba lagu lain",
+ "曲を作れませんでした。トークンは戻しました。もう一度お試しください。": "Gagal membuat lagu. Token Anda dikembalikan. Silakan coba lagi.",
+ "この動画には曲を付けられません": "Video ini tidak bisa diberi musik"
 }

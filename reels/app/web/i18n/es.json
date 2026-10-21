@@ -716,5 +716,9 @@
  "写真を1〜10枚載せるだけ。選んだテンプレートの動きで、タイトル・キャプション・BGMまでAIが仕上げます。": "Sube de 1 a 10 fotos. La IA completa el título, los subtítulos y la música con el movimiento de la plantilla elegida.",
  "写真を見せる": "Mostrar fotos",
  "数字・料金・お客様の声・キャンペーン（動画ではここに書いたことだけを使います）": "Cifras, precios, reseñas, ofertas (el vídeo solo usa lo que escribas aquí)",
- "見せ方": "Presentación"
+ "見せ方": "Presentación",
+ "曲を作っています…": "Creando la canción…",
+ "別の曲にする": "Probar otra canción",
+ "曲を作れませんでした。トークンは戻しました。もう一度お試しください。": "No se pudo crear la canción. Te devolvimos los tokens. Inténtalo de nuevo.",
+ "この動画には曲を付けられません": "Este vídeo no admite música"
 }

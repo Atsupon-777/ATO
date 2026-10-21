@@ -2057,7 +2057,19 @@ const STICKERS = stickerIds;
 const OVERLAY_COLORS = ['#DFFF4F', '#FFFFFF', '#FF5A36', '#7C9CFF', '#FF7EB6', '#0A0A0B'];
 
 /** Drag the caption up or down on the video itself, or with the slider; brightness with one slider; premium layers on top. */
-const PickTune: React.FC<{ p: EffectsReelProps; update: PanelProps<EffectsReelProps>['update']; onNext: () => void }> = ({ p, update, onNext }) => {
+const PickTune: React.FC<{ jobId: string; p: EffectsReelProps; update: PanelProps<EffectsReelProps>['update']; onNext: () => void }> = ({ jobId, p, update, onNext }) => {
+  const [song, setSong] = useState<'idle' | 'busy' | string>('idle');
+  const newSong = async () => {
+    setSong('busy');
+    try {
+      const j = await api<Job>(`/api/jobs/${jobId}/music`, { method: 'POST', body: '{}' });
+      const music = (j.props as { music?: string } | undefined)?.music;
+      update((x) => void (x.music = music));
+      setSong('idle');
+    } catch (e) {
+      setSong(e instanceof Error ? e.message : String(e));
+    }
+  };
   const set = (fn: (x: EffectsReelProps) => void) => update((x) => (fn(x), x));
   const ref = useRef<PlayerRef | null>(null);
   const drag = useRef<{ x: number; y: number; moved: boolean; layer: number | null } | null>(null);
@@ -2167,6 +2179,10 @@ const PickTune: React.FC<{ p: EffectsReelProps; update: PanelProps<EffectsReelPr
               <span>{tr("声を優先")}</span>
               <span>{tr("BGMを優先")}</span>
             </div>
+            <button className="chipbtn newsong" disabled={song === 'busy'} onClick={newSong}>
+              {song === 'busy' ? tr("曲を作っています…") : tr("別の曲にする")} <small className="tokcost">{tr("{0}トークン", 1)}</small>
+            </button>
+            {song !== 'idle' && song !== 'busy' ? <p className="err">{song}</p> : null}
           </div>
         ) : null}
         <div className="premium">
@@ -2258,7 +2274,7 @@ const PickFlow: React.FC<{
       ) : stage === 'duel' ? (
         <PickDuel p={p} kept={kept} take={take} onDone={() => setStage('tune')} />
       ) : stage === 'tune' ? (
-        <PickTune p={p} update={update} onNext={() => setStage('post')} />
+        <PickTune jobId={job.id} p={p} update={update} onNext={() => setStage('post')} />
       ) : (
         <div className="pickpost">
           <div className="pickpostrow">

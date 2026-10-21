@@ -29,6 +29,8 @@ import { FreeClaimError, NotEnoughTokens, balance, charge, claimFree, getAccount
 import { billingEnabled, cancelSubscription, checkout, isPurchase, paygUnits, portal, webhook } from '../server/billing.ts';
 import { iapConfig, revenuecatWebhook } from '../server/appstore.ts';
 import { deleteFirebaseUser } from '../server/google.ts';
+import { generateMusic } from '../server/gemini.ts';
+import { Usage } from '../server/usage.ts';
 import { dataDir } from '../server/paths.ts';
 import { addDevice, notifyJob, removeDevice } from '../server/push.ts';
 
@@ -113,6 +115,9 @@ const uploadOf = (user: User) => (name: unknown) => {
   if (typeof name !== 'string' || !name) return undefined;
   return path.join(uploadsDir, userDir(user), path.basename(name));
 };
+
+/** Tokens for one 「別の曲」. */
+const MUSIC_TOKENS = 1;
 
 async function startJob(template: Template, input: Record<string, any>, user: User) {
   const cost = tokensFor(template, input);
@@ -611,7 +616,7 @@ const server = http.createServer(async (req, res) => {
         throw e;
       }
     }
-    const m = p.match(/^\/api\/jobs\/([\w-]+)(\/props|\/render|\/pass|\/restore)?$/);
+    const m = p.match(/^\/api\/jobs\/([\w-]+)(\/props|\/render|\/pass|\/restore|\/music)?$/);
     if (m) {
       const job = jobs.get(m[1]);
       if (!job || (job.owner ?? LOCAL_USER.uid) !== user!.uid) return json(res, 404, { error: 'job not found' });
@@ -659,6 +664,37 @@ const server = http.createServer(async (req, res) => {
         job.status = 'ready';
         await save(job);
         return json(res, 200, job);
+      }
+      // 「別の曲」: a new AI music bed for the same reel, for MUSIC_TOKENS.
+      if (m[2] === '/music' && req.method === 'POST') {
+        if (!job.props || !['EffectsReel', 'ServiceReel', 'PhotoReel'].includes(job.template)) return json(res, 400, { error: 'この動画には曲を付けられません' });
+        if (job.status === 'generating' || job.status === 'rendering') return json(res, 409, { error: '処理中です' });
+        try {
+          await charge(user!.uid, MUSIC_TOKENS);
+        } catch (e) {
+          if (e instanceof NotEnoughTokens) return json(res, 402, { error: e.message, code: 'tokens' });
+          throw e;
+        }
+        const { mood } = await readBody(req);
+        const moods = ['warm and hopeful', 'bright upbeat pop', 'chill lo-fi', 'cinematic and airy', 'punchy electronic', 'acoustic and cozy', 'sleek minimal house', 'funky groove'];
+        const pick = typeof mood === 'string' && mood.trim() ? mood.trim().slice(0, 60) : moods[Math.floor(Math.random() * moods.length)];
+        const usage = new Usage();
+        try {
+          const f = await generateMusic({
+            prompt: `Instrumental background music for a short vertical social video. Mood: ${pick}. No vocals, loopable, modern production, leaves room for a voice over it.`,
+            out: path.join(jobsDir, job.id, `music-${Date.now().toString(36)}`),
+            usage,
+            step: 'music',
+          });
+          job.props = { ...job.props, music: `jobs/${job.id}/${path.basename(f)}` };
+          if (job.status === 'done' || job.status === 'error') job.status = 'ready';
+          await save(job);
+          return json(res, 200, job);
+        } catch (e) {
+          console.error(e);
+          await refund(user!.uid, MUSIC_TOKENS);
+          return json(res, 502, { error: '曲を作れませんでした。トークンは戻しました。もう一度お試しください。' });
+        }
       }
       if (m[2] === '/render' && req.method === 'POST') {
         if (!job.props) return json(res, 400, { error: 'まだ生成中です' });
