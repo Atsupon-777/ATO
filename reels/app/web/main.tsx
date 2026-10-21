@@ -2315,7 +2315,7 @@ const PhotoPanel: React.FC<PanelProps<PhotoReelProps>> = ({ p, update }) => {
             .map((m) => (
               <button key={m.id} className={`chip ${p.motion === m.id ? 'on' : ''}`} onClick={() => set((x) => void (x.motion = m.id))}>
                 {nm(m)}
-                <small>{m.desc}</small>
+                {lang === 'ja' && <small>{m.desc}</small>}
               </button>
             ))}
         </div>
@@ -2326,7 +2326,7 @@ const PhotoPanel: React.FC<PanelProps<PhotoReelProps>> = ({ p, update }) => {
           {photoStyles.map((st) => (
             <button key={st.id} className={`chip ${p.style === st.id ? 'on' : ''}`} onClick={() => set((x) => void ((x.style = st.id), (x.palette = { ...st.palette, accent: x.palette.accent })))}>
               {nm(st)}
-              <small>{st.desc}</small>
+              {lang === 'ja' && <small>{st.desc}</small>}
             </button>
           ))}
         </div>
@@ -2347,7 +2347,7 @@ const ServicePanel: React.FC<PanelProps<ServiceReelProps>> = ({ p, update }) => 
           {serviceLayouts.map((l) => (
             <button key={l.id} className={`chip ${p.layout === l.id ? 'on' : ''}`} onClick={() => set((x) => void (x.layout = l.id))}>
               {nm(l)}
-              <small>{l.desc}</small>
+              {lang === 'ja' && <small>{l.desc}</small>}
             </button>
           ))}
         </div>
