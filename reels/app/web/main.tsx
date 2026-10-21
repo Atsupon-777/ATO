@@ -687,6 +687,8 @@ const Editor: React.FC<{ id: string }> = ({ id }) => {
   const dirty = useRef(false);
   const side = useRef<HTMLDivElement>(null);
   usePanelAccordion(side);
+  // EffectsReel opens on the pick flow; the detailed panels are one tap away.
+  const [advanced, setAdvanced] = useState(false);
 
   useEffect(() => {
     if (job?.props && !props) setProps(job.props);
@@ -756,6 +758,9 @@ const Editor: React.FC<{ id: string }> = ({ id }) => {
     }
   };
 
+  if (job.template === 'EffectsReel' && !advanced)
+    return <PickFlow job={job} p={props} update={update} saved={saved} err={saveErr || job.error} onRender={render} onAdvanced={() => setAdvanced(true)} />;
+
   const t = TEMPLATES[job.template];
   const isTalk = job.template === 'TalkCaptions';
   return (
@@ -790,6 +795,11 @@ const Editor: React.FC<{ id: string }> = ({ id }) => {
           <span className={`pill save ${saved ? '' : 'busy'}`}>{saved ? tr("保存済み") : tr("保存中…")}</span>
         </div>
         <Cost job={job} />
+        {job.template === 'EffectsReel' ? (
+          <button className="btn small ghost" style={{ marginTop: 8 }} onClick={() => setAdvanced(false)}>
+            {tr("かんたんに選ぶ画面に戻る")}
+          </button>
+        ) : null}
         <div style={{ height: 16 }} />
         {job.template === 'ProductShine' ? (
           <ProductPanel p={props} update={update} />
@@ -1617,6 +1627,394 @@ const FinishStep: React.FC<PanelProps<EffectsReelProps> & { onBack: () => void; 
   );
 };
 
+// ---------- pick flow: whole takes in a feed, two-way picks, finger tuning, then post ----------
+
+type PickStage = 'feed' | 'duel' | 'tune' | 'post';
+const PICK_STAGES: [PickStage, string][] = [
+  ['feed', tr("選ぶ")],
+  ['duel', tr("比べる")],
+  ['tune', tr("整える")],
+  ['post', tr("投稿")],
+];
+
+const withOpt = (base: EffectsReelProps, opt?: LookOpt, oneBeat?: boolean) => {
+  const x = structuredClone(base);
+  opt?.apply(x);
+  if (!oneBeat) return x;
+  return { ...x, segments: [x.segments[Math.min(opt?.seg ?? talkingSeg(x), x.segments.length - 1)]], music: undefined };
+};
+
+/** The reel (or one beat of it) playing on a loop, sized by its box. */
+const ReelPlayer: React.FC<{ props: EffectsReelProps; playerRef?: React.RefObject<PlayerRef | null> }> = ({ props, playerRef }) => (
+  <Player
+    ref={playerRef}
+    component={EffectsReel}
+    inputProps={props}
+    durationInFrames={Math.max(1, effectsReelDuration(props, FPS))}
+    fps={FPS}
+    compositionWidth={1080}
+    compositionHeight={1920}
+    style={{ width: '100%', height: '100%' }}
+    autoPlay
+    loop
+    initiallyMuted
+    acknowledgeRemotionLicense
+  />
+);
+
+const Glyph: React.FC<{ d: string; fill?: boolean; size?: number }> = ({ d, fill, size = 22 }) => (
+  <svg width={size} height={size} viewBox="0 0 24 24" aria-hidden fill={fill ? 'currentColor' : 'none'} stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+    <path d={d} />
+  </svg>
+);
+const G = {
+  heart: 'M12 20s-7-4.4-7-10a4 4 0 0 1 7-2.6A4 4 0 0 1 19 10c0 5.6-7 10-7 10z',
+  similar: 'M4 12a8 8 0 0 1 14-5.3M20 12a8 8 0 0 1-14 5.3M18 3v4h-4M6 21v-4h4',
+  sound: 'M4 9v6h4l5 4V5L8 9zM16.5 8.5a5 5 0 0 1 0 7',
+  mute: 'M4 9v6h4l5 4V5L8 9zM17 9l4 6M21 9l-4 6',
+  back: 'M15 5l-7 7 7 7',
+  up: 'M6 15l6-6 6 6',
+  down: 'M6 9l6 6 6-6',
+  sparkle: 'M12 3l2.2 5.8L20 11l-5.8 2.2L12 19l-2.2-5.8L4 11l5.8-2.2z',
+  sliders: 'M4 7h10M18 7h2M4 17h2M10 17h10M16 5v4M8 15v4',
+  save: 'M12 4v11M7 10l5 5 5-5M5 20h14',
+};
+
+/** A feed of whole takes of the user's reel: swipe through, keep the ones you like, pick one. Never runs out. */
+const PickFeed: React.FC<{ p: EffectsReelProps; onPick: (o: LookOpt) => void; onCompare: (kept: LookOpt[]) => void }> = ({ p, onPick, onCompare }) => {
+  const [seed, setSeed] = useState(() => 1 + Math.floor(Math.random() * 1e5));
+  const [like, setLike] = useState<LookOpt | undefined>();
+  const [i, setI] = useState(0);
+  const [kept, setKept] = useState<LookOpt[]>([]);
+  const [muted, setMuted] = useState(true);
+  const ref = useRef<PlayerRef | null>(null);
+  const takes = useMemo(() => BUILD_STEPS[0].deal(p, seed, like), [seed, like, p.segments.length, !!p.matte]);
+  const cur = takes[i];
+  const props = useMemo(() => withOpt(p, cur), [cur]);
+  const next = () => (i + 1 < takes.length ? setI(i + 1) : (setSeed((s) => s + 1), setI(0)));
+  const prev = () => setI(Math.max(0, i - 1));
+  const isKept = kept.some((k) => k.id === cur.id);
+  const keep = () => setKept((ks) => (isKept ? ks.filter((k) => k.id !== cur.id) : [...ks, cur]));
+  const similar = () => (setLike(cur), setSeed((s) => s + 1), setI(0));
+  useEffect(() => {
+    const f = (e: KeyboardEvent) => (e.key === 'ArrowDown' ? next() : e.key === 'ArrowUp' ? prev() : undefined);
+    addEventListener('keydown', f);
+    return () => removeEventListener('keydown', f);
+  });
+  useEffect(() => (muted ? ref.current?.mute() : ref.current?.unmute()), [muted, cur]);
+  const touch = useRef(0);
+  return (
+    <>
+      <div
+        className="pickreel"
+        onTouchStart={(e) => (touch.current = e.touches[0].clientY)}
+        onTouchEnd={(e) => {
+          const dy = e.changedTouches[0].clientY - touch.current;
+          if (dy < -50) next();
+          else if (dy > 50) prev();
+        }}
+        onWheel={(e) => {
+          if (Math.abs(e.deltaY) < 30) return;
+          const now = Date.now();
+          if (now - Number((e.currentTarget as any).dataset.t ?? 0) < 600) return;
+          (e.currentTarget as any).dataset.t = String(now);
+          e.deltaY > 0 ? next() : prev();
+        }}
+      >
+        <div className="pickplayer" key={cur.id}>
+          <ReelPlayer props={props} playerRef={ref} />
+        </div>
+        <div className="pickbars" aria-hidden>
+          {takes.map((t, k) => (
+            <span key={t.id} className={k <= i ? 'on' : ''} />
+          ))}
+        </div>
+        <div className="pickrail">
+          <button className={isKept ? 'on' : ''} onClick={keep} aria-pressed={isKept}>
+            <span>
+              <Glyph d={G.heart} fill={isKept} />
+            </span>
+            {tr("残す")}
+          </button>
+          <button onClick={similar}>
+            <span>
+              <Glyph d={G.similar} />
+            </span>
+            {tr("似た案")}
+          </button>
+          <button onClick={() => setMuted((m) => !m)} aria-pressed={!muted}>
+            <span>
+              <Glyph d={muted ? G.mute : G.sound} />
+            </span>
+            {tr("音")}
+          </button>
+        </div>
+        <div className="pickmeta">
+          <small>{like ? tr("「{0}」に近い案", like.name) : tr("案 {0}", i + 1)}</small>
+          <b>{cur.name}</b>
+          {cur.note ? <span>{cur.note}</span> : null}
+        </div>
+        <div className="picknav">
+          <button onClick={prev} disabled={i === 0} aria-label={tr("前の案")}>
+            <Glyph d={G.up} />
+          </button>
+          <button onClick={next} aria-label={tr("次の案")}>
+            <Glyph d={G.down} />
+          </button>
+        </div>
+      </div>
+      <div className="pickcta">
+        {kept.length >= 2 ? (
+          <button className="btn ghost" onClick={() => onCompare(kept)}>
+            {tr("残した{0}案を比べる", kept.length)}
+          </button>
+        ) : null}
+        <button className="btn" onClick={() => onPick(cur)}>
+          {tr("これにする")}
+        </button>
+      </div>
+      <p className="pickhint">{tr("上にスワイプで次の案。気に入ったら「残す」、似た雰囲気をもっと見たいときは「似た案」。")}</p>
+    </>
+  );
+};
+
+/** Two versions side by side; tap the one you like. */
+const PickPair: React.FC<{ base: EffectsReelProps; a: LookOpt; b: LookOpt; whole?: boolean; onPick: (o: LookOpt) => void }> = ({ base, a, b, whole, onPick }) => {
+  const pa = useMemo(() => withOpt(base, a, !whole), [base, a]);
+  const pb = useMemo(() => withOpt(base, b, !whole), [base, b]);
+  return (
+    <div className="pickpair">
+      {[
+        [a, pa],
+        [b, pb],
+      ].map(([o, props]) => (
+        <button key={(o as LookOpt).id} onClick={() => onPick(o as LookOpt)}>
+          <div className="pickmini">
+            <ReelPlayer props={props as EffectsReelProps} />
+          </div>
+          <b>
+            {(o as LookOpt).swatch ? <i className="liveswatch" style={{ background: (o as LookOpt).swatch }} /> : null}
+            {(o as LookOpt).name}
+          </b>
+          {(o as LookOpt).note ? <small>{(o as LookOpt).note}</small> : null}
+        </button>
+      ))}
+    </div>
+  );
+};
+
+/** Kept takes play off two at a time (the winner stays), then three quick either-or picks: colors, captions, motion. */
+const PickDuel: React.FC<{ p: EffectsReelProps; kept: LookOpt[]; take: (o: LookOpt) => void; onDone: () => void }> = ({ p, kept, take, onDone }) => {
+  const [seed] = useState(() => 1 + Math.floor(Math.random() * 1e5));
+  const [champ, setChamp] = useState(0);
+  const [next, setNext] = useState(1);
+  const [round, setRound] = useState(0);
+  const aspects: [string, number][] = [
+    [tr("色はどっち？"), 1],
+    [tr("字幕はどっち？"), 4],
+    [tr("動きはどっち？"), 6],
+  ];
+  const inFinal = next < kept.length;
+  // each round is dealt from the reel as it is now, so the caption pair already wears the chosen colors
+  const pair = useMemo(() => {
+    if (inFinal || round >= aspects.length) return null;
+    const opts = BUILD_STEPS[aspects[round][1]].deal(p, seed + round);
+    const fresh = opts.filter((o) => !o.on(p));
+    return [fresh[0] ?? opts[0], fresh[1] ?? opts[1]] as const;
+  }, [inFinal, round]);
+  useEffect(() => {
+    if (!inFinal && round >= aspects.length) onDone();
+  }, [inFinal, round]);
+  const total = Math.max(0, kept.length - 1) + aspects.length;
+  const done = (inFinal ? next - 1 : Math.max(0, kept.length - 1) + round) as number;
+  return (
+    <div className="pickduel">
+      <div className="pickdots" aria-label={tr("{0}/{1}", done + 1, total)}>
+        {Array.from({ length: total }, (_, k) => (
+          <span key={k} className={k < done ? 'done' : k === done ? 'on' : ''} />
+        ))}
+      </div>
+      <h1>{inFinal ? tr("どっちが好き？") : pair ? aspects[round][0] : ''}</h1>
+      <p className="sub">{tr("好きな方をタップするだけ。")}</p>
+      {inFinal ? (
+        <PickPair
+          key={`${champ}-${next}`}
+          base={p}
+          a={kept[champ]}
+          b={kept[next]}
+          whole
+          onPick={(o) => {
+            const w = o.id === kept[champ].id ? champ : next;
+            setChamp(w);
+            setNext(next + 1);
+            if (next + 1 >= kept.length) take(kept[w]);
+          }}
+        />
+      ) : pair ? (
+        <PickPair key={round} base={p} a={pair[0]} b={pair[1]} onPick={(o) => (take(o), setRound(round + 1))} />
+      ) : null}
+      <div className="pickcta">
+        <button className="btn ghost" onClick={() => (inFinal ? take(kept[champ]) : null, onDone())}>
+          {tr("どちらでもいい・おまかせ")}
+        </button>
+      </div>
+    </div>
+  );
+};
+
+/** Drag the caption up or down on the video itself; brightness with one slider. */
+const PickTune: React.FC<{ p: EffectsReelProps; update: PanelProps<EffectsReelProps>['update']; onNext: () => void }> = ({ p, update, onNext }) => {
+  const set = (fn: (x: EffectsReelProps) => void) => update((x) => (fn(x), x));
+  const ref = useRef<PlayerRef | null>(null);
+  const drag = useRef<{ y: number; moved: boolean } | null>(null);
+  const [dragging, setDragging] = useState(false);
+  const capY = p.captionY;
+  const bright = p.brightness ?? 1;
+  const yAt = (e: React.PointerEvent<HTMLDivElement>) => {
+    const r = e.currentTarget.getBoundingClientRect();
+    return Math.min(0.9, Math.max(0.05, (e.clientY - r.top) / r.height));
+  };
+  return (
+    <>
+      <div className="pickreel tune">
+        <div className="pickplayer">
+          <ReelPlayer props={p} playerRef={ref} />
+        </div>
+        <div
+          className={`capdrag ${dragging ? 'on' : ''}`}
+          onPointerDown={(e) => {
+            e.currentTarget.setPointerCapture(e.pointerId);
+            drag.current = { y: e.clientY, moved: false };
+          }}
+          onPointerMove={(e) => {
+            if (!drag.current) return;
+            if (!drag.current.moved && Math.abs(e.clientY - drag.current.y) < 6) return;
+            drag.current.moved = true;
+            setDragging(true);
+            const y = yAt(e);
+            set((x) => void (x.captionY = Math.round(y * 100) / 100));
+          }}
+          onPointerUp={() => {
+            if (drag.current && !drag.current.moved) ref.current?.isPlaying() ? ref.current.pause() : ref.current?.play();
+            drag.current = null;
+            setDragging(false);
+          }}
+        >
+          <div className="capline" style={{ top: `${Math.round((capY ?? 0.62) * 100)}%` }}>
+            <span>{capY === undefined ? tr("字幕（おまかせ）") : tr("字幕")}</span>
+          </div>
+        </div>
+      </div>
+      <p className="pickhint">{tr("字幕は動画の上で指を上下に動かすと移動できます。")}</p>
+      <div className="picktools">
+        <div className="field">
+          <label>{tr("字幕の位置")}</label>
+          <div className="seg">
+            {([undefined, 0.16, 0.46, 0.72] as const).map((v) => (
+              <button key={v ?? 'auto'} className={capY === v ? 'on' : ''} onClick={() => set((x) => void (x.captionY = v))}>
+                {v === undefined ? tr("おまかせ") : v < 0.3 ? tr("上") : v < 0.6 ? tr("真ん中") : tr("下")}
+              </button>
+            ))}
+          </div>
+        </div>
+        <div className="field">
+          <label>
+            <span>{tr("明るさ")}</span>
+            <span>{bright === 1 ? tr("そのまま") : `${bright > 1 ? '+' : ''}${Math.round((bright - 1) * 100)}`}</span>
+          </label>
+          <input type="range" min={0.6} max={1.4} step={0.02} value={bright} aria-label={tr("明るさ")} onChange={(e) => set((x) => void (x.brightness = Number(e.target.value) === 1 ? undefined : Number(e.target.value)))} />
+        </div>
+      </div>
+      <div className="pickcta">
+        <button className="btn" onClick={onNext}>
+          {tr("これで仕上げる")}
+        </button>
+      </div>
+    </>
+  );
+};
+
+const PickFlow: React.FC<{
+  job: Job;
+  p: EffectsReelProps;
+  update: PanelProps<EffectsReelProps>['update'];
+  saved: boolean;
+  err?: string;
+  onRender: () => void;
+  onAdvanced: () => void;
+}> = ({ job, p, update, saved, err, onRender, onAdvanced }) => {
+  const [stage, setStage] = useState<PickStage>(job.status === 'done' || job.status === 'rendering' ? 'post' : 'feed');
+  const [kept, setKept] = useState<LookOpt[]>([]);
+  const take = (o: LookOpt) => update((x) => (o.apply(x), x));
+  const at = PICK_STAGES.findIndex(([s]) => s === stage);
+  const back = () => (at > 0 ? setStage(PICK_STAGES[at - 1][0]) : (location.hash = '#/reels'));
+  return (
+    <div className="pick">
+      <div className="pickhead">
+        <button className="iconround" onClick={back} aria-label={tr("戻る")}>
+          <Glyph d={G.back} />
+        </button>
+        <ol className="pickstages">
+          {PICK_STAGES.map(([s, name], k) => (
+            <li key={s} className={k < at ? 'done' : k === at ? 'on' : ''}>
+              <button onClick={() => k < at && setStage(s)} disabled={k > at}>
+                {name}
+              </button>
+            </li>
+          ))}
+        </ol>
+        <button className="iconround" onClick={onAdvanced} aria-label={tr("細かく選ぶ")} title={tr("細かく選ぶ")}>
+          <Glyph d={G.sliders} />
+        </button>
+      </div>
+      {stage === 'feed' ? (
+        <PickFeed p={p} onPick={(o) => (take(o), setKept([]), setStage('duel'))} onCompare={(ks) => (setKept(ks), setStage('duel'))} />
+      ) : stage === 'duel' ? (
+        <PickDuel p={p} kept={kept} take={take} onDone={() => setStage('tune')} />
+      ) : stage === 'tune' ? (
+        <PickTune p={p} update={update} onNext={() => setStage('post')} />
+      ) : (
+        <div className="pickpost">
+          <div className="pickpostrow">
+            <div className="pickthumb">
+              <ReelPlayer props={p} />
+            </div>
+            <div>
+              <h1>{job.status === 'done' && job.video ? tr("できあがりました") : tr("いい感じに仕上がりました")}</h1>
+              <p className="sub">{job.title}</p>
+            </div>
+          </div>
+          {job.status === 'rendering' ? (
+            <RenderProgress job={job} />
+          ) : job.status === 'done' && job.video ? (
+            <div className="pickshare">
+              <ShareButton job={job} />
+            </div>
+          ) : (
+            <div className="pickcta">
+              <button className="btn" disabled={!saved || !!DEMO} onClick={onRender} title={DEMO ? DEMO_BLOCKED : undefined}>
+                {tr("動画を書き出す")}
+              </button>
+            </div>
+          )}
+          {job.status === 'done' && job.video ? (
+            <div className="pickcta">
+              <button className="btn ghost" disabled={!saved || !!DEMO} onClick={onRender}>
+                {tr("選び直した内容で書き出し直す")}
+              </button>
+            </div>
+          ) : null}
+          <button className="linkbtn" onClick={() => setStage('feed')}>
+            {tr("最初から選び直す")}
+          </button>
+          {DEMO ? <div className="warn">{DEMO_BLOCKED}</div> : null}
+        </div>
+      )}
+      {err ? <p className="err">{err}</p> : null}
+    </div>
+  );
+};
+
 const EffectsPanel: React.FC<PanelProps<EffectsReelProps> & { playerRef: React.RefObject<PlayerRef | null> }> = ({ p, update, playerRef }) => {
   const set = (fn: (p: EffectsReelProps) => void) => mut(update, fn)();
   // Segments play back to back, so a segment's place on the timeline is the sum of the ones before it.
@@ -2298,6 +2696,125 @@ const Grid: React.FC<{ items: CatalogItem[]; onOpen: (it: CatalogItem) => void }
 );
 
 // Home stays short: templates and mixes to start from; single effects sit behind one chip row.
+/** The big "put your video here" tile: tap (or drop) a video, it uploads right away. */
+const UploadTile: React.FC<{ value?: { file: string; url: string; name: string }; onChange: (v: { file: string; url: string; name: string }) => void }> = ({ value, onChange }) => {
+  const ref = useRef<HTMLInputElement>(null);
+  const [busy, setBusy] = useState(false);
+  const [over, setOver] = useState(false);
+  const [err, setErr] = useState('');
+  const take = async (f?: File | null) => {
+    if (!f) return;
+    setBusy(true);
+    setErr('');
+    try {
+      onChange({ ...(await uploadFile(f)), name: f.name });
+    } catch (e: any) {
+      setErr(e.message);
+    }
+    setBusy(false);
+  };
+  return (
+    <>
+      <button
+        className={`uptile ${over ? 'over' : ''} ${value ? 'has' : ''}`}
+        onClick={() => (isNative ? pickFromLibrary('video/*').then(take, (e) => setErr(e?.message ?? String(e))) : ref.current?.click())}
+        onDragOver={(e) => (e.preventDefault(), setOver(true))}
+        onDragLeave={() => setOver(false)}
+        onDrop={(e) => (e.preventDefault(), setOver(false), take(e.dataTransfer.files[0]))}
+      >
+        {value ? <video src={media(value.url)} muted playsInline autoPlay loop /> : null}
+        <span className="upplus">{busy ? <span className="spin" /> : <Glyph d={value ? G.similar : 'M12 5v14M5 12h14'} size={28} />}</span>
+        <b>{busy ? tr("アップロード中…") : value ? tr("別の動画にする") : tr("動画を載せる")}</b>
+        {value ? null : <small>{tr("話している動画、お店や商品の動画。3分以内のMP4 / MOV")}</small>}
+      </button>
+      <input ref={ref} type="file" accept="video/*" hidden onChange={(e) => take(e.target.files?.[0])} />
+      {err ? <div className="err">{err}</div> : null}
+    </>
+  );
+};
+
+/** Upload, then one button. Everything else is a pick after the AI has made the takes. */
+const Start: React.FC<{ go: (h: string) => void }> = ({ go }) => {
+  const [video, setVideo] = useState<{ file: string; url: string; name: string } | undefined>();
+  const [busy, setBusy] = useState(false);
+  const [err, setErr] = useState('');
+  const submit = async () => {
+    setBusy(true);
+    setErr('');
+    try {
+      const j = await api<Job>('/api/jobs', { method: 'POST', body: JSON.stringify({ template: 'EffectsReel', input: { video: video!.file, recipe: 'all', lang: '' } }) });
+      enablePush(registerPushToken);
+      go(`#/job/${j.id}`);
+    } catch (e: any) {
+      setErr(e.message);
+      setBusy(false);
+    }
+  };
+  return (
+    <div className="start">
+      <h1>{tr("新しい動画")}</h1>
+      <p className="sub">{tr("載せたら、AIがいくつもの案を作ります。あとは選ぶだけ。")}</p>
+      <UploadTile value={video} onChange={setVideo} />
+      <div className="pickcta">
+        <button className="btn big" disabled={!video || busy || !!DEMO} onClick={submit}>
+          <Glyph d={G.sparkle} size={20} /> {busy ? tr("送信中…") : tr("案をつくる")}
+        </button>
+      </div>
+      <p className="cost" style={{ textAlign: 'center' }}>
+        {tr("消費:")} <b>{fmtN(tokensFor('EffectsReel', { video }))}{tr("トークン")}</b>
+      </p>
+      {err ? <div className="err">{err}</div> : null}
+      {DEMO ? <div className="warn">{DEMO_BLOCKED}</div> : null}
+      <div className="startmore">
+        <span>{tr("写真から作る")}</span>
+        <button className="listrow" onClick={() => go('#/new/ProductShine')}>
+          <b>{TEMPLATES.ProductShine.name}</b>
+          <small>{tr("商品写真1枚から")}</small>
+        </button>
+        <button className="listrow" onClick={() => go('#/new/SaaSPromo')}>
+          <b>{TEMPLATES.SaaSPromo.name}</b>
+          <small>{tr("画面のスクリーンショットから")}</small>
+        </button>
+      </div>
+    </div>
+  );
+};
+
+/** The last few reels, newest first, as small posters. */
+const RecentReels: React.FC<{ go: (h: string) => void }> = ({ go }) => {
+  const [jobs, setJobs] = useState<Job[] | null>(null);
+  useEffect(() => {
+    api<Job[]>('/api/jobs')
+      .then((list) => Promise.all(list.filter((j) => j.status !== 'error').slice(0, 3).map((j) => api<Job>(`/api/jobs/${j.id}`).catch(() => j))))
+      .then(setJobs, () => setJobs([]));
+  }, []);
+  if (!jobs?.length) return null;
+  return (
+    <section className="tsection">
+      <div className="thead">
+        <h2>{tr("つくった動画")}</h2>
+        <button className="linkbtn" onClick={() => go('#/reels')}>
+          {tr("すべて見る")}
+        </button>
+      </div>
+      <div className="recent">
+        {jobs.map((j) => {
+          const t = TEMPLATES[j.template];
+          return (
+            <button key={j.id} onClick={() => go(`#/job/${j.id}`)} aria-label={j.title}>
+              {j.props ? (
+                <Thumbnail component={t.component} inputProps={j.props} durationInFrames={Math.max(1, t.frames(j.props))} fps={FPS} compositionWidth={1080} compositionHeight={1920} frameToDisplay={30} style={{ width: '100%', height: '100%' }} />
+              ) : (
+                <span className="feedblank">{STATUS_LABEL[j.status]}</span>
+              )}
+            </button>
+          );
+        })}
+      </div>
+    </section>
+  );
+};
+
 const Home: React.FC<{ go: (h: string) => void; initialGroup?: string }> = ({ go, initialGroup }) => {
   const [group, setGroupState] = useState<Group | 'all'>(GROUPS.some((g) => g.id === initialGroup) ? (initialGroup as Group) : 'all');
   const setGroup = (g: Group | 'all') => {
@@ -2330,8 +2847,19 @@ const Home: React.FC<{ go: (h: string) => void; initialGroup?: string }> = ({ go
   return (
     <>
       <div className="hero">
-        <h1>{tr("編集しない、動画編集アプリ。")}</h1>
-        <p className="sub">{tr("テンプレートを選んで素材を入れるだけ。")}</p>
+        <h1>{tr("載せたら、あとは選ぶだけ。")}</h1>
+        <p className="sub">{tr("編集しない、動画編集アプリ。")}</p>
+      </div>
+      <button className="herotile" onClick={() => go('#/start')}>
+        <span className="upplus">
+          <Glyph d="M12 5v14M5 12h14" size={28} />
+        </span>
+        <b>{tr("動画を載せる")}</b>
+        <small>{tr("AIがいくつもの案を作ります")}</small>
+      </button>
+      <RecentReels go={go} />
+      <div className="thead" style={{ marginTop: 8 }}>
+        <h2>{tr("見本から選ぶ")}</h2>
       </div>
       {GROUPS.filter((g) => (g.id === 'base' || g.id === 'mix') && has(g.id)).map(section)}
       {effectGroups.length ? (
@@ -2964,26 +3492,6 @@ const DeleteAccount: React.FC<{ me: Me }> = ({ me }) => {
   );
 };
 
-const CreateSheet: React.FC<{ go: (h: string) => void; onClose: () => void }> = ({ go, onClose }) => (
-  <Sheet onClose={onClose} className="list">
-    {() => (
-      <>
-      <h2>{tr("新しく作る")}</h2>
-      {CATALOG.filter((c) => c.group === 'base').map((c) => (
-        <button key={c.key} className="listrow" onClick={() => (onClose(), go(`#/new/${c.template}`))}>
-          <span className="tag">{TEMPLATES[c.template].tag}</span>
-          <b>{c.name}</b>
-        </button>
-      ))}
-      <button className="listrow" onClick={() => (onClose(), go('#/'))}>
-        <span className="tag">{tr("{0}種", effectIds.length)}</span>
-        <b>{tr("エフェクトから選ぶ")}</b>
-      </button>
-      </>
-    )}
-  </Sheet>
-);
-
 const Globe = () => (
   <svg width="16" height="16" viewBox="0 0 24 24" aria-hidden fill="none" stroke="currentColor" strokeWidth="2">
     <circle cx="12" cy="12" r="9" />
@@ -3051,19 +3559,19 @@ const useHash = () => {
 const App = () => {
   const hash = useHash();
   const [sel, setSel] = useState<number | null>(null);
-  const [creating, setCreating] = useState(false);
   const [langOpen, setLangOpen] = useState(false);
   const go = (h: string) => (location.hash = h);
   const [, route, arg, arg2] = hash.split('?')[0].split('/');
   const query = new URLSearchParams(hash.split('?')[1] ?? '');
-  const tab = route === 'reels' || route === 'job' ? 'reels' : route === 'search' ? 'search' : route === 'me' ? 'me' : route === 'new' ? 'new' : 'home';
+  const tab = route === 'reels' || route === 'job' ? 'reels' : route === 'me' || route === 'history' ? 'me' : route === 'new' || route === 'start' ? 'new' : 'home';
   const tabs = [
     { id: 'home', label: tr("ホーム"), icon: 'home', onClick: () => go('#/') },
-    { id: 'reels', label: tr("リール"), icon: 'reels', onClick: () => go('#/reels') },
-    { id: 'new', label: tr("作成"), icon: 'plus', onClick: () => setCreating(true) },
-    { id: 'search', label: tr("検索"), icon: 'search', onClick: () => go('#/search') },
+    { id: 'new', label: tr("作成"), icon: 'plus', onClick: () => go('#/start') },
+    { id: 'reels', label: tr("マイ動画"), icon: 'reels', onClick: () => go('#/reels') },
     { id: 'me', label: tr("アカウント"), icon: 'me', onClick: () => go('#/me') },
   ] as const;
+  // While picking, the reel takes the whole screen.
+  const immersive = route === 'job';
   return (
     <SelContext.Provider value={{ sel, setSel }}>
       <div className="top">
@@ -3078,11 +3586,14 @@ const App = () => {
           ))}
         </div>
         <div className="spacer" />
+        <button className="langbtn" onClick={() => go('#/search')} aria-label={tr("検索")}>
+          <Icon name="search" />
+        </button>
         <button className="langbtn" onClick={() => setLangOpen(true)} aria-label={tr("言語")}>
-          <Globe /> {LANG_NAMES[lang].native}
+          <Globe /> <span className="lname">{LANG_NAMES[lang].native}</span>
         </button>
       </div>
-      <main className={route === 'reels' ? 'wide' : ''}>
+      <main className={route === 'reels' ? 'wide' : immersive ? 'immersive' : ''}>
         <div className="page" key={`${route ?? ''}/${arg ?? ''}`}>
         {route === 'new' && arg in TEMPLATES ? (
           <NewJob key={hash} template={arg as TemplateId} fx={effectIds.includes(arg2 as EffectId) ? (arg2 as EffectId) : undefined} mixArg={arg2?.startsWith('mix-') ? arg2.slice(4) : undefined} onBack={() => history.back()} onStarted={(j) => go(`#/job/${j.id}`)} />
@@ -3094,12 +3605,14 @@ const App = () => {
           <ReelsFeed go={go} />
         ) : route === 'search' ? (
           <Search go={go} />
+        ) : route === 'start' ? (
+          <Start go={go} />
         ) : (
           <Home go={go} initialGroup={query.get('g') ?? undefined} />
         )}
         </div>
       </main>
-      <nav className="tabbar" aria-label={tr("メニュー")} style={{ '--tab': tabs.findIndex((t) => t.id === tab) } as React.CSSProperties}>
+      <nav className={`tabbar ${immersive ? 'away' : ''}`} aria-label={tr("メニュー")} style={{ '--tab': tabs.findIndex((t) => t.id === tab) } as React.CSSProperties}>
         <span className="tabglow" aria-hidden />
         {tabs.map((t) => (
           <button key={t.id} className={`${tab === t.id ? 'on' : ''} ${t.id === 'new' ? 'make' : ''}`} onClick={t.onClick} aria-label={t.label}>
@@ -3107,7 +3620,6 @@ const App = () => {
           </button>
         ))}
       </nav>
-      {creating ? <CreateSheet go={go} onClose={() => setCreating(false)} /> : null}
       {langOpen ? <LangSheet onClose={() => setLangOpen(false)} /> : null}
     </SelContext.Provider>
   );

@@ -7,7 +7,7 @@ const config: CapacitorConfig = {
   appId: 'com.atosns.reelsstudio',
   appName: 'Reels Studio',
   webDir: 'app/native/www',
-  backgroundColor: '#fffdf3',
+  backgroundColor: '#0a0a0b',
   ios: {
     contentInset: 'never',
     // Large uploads and video playback from the server.
