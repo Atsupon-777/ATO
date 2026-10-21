@@ -548,7 +548,7 @@
  "プランは1か月ごとの自動更新です。Google Playの定期購入からいつでも解約できます。": "Los planes se renuevan cada mes. Cancela cuando quieras desde Suscripciones en Google Play.",
  "プランは1か月ごとの自動更新です。お支払いはApple IDに請求されます。期間終了の24時間前までに解約しない限り自動で更新され、解約はiPhoneの「設定」→ Apple ID →「サブスクリプション」からいつでもできます。": "Los planes se renuevan automáticamente cada mes y se cobran a tu ID de Apple. Se renuevan salvo que los canceles al menos 24 horas antes del final del periodo; cancela cuando quieras en Ajustes → ID de Apple → Suscripciones.",
  "作ったリール、アップロードした素材、残りのトークン、ログイン情報がすべて削除され、元に戻せません。Webで契約中のプランは解約されます。": "Se eliminarán tus Reels, archivos subidos, tokens restantes y datos de inicio de sesión, sin posibilidad de recuperarlos. Se cancelará cualquier plan contratado en la web.",
- "写真へのアクセスが許可されていません。設定アプリで Zero Edit の「写真」を許可してください。": "Zero Edit no tiene acceso a Fotos. Permite \"Fotos\" para Zero Edit en la app Ajustes.",
+ "写真へのアクセスが許可されていません。設定アプリで Editless の「写真」を許可してください。": "Editless no tiene acceso a Fotos. Permite \"Fotos\" para Editless en la app Ajustes.",
  "写真ライブラリから選ぶ": "Elegir de la fototeca",
  "処理中…": "Procesando…",
  "削除する": "Eliminar",

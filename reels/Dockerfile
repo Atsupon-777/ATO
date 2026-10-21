@@ -1,4 +1,4 @@
-# Zero Edit: web app + AI pipeline + Remotion renderer in one container (Cloud Run).
+# Editless: web app + AI pipeline + Remotion renderer in one container (Cloud Run).
 FROM node:22-bookworm-slim
 
 # ffmpeg for audio/video steps, Chrome's libraries for Remotion, Python + rembg for cut-outs and person mattes.

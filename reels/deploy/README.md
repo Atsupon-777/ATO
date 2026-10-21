@@ -1,4 +1,4 @@
-# Zero Edit を公開する手順（Google Cloud Run）
+# Editless を公開する手順（Google Cloud Run）
 
 アプリ（画面・AI処理・動画の書き出し）を1つのコンテナにまとめ、Google Cloud Run の東京リージョンで動かします。
 ユーザーが作った動画と素材、アカウントとトークン残高は Cloud Storage のバケットに保存します。

@@ -1,4 +1,4 @@
-// Zero Edit service worker.
+// Editless service worker.
 // Deliberately minimal: it never caches pages, API calls, logins or videos.
 // Its only job is to show offline.html when a page can't load with no connection.
 const CACHE = "reels-shell-v1";

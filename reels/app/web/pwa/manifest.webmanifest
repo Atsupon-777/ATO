@@ -1,7 +1,7 @@
 {
   "id": "/",
-  "name": "Zero Edit",
-  "short_name": "Zero Edit",
+  "name": "Editless",
+  "short_name": "Editless",
   "description": "The video editor that does the editing for you.",
   "start_url": "/",
   "scope": "/",

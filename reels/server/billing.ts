@@ -69,7 +69,7 @@ export async function checkout(a: Account, what: Purchase, origin: string, token
           currency: 'jpy',
           unit_amount: PAYG_UNIT_YEN,
           tax_behavior: 'inclusive',
-          product_data: { name: `Zero Edit トークン（${PAYG_UNIT.toLocaleString('en-US')}トークン）`, description: '都度購入・期限なし' },
+          product_data: { name: `Editless トークン（${PAYG_UNIT.toLocaleString('en-US')}トークン）`, description: '都度購入・期限なし' },
         },
       };
   const s = await stripe('checkout/sessions', {

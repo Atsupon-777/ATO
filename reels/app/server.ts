@@ -1,4 +1,4 @@
-// Zero Edit web app: serves the editor and runs generation/render jobs.
+// Editless web app: serves the editor and runs generation/render jobs.
 //   node app/server.ts            (PORT=3000 by default)
 // Jobs live in public/jobs/<id>/ (job.json + media), so a restart keeps history.
 // Login (FIREBASE_PROJECT_ID) and billing (STRIPE_SECRET_KEY) switch on from the environment; see deploy/README.md.
@@ -630,4 +630,4 @@ const thumbOf = (t: Template, props?: Record<string, any>) =>
   !props ? undefined : t === 'ProductShine' ? props.photo : t === 'SaaSPromo' ? props.desktop : undefined;
 
 await loadJobs();
-server.listen(PORT, () => console.log(`Zero Edit on ${ORIGIN} (login ${authEnabled ? 'on' : 'off'}, billing ${billingEnabled ? 'on' : 'off'})`));
+server.listen(PORT, () => console.log(`Editless on ${ORIGIN} (login ${authEnabled ? 'on' : 'off'}, billing ${billingEnabled ? 'on' : 'off'})`));

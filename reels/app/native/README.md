@@ -1,4 +1,4 @@
-# Zero Edit iPhone / Android アプリ（Capacitor）
+# Editless iPhone / Android アプリ（Capacitor）
 
 Web版と同じ React の画面を**アプリ内に同梱**し（サイトを読み込むだけの作りではない＝審査4.2対策）、
 API・動画・フォントは `https://reels.ato-sns.com` のサーバーから取ります。
@@ -47,7 +47,7 @@ App Store で契約したプランは Web 側では「App Storeで契約中」�
 
 ### 3. App Store Connect
 
-1. 新規 App（バンドルID `com.atosns.reelsstudio`、名前 Zero Edit）
+1. 新規 App（バンドルID `com.atosns.reelsstudio`、名前 Editless）
 2. アプリ内課金を作る。製品IDはこの名前にしておくと設定不要です（変えた場合は `IAP_PRODUCT_*` で合わせます）
 
    | 製品ID | 種類 | 中身 |
