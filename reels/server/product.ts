@@ -1,0 +1,180 @@
+// Photo → product reel, end to end:
+// cut-out (local BiRefNet) → studio shot (Nano Banana) → plan and copy (Gemini, JSON) →
+// optional motion clip (Veo) → ProductShine props, validated → render.
+import { access, copyFile, mkdir, readFile, writeFile } from 'node:fs/promises';
+import path from 'node:path';
+import { fileURLToPath } from 'node:url';
+import { z } from 'zod';
+import { productShineSchema, type ProductShineProps } from '../src/schemas.ts';
+import { cutout } from './cutout.ts';
+import { askJson, editImage, imageToVideo } from './gemini.ts';
+import { renderTemplate } from './render.ts';
+import { Usage } from './usage.ts';
+
+const publicDir = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../public');
+
+export const STYLES = {
+  luxury: {
+    scene: 'on a polished black marble pedestal in a dark studio, deep shadows, subtle warm haze',
+    light: 'a single warm golden rim light from behind-left plus a soft key light, crisp specular highlights on metal and glass',
+    palette: { accent: '#D8B57A', glow: '#FFC98A', base: '#070605' },
+  },
+  clean: {
+    scene: 'on a seamless warm-white backdrop with a soft curved floor, minimal and airy',
+    light: 'large soft window light from the left, gentle contact shadow, clean reflections',
+    palette: { accent: '#1F2A44', glow: '#FFFFFF', base: '#EDEAE4' },
+  },
+  cosmetic: {
+    scene: 'on a pale pink acrylic block with a splash of clear water and droplets frozen in the air',
+    light: 'bright high-key beauty lighting, glossy highlights, fresh and dewy feel',
+    palette: { accent: '#E8A5B4', glow: '#FFE3EA', base: '#1A1214' },
+  },
+  natural: {
+    scene: 'on a light oak surface with soft leaf shadows and a blurred green background',
+    light: 'warm morning sunlight with dappled shadows, natural and calm',
+    palette: { accent: '#C9B27C', glow: '#FFE7B0', base: '#0E120C' },
+  },
+} as const;
+export type Style = keyof typeof STYLES;
+
+const KEEP_PRODUCT =
+  'Keep the product exactly as it is in the reference photo: identical shape, proportions, colours, materials, logo, printed text and every detail. Do not redesign, add, remove or move any part of the product, and do not change any lettering.';
+
+const planSchema = z.object({
+  tagline: z.string().describe('Japanese tagline, poetic but concrete, max 18 characters'),
+  details: z
+    .array(
+      z.object({
+        x: z.number().describe('0-1 horizontal position of the detail in IMAGE 2 (studio shot)'),
+        y: z.number().describe('0-1 vertical position of the detail in IMAGE 2'),
+        zoom: z.number().describe('2.0-3.2, how close to frame the detail'),
+        kicker: z.string().describe('short English label, 2-3 words'),
+        title: z.string().describe('Japanese headline for this detail, max 10 characters'),
+      }),
+    )
+    .describe('exactly 3 visually distinct close-up details, each a real visible feature'),
+  glints: z
+    .array(z.object({ x: z.number(), y: z.number() }))
+    .describe('2-3 points (0-1) on IMAGE 3 (cut-out) where metal, glass or gloss would catch a sparkle'),
+  motionPrompt: z
+    .string()
+    .describe('English prompt for an 8s image-to-video shot of IMAGE 2: slow premium camera move and light change only, product stays rigid and unchanged'),
+});
+
+export type ProductBrief = {
+  photo: string;
+  brand: string;
+  productName: string;
+  /** Facts the copy may use. Nothing else is claimed. */
+  facts: string;
+  style: Style;
+  cta: string;
+  handle: string;
+  video: boolean;
+  /** Cosmetics: generate an on-skin model shot and animate that instead of the product shot. */
+  onSkin: boolean;
+  jobId?: string;
+};
+
+export async function buildProductReel(brief: ProductBrief) {
+  const usage = new Usage();
+  const jobId = brief.jobId ?? `job-${Date.now().toString(36)}`;
+  const dir = path.join(publicDir, 'jobs', jobId);
+  const rel = (f: string) => `jobs/${jobId}/${f}`;
+  await mkdir(dir, { recursive: true });
+  const style = STYLES[brief.style];
+  const original = path.join(dir, `original${path.extname(brief.photo) || '.jpg'}`);
+  await copyFile(brief.photo, original);
+
+  console.log('1/5 cut-out');
+  const cut = await cutout(original, path.join(dir, 'cutout.png'), usage);
+
+  // Re-running a job reuses the studio shot, plan and clip already paid for.
+  const exists = (f: string) => access(f).then(() => true, () => false);
+  console.log('2/5 studio shot');
+  const studioFile = path.join(dir, 'studio.png');
+  const studio = (await exists(studioFile)) ? studioFile : await editImage({
+    input: [original],
+    out: path.join(dir, 'studio.png'),
+    prompt: [
+      `Create a premium commercial advertising photograph of the product in the reference photo (${brief.productName} by ${brief.brand}).`,
+      KEEP_PRODUCT,
+      `Scene: ${style.scene}. Lighting: ${style.light}.`,
+      'Vertical 9:16 frame. Product centred, filling about 55% of the height, with calm empty space above it. Photorealistic, tack-sharp on the product, shallow depth of field behind. No added text, no watermark, nothing in front of the product.',
+    ].join('\n'),
+    usage,
+    step: 'studio shot',
+  });
+
+  console.log('3/5 plan and copy');
+  const planFile = path.join(dir, 'plan.json');
+  const raw = (await exists(planFile)) ? JSON.parse(await readFile(planFile, 'utf8')) : await askJson({
+    images: [original, studio, cut.file],
+    jsonSchema: z.toJSONSchema(planSchema),
+    usage,
+    step: 'plan',
+    prompt: [
+      'You are the art director of a luxury product reel. IMAGE 1 is the client photo, IMAGE 2 the studio shot, IMAGE 3 the cut-out.',
+      `Brand: ${brief.brand}. Product: ${brief.productName}.`,
+      `Facts you may use (do not claim anything else, no numbers, awards or effects that are not listed): ${brief.facts || '(none)'}`,
+      'Write natural Japanese copy for an Instagram reel. Pick three close-up details that are clearly visible in IMAGE 2 and differ from each other.',
+    ].join('\n'),
+  });
+  const plan = planSchema.parse(raw);
+  await writeFile(planFile, JSON.stringify(plan, null, 2));
+
+  let clip: string | undefined;
+  if (brief.video) {
+    let source = studio;
+    if (brief.onSkin) {
+      console.log('4/5 on-skin model shot');
+      source = await editImage({
+        input: [original],
+        out: path.join(dir, 'on-skin.png'),
+        prompt: [
+          `A photorealistic beauty advertising close-up: an adult model gently applies the product from the reference photo (${brief.productName}) to the cheek, holding the product package in the other hand facing camera.`,
+          KEEP_PRODUCT,
+          'Soft high-key beauty lighting, natural skin texture, vertical 9:16, no text, no watermark.',
+        ].join('\n'),
+        usage,
+        step: 'on-skin shot',
+      });
+    }
+    console.log('4/5 motion clip (Veo)');
+    clip = rel('clip.mp4');
+    if (!(await exists(path.join(dir, 'clip.mp4')))) await imageToVideo({
+      image: source,
+      out: path.join(dir, 'clip.mp4'),
+      prompt: `${plan.motionPrompt} The product keeps its exact shape, logo and text throughout.`,
+      usage,
+      step: 'motion clip',
+    });
+  }
+
+  console.log('5/5 render');
+  const props: ProductShineProps = productShineSchema.parse({
+    brand: brief.brand,
+    productName: brief.productName,
+    tagline: plan.tagline.slice(0, 22),
+    photo: rel('studio.png'),
+    cutout: rel('cutout.png'),
+    cutoutAspect: cut.aspect,
+    glints: plan.glints.slice(0, 4),
+    details: plan.details.slice(0, 3).map((d) => ({
+      ...d,
+      zoom: Math.min(3.2, Math.max(1.6, d.zoom)),
+      kicker: d.kicker.slice(0, 24),
+      title: d.title.slice(0, 14),
+    })),
+    cta: brief.cta,
+    handle: brief.handle,
+    bpm: 120,
+    palette: style.palette,
+    ...(clip ? { clip } : {}),
+  });
+  await writeFile(path.join(dir, 'props.json'), JSON.stringify(props, null, 2));
+  const out = path.join(dir, 'reel.mp4');
+  const result = await renderTemplate('ProductShine', props, out);
+  await writeFile(path.join(dir, 'usage.json'), JSON.stringify(usage, null, 2));
+  return { jobId, dir, out, props, usage: usage.toJSON(), render: result };
+}
