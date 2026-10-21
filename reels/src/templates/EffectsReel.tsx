@@ -8,6 +8,7 @@ import { useFonts } from '../lib/useFonts';
 import { effects } from '../effects';
 import { SourceContext } from '../effects/layers';
 import { AccentOverlays, CameraMotion, TextureOverlay, TransitionIn } from '../effects/modifiers';
+import { Overlays } from '../effects/overlays';
 
 /** Segments play back to back; each one is a slice of the source with one effect on it. */
 export const effectsReelDuration = (p: EffectsReelProps, fps: number) =>
@@ -58,6 +59,7 @@ export const EffectsReel: React.FC<EffectsReelProps> = (p) => {
           </Sequence>
         );
       })}
+      <Overlays items={p.overlays} accent={p.palette.accent} />
       {p.music ? <Audio src={asset(p.music)} volume={0.25} loop /> : null}
     </AbsoluteFill>
   );

@@ -11,7 +11,8 @@ import { EffectsReel, effectsReelDuration } from '../../src/templates/EffectsRee
 import { FivePass, fivePassDuration } from '../../src/templates/FivePass';
 import { FPS, beatFrames } from '../../src/lib/timing';
 import { keepSegments, paginate, placeWords } from '../../src/lib/edit';
-import { effectIds, type BeatStyle, type EffectId, type EffectsReelProps, type FivePassProps, type ProductShineProps, type SaaSPromoProps, type TalkCaptionsProps } from '../../src/schemas';
+import { STICKER_PATHS } from '../../src/effects/overlays';
+import { effectIds, stickerIds, type Overlay, type BeatStyle, type EffectId, type EffectsReelProps, type FivePassProps, type ProductShineProps, type SaaSPromoProps, type TalkCaptionsProps } from '../../src/schemas';
 import productSample from '../../props/product-watch.json';
 import saasSample from '../../props/saas-sample.json';
 import talkSample from '../../props/talk-sample.json';
@@ -113,6 +114,7 @@ const EFFECT_NAMES: Record<(typeof effectIds)[number], string> = {
 };
 
 type Job = {
+  premiumPaid?: boolean;
   id: string;
   template: TemplateId;
   title: string;
@@ -169,10 +171,14 @@ const uploadFile = async (f: File) => {
   return j as { file: string; url: string };
 };
 
-// Tokens per reel, the same table as the server (A: own material 2,000, B: AI photo or effects 5,000, C: AI video 12,000).
+// Tokens per reel, the same table as the server (A: own material 2, B: AI photo or effects 5, C: AI video 12).
 const tokensFor = (t: TemplateId, input: Record<string, any>) =>
-  t === 'ProductShine' ? (input.video ? 12_000 : 5_000) : t === 'EffectsReel' || t === 'FivePass' || t === 'SaaSPromo' ? 5_000 : 2_000;
-/** Token counts run into the hundreds of thousands, so they get separators in the viewer's language. */
+  t === 'ProductShine' ? (input.video ? 12 : 5) : t === 'EffectsReel' || t === 'FivePass' || t === 'SaaSPromo' ? 5 : 2;
+/** Tokens to export a finished reel (each time), and extra for the premium edit (stickers, captions added by hand). */
+const EXPORT_TOKENS = 1;
+const PREMIUM_TOKENS = 2;
+const exportCost = (job: Job, p: { overlays?: unknown[] }) => EXPORT_TOKENS + (p.overlays?.length && !job.premiumPaid ? PREMIUM_TOKENS : 0);
+/** Plan sizes run into the hundreds, so counts get separators in the viewer's language. */
 const fmtN = (n: number) => n.toLocaleString(lang);
 
 const STEP_LABELS: Record<string, string> = {
@@ -296,6 +302,7 @@ const Preview: React.FC<{ template: TemplateId; props: any; playerRef?: React.Re
         initiallyMuted={autoPlay}
         acknowledgeRemotionLicense
       />
+      <Watermark />
       {children}
     </div>
   );
@@ -540,7 +547,7 @@ const ProgressBar: React.FC<{ fraction: number; label: string; left: number }> =
 const Generating: React.FC<{ job: Job }> = ({ job }) => {
   const steps =
     job.template === 'ProductShine'
-      ? ['cut-out', 'studio shot', 'plan and copy', ...(jobTokens(job) >= 12_000 ? ['motion clip (Veo)'] : []), 'build props']
+      ? ['cut-out', 'studio shot', 'plan and copy', ...(jobTokens(job) >= 12 ? ['motion clip (Veo)'] : []), 'build props']
       : job.template === 'SaaSPromo'
         ? ['copy and layout', 'build props']
         : job.template === 'EffectsReel'
@@ -775,7 +782,7 @@ const Editor: React.FC<{ id: string }> = ({ id }) => {
           ) : (
             <>
               <button className={`btn ${job.status === 'done' && job.video ? 'ghost' : ''}`} disabled={!saved || !!DEMO || (job.template === 'FivePass' && props.pass < 5)} onClick={render} title={DEMO ? DEMO_BLOCKED : job.template === 'FivePass' && props.pass < 5 ? tr("5つの工程が終わると書き出せます") : undefined}>
-                {tr("動画を書き出す")}
+                {tr("動画を書き出す")} <small className="tokcost">{tr("{0}トークン", exportCost(job, props as { overlays?: unknown[] }))}</small>
               </button>
               {job.status === 'done' && job.video ? <ShareButton job={job} /> : null}
             </>
@@ -1646,21 +1653,60 @@ const withOpt = (base: EffectsReelProps, opt?: LookOpt, oneBeat?: boolean) => {
 
 /** The reel (or one beat of it) playing on a loop, sized by its box. */
 const ReelPlayer: React.FC<{ props: EffectsReelProps; playerRef?: React.RefObject<PlayerRef | null> }> = ({ props, playerRef }) => (
-  <Player
-    ref={playerRef}
-    component={EffectsReel}
-    inputProps={props}
-    durationInFrames={Math.max(1, effectsReelDuration(props, FPS))}
-    fps={FPS}
-    compositionWidth={1080}
-    compositionHeight={1920}
-    style={{ width: '100%', height: '100%' }}
-    autoPlay
-    loop
-    initiallyMuted
-    acknowledgeRemotionLicense
-  />
+  <div className="wmwrap">
+    <Player
+      ref={playerRef}
+      component={EffectsReel}
+      inputProps={props}
+      durationInFrames={Math.max(1, effectsReelDuration(props, FPS))}
+      fps={FPS}
+      compositionWidth={1080}
+      compositionHeight={1920}
+      style={{ width: '100%', height: '100%' }}
+      autoPlay
+      loop
+      initiallyMuted
+      acknowledgeRemotionLicense
+    />
+    <Watermark />
+  </div>
 );
+
+/** Night or day; remembered on this device. */
+const ThemeButton: React.FC = () => {
+  const [theme, setTheme] = useState(() => document.documentElement.dataset.theme ?? 'dark');
+  useEffect(() => {
+    document.documentElement.dataset.theme = theme;
+    document.querySelector('meta[name="theme-color"]')?.setAttribute('content', theme === 'light' ? '#f5f2eb' : '#070708');
+    try {
+      localStorage.setItem('editless-theme', theme);
+    } catch {}
+  }, [theme]);
+  const light = theme === 'light';
+  return (
+    <button className="langbtn themebtn" onClick={() => setTheme(light ? 'dark' : 'light')} aria-label={light ? tr("ダークモードにする") : tr("ライトモードにする")} title={light ? tr("ダークモードにする") : tr("ライトモードにする")}>
+      <Glyph d={light ? G.moon : G.sun} size={18} />
+    </button>
+  );
+};
+
+/** ATO mark over every preview. Previews are free to watch, so a screen grab of one is not a clean reel; the export is. */
+const Watermark: React.FC<{ small?: boolean }> = ({ small }) => (
+  <div className={`wm ${small ? 'small' : ''}`} aria-hidden>
+    <img src="icons/ato-mark.png" alt="" draggable={false} />
+  </div>
+);
+
+/** A one-frame poster of a take, for grids and option strips (cheap: no playback). */
+const ReelStill: React.FC<{ props: EffectsReelProps; at?: number }> = ({ props, at = 0.45 }) => {
+  const frames = Math.max(1, effectsReelDuration(props, FPS));
+  return (
+    <div className="wmwrap">
+      <Thumbnail component={EffectsReel} inputProps={props} durationInFrames={frames} fps={FPS} compositionWidth={1080} compositionHeight={1920} frameToDisplay={Math.min(frames - 1, Math.round(frames * at))} style={{ width: '100%', height: '100%' }} />
+      <Watermark small />
+    </div>
+  );
+};
 
 const Glyph: React.FC<{ d: string; fill?: boolean; size?: number }> = ({ d, fill, size = 22 }) => (
   <svg width={size} height={size} viewBox="0 0 24 24" aria-hidden fill={fill ? 'currentColor' : 'none'} stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
@@ -1668,6 +1714,8 @@ const Glyph: React.FC<{ d: string; fill?: boolean; size?: number }> = ({ d, fill
   </svg>
 );
 const G = {
+  sun: 'M12 4V2M12 22v-2M4 12H2M22 12h-2M5.6 5.6 4.2 4.2M19.8 19.8l-1.4-1.4M5.6 18.4l-1.4 1.4M19.8 4.2l-1.4 1.4M12 16a4 4 0 1 0 0-8 4 4 0 0 0 0 8z',
+  moon: 'M20 14.5A8 8 0 0 1 9.5 4 8 8 0 1 0 20 14.5z',
   heart: 'M12 20s-7-4.4-7-10a4 4 0 0 1 7-2.6A4 4 0 0 1 19 10c0 5.6-7 10-7 10z',
   similar: 'M4 12a8 8 0 0 1 14-5.3M20 12a8 8 0 0 1-14 5.3M18 3v4h-4M6 21v-4h4',
   sound: 'M4 9v6h4l5 4V5L8 9zM16.5 8.5a5 5 0 0 1 0 7',
@@ -1678,6 +1726,10 @@ const G = {
   sparkle: 'M12 3l2.2 5.8L20 11l-5.8 2.2L12 19l-2.2-5.8L4 11l5.8-2.2z',
   sliders: 'M4 7h10M18 7h2M4 17h2M10 17h10M16 5v4M8 15v4',
   save: 'M12 4v11M7 10l5 5 5-5M5 20h14',
+  grid: 'M4 4h7v7H4zM13 4h7v7h-7zM4 13h7v7H4zM13 13h7v7h-7z',
+  close: 'M6 6l12 12M18 6L6 18',
+  text: 'M5 6h14M12 6v13M9 19h6',
+  trash: 'M5 7h14M10 7V4h4v3M7 7l1 13h8l1-13',
 };
 
 /** A feed of whole takes of the user's reel: swipe through, keep the ones you like, pick one. Never runs out. */
@@ -1703,8 +1755,34 @@ const PickFeed: React.FC<{ p: EffectsReelProps; onPick: (o: LookOpt) => void; on
   });
   useEffect(() => (muted ? ref.current?.mute() : ref.current?.unmute()), [muted, cur]);
   const touch = useRef(0);
+  const [grid, setGrid] = useState(false);
   return (
     <>
+      {grid ? (
+        <div className="pickgrid" role="dialog" aria-label={tr("案の一覧")}>
+          <div className="pickgridhead">
+            <b>{tr("案の一覧")}</b>
+            <button className="iconround" onClick={() => setGrid(false)} aria-label={tr("閉じる")}>
+              <Glyph d={G.close} />
+            </button>
+          </div>
+          <div className="pickgridlist">
+            {takes.map((t, k) => (
+              <button key={t.id} className={k === i ? 'on' : ''} onClick={() => (setI(k), setGrid(false))}>
+                <div className="pickgridthumb">
+                  <ReelStill props={withOpt(p, t)} />
+                  {kept.some((x) => x.id === t.id) ? <span className="pickgridkept"><Glyph d={G.heart} fill size={16} /></span> : null}
+                </div>
+                <b>{t.name}</b>
+                {t.note ? <small>{t.note}</small> : null}
+              </button>
+            ))}
+          </div>
+          <button className="btn ghost" onClick={() => (setSeed((x) => x + 1), setI(0))}>
+            <Glyph d={G.similar} size={18} /> {tr("別の案をもっと出す")}
+          </button>
+        </div>
+      ) : null}
       <div
         className="pickreel"
         onTouchStart={(e) => (touch.current = e.touches[0].clientY)}
@@ -1742,6 +1820,12 @@ const PickFeed: React.FC<{ p: EffectsReelProps; onPick: (o: LookOpt) => void; on
             </span>
             {tr("似た案")}
           </button>
+          <button onClick={() => setGrid(true)}>
+            <span>
+              <Glyph d={G.grid} />
+            </span>
+            {tr("一覧")}
+          </button>
           <button onClick={() => setMuted((m) => !m)} aria-pressed={!muted}>
             <span>
               <Glyph d={muted ? G.mute : G.sound} />
@@ -1773,7 +1857,7 @@ const PickFeed: React.FC<{ p: EffectsReelProps; onPick: (o: LookOpt) => void; on
           {tr("これにする")}
         </button>
       </div>
-      <p className="pickhint">{tr("上にスワイプで次の案。気に入ったら「残す」、似た雰囲気をもっと見たいときは「似た案」。")}</p>
+      <p className="pickhint">{tr("上にスワイプで次の案。気に入ったら「残す」、似た雰囲気は「似た案」、全部見比べるなら「一覧」。")}</p>
     </>
   );
 };
@@ -1803,6 +1887,38 @@ const PickPair: React.FC<{ base: EffectsReelProps; a: LookOpt; b: LookOpt; whole
   );
 };
 
+/** Seven versions of one aspect: the big preview plays the one you tap, the strip shows them all. */
+const PickMany: React.FC<{ base: EffectsReelProps; opts: LookOpt[]; onPick: (o: LookOpt) => void }> = ({ base, opts, onPick }) => {
+  const [sel, setSel] = useState(0);
+  const cur = opts[sel];
+  const props = useMemo(() => withOpt(base, cur, true), [base, cur]);
+  return (
+    <div className="pickmany">
+      <div className="pickmanyplayer" key={cur.id}>
+        <ReelPlayer props={props} />
+      </div>
+      <div className="pickstrip" role="listbox" aria-label={tr("選択肢")}>
+        {opts.map((o, k) => (
+          <button key={o.id} role="option" aria-selected={k === sel} className={k === sel ? 'on' : ''} onClick={() => setSel(k)}>
+            <div className="pickstripthumb">
+              <ReelStill props={withOpt(base, o, true)} />
+            </div>
+            <span>
+              {o.swatch ? <i className="liveswatch" style={{ background: o.swatch }} /> : null}
+              {o.name}
+            </span>
+          </button>
+        ))}
+      </div>
+      <div className="pickcta">
+        <button className="btn" onClick={() => onPick(cur)}>
+          {tr("これにする")}
+        </button>
+      </div>
+    </div>
+  );
+};
+
 /** Kept takes play off two at a time (the winner stays), then three quick either-or picks: colors, captions, motion. */
 const PickDuel: React.FC<{ p: EffectsReelProps; kept: LookOpt[]; take: (o: LookOpt) => void; onDone: () => void }> = ({ p, kept, take, onDone }) => {
   const [seed] = useState(() => 1 + Math.floor(Math.random() * 1e5));
@@ -1810,17 +1926,22 @@ const PickDuel: React.FC<{ p: EffectsReelProps; kept: LookOpt[]; take: (o: LookO
   const [next, setNext] = useState(1);
   const [round, setRound] = useState(0);
   const aspects: [string, number][] = [
-    [tr("色はどっち？"), 1],
-    [tr("字幕はどっち？"), 4],
-    [tr("動きはどっち？"), 6],
+    [tr("色を選ぶ"), 1],
+    [tr("字幕を選ぶ"), 4],
+    [tr("動きを選ぶ"), 6],
   ];
   const inFinal = next < kept.length;
   // each round is dealt from the reel as it is now, so the caption pair already wears the chosen colors
-  const pair = useMemo(() => {
+  const choices = useMemo(() => {
     if (inFinal || round >= aspects.length) return null;
-    const opts = BUILD_STEPS[aspects[round][1]].deal(p, seed + round);
-    const fresh = opts.filter((o) => !o.on(p));
-    return [fresh[0] ?? opts[0], fresh[1] ?? opts[1]] as const;
+    const r = rng(seed + round * 101);
+    const step = BUILD_STEPS[aspects[round][1]];
+    // two deals give enough variety to fill seven, the current look first so "keep as is" is one tap
+    const all = [...step.deal(p, seed + round), ...step.deal(p, seed + round + 7)];
+    const seen = new Set<string>();
+    const uniq = all.filter((o) => !seen.has(o.id) && (seen.add(o.id), true));
+    const cur = uniq.filter((o) => o.on(p));
+    return [...cur.slice(0, 1), ...pickN(uniq.filter((o) => !o.on(p)), 7 - Math.min(1, cur.length), r)];
   }, [inFinal, round]);
   useEffect(() => {
     if (!inFinal && round >= aspects.length) onDone();
@@ -1834,8 +1955,8 @@ const PickDuel: React.FC<{ p: EffectsReelProps; kept: LookOpt[]; take: (o: LookO
           <span key={k} className={k < done ? 'done' : k === done ? 'on' : ''} />
         ))}
       </div>
-      <h1>{inFinal ? tr("どっちが好き？") : pair ? aspects[round][0] : ''}</h1>
-      <p className="sub">{tr("好きな方をタップするだけ。")}</p>
+      <h1>{inFinal ? tr("どっちが好き？") : choices ? aspects[round][0] : ''}</h1>
+      <p className="sub">{inFinal ? tr("好きな方をタップするだけ。") : tr("タップすると上で再生されます。")}</p>
       {inFinal ? (
         <PickPair
           key={`${champ}-${next}`}
@@ -1850,30 +1971,46 @@ const PickDuel: React.FC<{ p: EffectsReelProps; kept: LookOpt[]; take: (o: LookO
             if (next + 1 >= kept.length) take(kept[w]);
           }}
         />
-      ) : pair ? (
-        <PickPair key={round} base={p} a={pair[0]} b={pair[1]} onPick={(o) => (take(o), setRound(round + 1))} />
+      ) : choices ? (
+        <PickMany key={round} base={p} opts={choices} onPick={(o) => (take(o), setRound(round + 1))} />
       ) : null}
       <div className="pickcta">
         <button className="btn ghost" onClick={() => (inFinal ? take(kept[champ]) : null, onDone())}>
-          {tr("どちらでもいい・おまかせ")}
+          {tr("おまかせで次へ")}
         </button>
       </div>
     </div>
   );
 };
 
-/** Drag the caption up or down on the video itself; brightness with one slider. */
+const STICKERS = stickerIds;
+const OVERLAY_COLORS = ['#DFFF4F', '#FFFFFF', '#FF5A36', '#7C9CFF', '#FF7EB6', '#0A0A0B'];
+
+/** Drag the caption up or down on the video itself, or with the slider; brightness with one slider; premium layers on top. */
 const PickTune: React.FC<{ p: EffectsReelProps; update: PanelProps<EffectsReelProps>['update']; onNext: () => void }> = ({ p, update, onNext }) => {
   const set = (fn: (x: EffectsReelProps) => void) => update((x) => (fn(x), x));
   const ref = useRef<PlayerRef | null>(null);
-  const drag = useRef<{ y: number; moved: boolean } | null>(null);
+  const drag = useRef<{ x: number; y: number; moved: boolean; layer: number | null } | null>(null);
   const [dragging, setDragging] = useState(false);
+  const [sel, setSel] = useState<number | null>(null);
+  const [draft, setDraft] = useState('');
   const capY = p.captionY;
   const bright = p.brightness ?? 1;
-  const yAt = (e: React.PointerEvent<HTMLDivElement>) => {
+  const layers = p.overlays ?? [];
+  const at = (e: React.PointerEvent<HTMLDivElement>) => {
     const r = e.currentTarget.getBoundingClientRect();
-    return Math.min(0.9, Math.max(0.05, (e.clientY - r.top) / r.height));
+    return { x: Math.min(0.95, Math.max(0.05, (e.clientX - r.left) / r.width)), y: Math.min(0.95, Math.max(0.05, (e.clientY - r.top) / r.height)) };
   };
+  const addLayer = (o: Overlay) => {
+    set((x) => void (x.overlays = [...(x.overlays ?? []), o]));
+    setSel(layers.length);
+  };
+  const editLayer = (k: number, patch: Partial<Overlay>) => set((x) => void (x.overlays = (x.overlays ?? []).map((o, j) => (j === k ? { ...o, ...patch } : o))));
+  const dropLayer = (k: number) => {
+    set((x) => void (x.overlays = (x.overlays ?? []).filter((_, j) => j !== k)));
+    setSel(null);
+  };
+  const cur = sel !== null ? layers[sel] : undefined;
   return (
     <>
       <div className="pickreel tune">
@@ -1884,18 +2021,24 @@ const PickTune: React.FC<{ p: EffectsReelProps; update: PanelProps<EffectsReelPr
           className={`capdrag ${dragging ? 'on' : ''}`}
           onPointerDown={(e) => {
             e.currentTarget.setPointerCapture(e.pointerId);
-            drag.current = { y: e.clientY, moved: false };
+            const pt = at(e);
+            // grab the nearest layer under the finger, else the caption line
+            const hit = layers.findIndex((o) => Math.abs(o.x - pt.x) < 0.12 && Math.abs(o.y - pt.y) < 0.08);
+            drag.current = { x: e.clientX, y: e.clientY, moved: false, layer: hit >= 0 ? hit : null };
+            if (hit >= 0) setSel(hit);
           }}
           onPointerMove={(e) => {
-            if (!drag.current) return;
-            if (!drag.current.moved && Math.abs(e.clientY - drag.current.y) < 6) return;
-            drag.current.moved = true;
+            const d = drag.current;
+            if (!d) return;
+            if (!d.moved && Math.hypot(e.clientX - d.x, e.clientY - d.y) < 6) return;
+            d.moved = true;
             setDragging(true);
-            const y = yAt(e);
-            set((x) => void (x.captionY = Math.round(y * 100) / 100));
+            const pt = at(e);
+            if (d.layer !== null) editLayer(d.layer, { x: Math.round(pt.x * 100) / 100, y: Math.round(pt.y * 100) / 100 });
+            else set((x) => void (x.captionY = Math.min(0.9, Math.round(pt.y * 100) / 100)));
           }}
           onPointerUp={() => {
-            if (drag.current && !drag.current.moved) ref.current?.isPlaying() ? ref.current.pause() : ref.current?.play();
+            if (drag.current && !drag.current.moved && drag.current.layer === null) ref.current?.isPlaying() ? ref.current.pause() : ref.current?.play();
             drag.current = null;
             setDragging(false);
           }}
@@ -1903,18 +2046,24 @@ const PickTune: React.FC<{ p: EffectsReelProps; update: PanelProps<EffectsReelPr
           <div className="capline" style={{ top: `${Math.round((capY ?? 0.62) * 100)}%` }}>
             <span>{capY === undefined ? tr("字幕（おまかせ）") : tr("字幕")}</span>
           </div>
+          {layers.map((o, k) => (
+            <i key={k} className={`layerdot ${sel === k ? 'on' : ''}`} style={{ left: `${o.x * 100}%`, top: `${o.y * 100}%` }} />
+          ))}
         </div>
       </div>
-      <p className="pickhint">{tr("字幕は動画の上で指を上下に動かすと移動できます。")}</p>
+      <p className="pickhint">{tr("字幕やステッカーは、動画の上で指でドラッグして動かせます。")}</p>
       <div className="picktools">
         <div className="field">
-          <label>{tr("字幕の位置")}</label>
-          <div className="seg">
-            {([undefined, 0.16, 0.46, 0.72] as const).map((v) => (
-              <button key={v ?? 'auto'} className={capY === v ? 'on' : ''} onClick={() => set((x) => void (x.captionY = v))}>
-                {v === undefined ? tr("おまかせ") : v < 0.3 ? tr("上") : v < 0.6 ? tr("真ん中") : tr("下")}
-              </button>
-            ))}
+          <label>
+            <span>{tr("字幕の高さ")}</span>
+            <button className={`chipbtn ${capY === undefined ? 'on' : ''}`} onClick={() => set((x) => void (x.captionY = undefined))}>
+              {tr("おまかせ")}
+            </button>
+          </label>
+          <input type="range" min={0.05} max={0.9} step={0.01} value={capY ?? 0.62} aria-label={tr("字幕の高さ")} onChange={(e) => set((x) => void (x.captionY = Number(e.target.value)))} />
+          <div className="rangeends">
+            <span>{tr("上")}</span>
+            <span>{tr("下")}</span>
           </div>
         </div>
         <div className="field">
@@ -1923,6 +2072,51 @@ const PickTune: React.FC<{ p: EffectsReelProps; update: PanelProps<EffectsReelPr
             <span>{bright === 1 ? tr("そのまま") : `${bright > 1 ? '+' : ''}${Math.round((bright - 1) * 100)}`}</span>
           </label>
           <input type="range" min={0.6} max={1.4} step={0.02} value={bright} aria-label={tr("明るさ")} onChange={(e) => set((x) => void (x.brightness = Number(e.target.value) === 1 ? undefined : Number(e.target.value)))} />
+          <div className="rangeends">
+            <span>{tr("暗く")}</span>
+            <span>{tr("明るく")}</span>
+          </div>
+        </div>
+        <div className="premium">
+          <div className="premiumhead">
+            <b>
+              <Glyph d={G.sparkle} size={18} /> {tr("プレミアム編集")}
+            </b>
+            <span className="cost">{tr("書き出し時に＋{0}トークン", PREMIUM_TOKENS)}</span>
+          </div>
+          <div className="textadd">
+            <input value={draft} maxLength={40} placeholder={tr("テロップの文字を入れる")} onChange={(e) => setDraft(e.target.value)} />
+            <button
+              className="btn small"
+              disabled={!draft.trim() || layers.length >= 12}
+              onClick={() => (addLayer({ kind: 'text', text: draft.trim(), x: 0.5, y: 0.22, scale: 1 }), setDraft(''))}
+            >
+              <Glyph d={G.text} size={16} /> {tr("足す")}
+            </button>
+          </div>
+          <div className="stickers">
+            {STICKERS.map((id) => (
+              <button key={id} aria-label={id} disabled={layers.length >= 12} onClick={() => addLayer({ kind: 'sticker', sticker: id, x: 0.72, y: 0.3, scale: 1 })}>
+                <svg viewBox="0 0 100 100" width="34" height="34" aria-hidden>
+                  <path d={STICKER_PATHS[id]} fill="currentColor" />
+                </svg>
+              </button>
+            ))}
+          </div>
+          {cur ? (
+            <div className="layeredit">
+              <span>{cur.kind === 'text' ? `「${cur.text}」` : tr("ステッカー")}</span>
+              <div className="swatches">
+                {OVERLAY_COLORS.map((c) => (
+                  <button key={c} aria-label={c} className={(cur.color ?? p.palette.accent).toLowerCase() === c.toLowerCase() ? 'on' : ''} style={{ background: c }} onClick={() => editLayer(sel!, { color: c })} />
+                ))}
+              </div>
+              <input type="range" min={0.4} max={2.5} step={0.05} value={cur.scale ?? 1} aria-label={tr("大きさ")} onChange={(e) => editLayer(sel!, { scale: Number(e.target.value) })} />
+              <button className="iconround" aria-label={tr("消す")} onClick={() => dropLayer(sel!)}>
+                <Glyph d={G.trash} size={18} />
+              </button>
+            </div>
+          ) : null}
         </div>
       </div>
       <div className="pickcta">
@@ -1993,14 +2187,14 @@ const PickFlow: React.FC<{
           ) : (
             <div className="pickcta">
               <button className="btn" disabled={!saved || !!DEMO} onClick={onRender} title={DEMO ? DEMO_BLOCKED : undefined}>
-                {tr("動画を書き出す")}
+                {tr("動画を書き出す")} <small className="tokcost">{tr("{0}トークン", exportCost(job, p))}</small>
               </button>
             </div>
           )}
           {job.status === 'done' && job.video ? (
             <div className="pickcta">
               <button className="btn ghost" disabled={!saved || !!DEMO} onClick={onRender}>
-                {tr("選び直した内容で書き出し直す")}
+                {tr("選び直した内容で書き出し直す")} <small className="tokcost">{tr("{0}トークン", exportCost(job, p))}</small>
               </button>
             </div>
           ) : null}
@@ -2750,32 +2944,57 @@ const Start: React.FC<{ go: (h: string) => void }> = ({ go }) => {
       setBusy(false);
     }
   };
+  const [open, setOpen] = useState<string | null>(null);
+  const fold = (id: string, title: string, note: string, body: React.ReactNode) => (
+    <section className={`fold ${open === id ? 'open' : ''}`}>
+      <button className="foldhead" aria-expanded={open === id} onClick={() => setOpen(open === id ? null : id)}>
+        <span>
+          <b>{title}</b>
+          <small>{note}</small>
+        </span>
+        <Glyph d={G.down} />
+      </button>
+      {open === id ? <div className="foldbody">{body}</div> : null}
+    </section>
+  );
   return (
     <div className="start">
-      <h1>{tr("新しい動画")}</h1>
-      <p className="sub">{tr("載せたら、AIがいくつもの案を作ります。あとは選ぶだけ。")}</p>
-      <UploadTile value={video} onChange={setVideo} />
-      <div className="pickcta">
-        <button className="btn big" disabled={!video || busy || !!DEMO} onClick={submit}>
-          <Glyph d={G.sparkle} size={20} /> {busy ? tr("送信中…") : tr("案をつくる")}
-        </button>
-      </div>
-      <p className="cost" style={{ textAlign: 'center' }}>
-        {tr("消費:")} <b>{fmtN(tokensFor('EffectsReel', { video }))}{tr("トークン")}</b>
-      </p>
-      {err ? <div className="err">{err}</div> : null}
-      {DEMO ? <div className="warn">{DEMO_BLOCKED}</div> : null}
-      <div className="startmore">
-        <span>{tr("写真から作る")}</span>
-        <button className="listrow" onClick={() => go('#/new/ProductShine')}>
-          <b>{TEMPLATES.ProductShine.name}</b>
-          <small>{tr("商品写真1枚から")}</small>
-        </button>
-        <button className="listrow" onClick={() => go('#/new/SaaSPromo')}>
-          <b>{TEMPLATES.SaaSPromo.name}</b>
-          <small>{tr("画面のスクリーンショットから")}</small>
-        </button>
-      </div>
+      <h1>{tr("動画を作る")}</h1>
+      <p className="sub">{tr("作り方を選んでください。")}</p>
+      {fold(
+        'video',
+        tr("動画を載せる"),
+        tr("話している動画、お店や商品の動画から"),
+        <>
+          <UploadTile value={video} onChange={setVideo} />
+          <div className="pickcta">
+            <button className="btn big" disabled={!video || busy || !!DEMO} onClick={submit}>
+              <Glyph d={G.sparkle} size={20} /> {busy ? tr("送信中…") : tr("案をつくる")}
+            </button>
+          </div>
+          <p className="cost" style={{ textAlign: 'center' }}>
+            {tr("消費:")} <b>{fmtN(tokensFor('EffectsReel', { video }))}{tr("トークン")}</b>
+          </p>
+          {err ? <div className="err">{err}</div> : null}
+          {DEMO ? <div className="warn">{DEMO_BLOCKED}</div> : null}
+        </>,
+      )}
+      {fold(
+        'product',
+        tr("商品を見せる"),
+        tr("商品写真1枚から"),
+        <button className="btn big" onClick={() => go('#/new/ProductShine')}>
+          {TEMPLATES.ProductShine.name}
+        </button>,
+      )}
+      {fold(
+        'service',
+        tr("サービス紹介"),
+        tr("画面のスクリーンショットから"),
+        <button className="btn big" onClick={() => go('#/new/SaaSPromo')}>
+          {TEMPLATES.SaaSPromo.name}
+        </button>,
+      )}
     </div>
   );
 };
@@ -2854,7 +3073,7 @@ const Home: React.FC<{ go: (h: string) => void; initialGroup?: string }> = ({ go
         <span className="upplus">
           <Glyph d="M12 5v14M5 12h14" size={28} />
         </span>
-        <b>{tr("動画を載せる")}</b>
+        <b>{tr("動画を作る")}</b>
         <small>{tr("AIがいくつもの案を作ります")}</small>
       </button>
       <RecentReels go={go} />
@@ -2983,25 +3202,25 @@ const FeedItem: React.FC<{ job: Job; onEdit: () => void }> = ({ job, onEdit }) =
 };
 
 const PLANS = [
-  { id: 'starter', name: tr("スターター"), price: tr("9,800円"), yen: 9800, tokens: 60_000, note: tr("週3投稿の目安") },
-  { id: 'standard', name: tr("スタンダード"), price: tr("29,800円"), yen: 29800, tokens: 200_000, note: tr("毎日投稿の目安") },
-  { id: 'pro', name: tr("プロ"), price: tr("79,800円"), yen: 79800, tokens: 600_000, note: tr("複数ブランド・優先書き出し") },
+  { id: 'starter', name: tr("スターター"), price: tr("9,800円"), yen: 9800, tokens: 60, note: tr("週3投稿の目安") },
+  { id: 'standard', name: tr("スタンダード"), price: tr("29,800円"), yen: 29800, tokens: 200, note: tr("毎日投稿の目安") },
+  { id: 'pro', name: tr("プロ"), price: tr("79,800円"), yen: 79800, tokens: 600, note: tr("複数ブランド・優先書き出し") },
 ] as const;
-/** The cheapest reel (2,000 tokens, own footage with captions) on a plan, rounded to 10 yen. */
-const perReel = (p: { yen: number; tokens: number }) => Math.round(((p.yen / p.tokens) * 2000) / 10) * 10;
+/** The cheapest reel (2 tokens, own footage with captions) on a plan, rounded to 10 yen. */
+const perReel = (p: { yen: number; tokens: number }) => Math.round(((p.yen / p.tokens) * 2) / 10) * 10;
 const MIN_PER_REEL = Math.min(...PLANS.map(perReel));
 /** Yen per `unit` tokens on a plan, to set pay as you go against. */
 const perUnit = (p: { yen: number; tokens: number }, unit: number) => Math.round((p.yen / p.tokens) * unit);
 
 const FAQ = [
-  { q: tr("トークンとは？"), a: tr("リールを1本作るときに使う単位です。自分の素材だけなら2,000、AIで写真やエフェクトを作ると5,000、AI動画を入れると12,000使います。足りないときは、必要な分だけいつでも買い足せます。") },
+  { q: tr("トークンとは？"), a: tr("リールを1本作るときに使う単位です。ふつうの動画は5、自分の素材だけなら2、AI動画を入れると12使います。書き出しは1回1です。足りないときは、必要な分だけいつでも買い足せます。") },
   { q: tr("同じテンプレートでも毎回ちがう動画になりますか？"), a: tr("はい。ミックスはカットごとにエフェクト・字幕・カメラ・切り替えを組み合わせるので、シャッフルするたびに別の組み合わせになります。") },
   { q: tr("書き出した動画は商用で使えますか？"), a: tr("使えます。インスタのリール、TikTok、YouTubeショート、広告にそのまま使える縦型MP4です。") },
-  { q: tr("書き出した後でも直せますか？"), a: tr("直せます。字幕・色・カットの演出を変えて、何度でも書き出し直せます。書き出し直しにトークンはかかりません。") },
+  { q: tr("書き出した後でも直せますか？"), a: tr("直せます。字幕・色・カットの演出を変えて、何度でも書き出し直せます。書き出しは1回につき1トークンです。") },
   { q: tr("解約はいつでもできますか？"), a: tr("できます。アカウントの「お支払い・解約の管理」から、いつでも手続きできます。") },
 ];
 
-const jobTokens = (j: Job) => j.tokens ?? (j.template === 'ProductShine' ? (j.props?.clip ? 12_000 : 5_000) : j.template === 'EffectsReel' || j.template === 'FivePass' || j.template === 'SaaSPromo' ? 5_000 : 2_000);
+const jobTokens = (j: Job) => j.tokens ?? (j.template === 'ProductShine' ? (j.props?.clip ? 12 : 5) : j.template === 'EffectsReel' || j.template === 'FivePass' || j.template === 'SaaSPromo' ? 5 : 2);
 
 type Me = { email?: string; plan: 'free' | 'starter' | 'standard' | 'pro'; tokens: number; extra: number; balance: number; billing: boolean; subscribed: boolean; store?: 'stripe' | 'app_store' | 'play_store'; pastDue?: boolean; freePending?: boolean; displayName?: string; avatar?: string; auth: boolean };
 const PLAN_NAMES: Record<Me['plan'], string> = { free: tr("無料"), starter: tr("スターター"), standard: tr("スタンダード"), pro: tr("プロ") };
@@ -3033,7 +3252,7 @@ const FreeClaim: React.FC<{ onDone: () => void }> = ({ onDone }) => {
     setBusy(false);
   };
   const claim = async () => (await api('/api/free-tokens', { method: 'POST' }), onDone());
-  const n = fmtN(appConfig?.freeTokens ?? 10_000);
+  const n = fmtN(appConfig?.freeTokens ?? 10);
   return (
     <div className="okmsg">
       <b>{tr("電話番号を確認すると、{0}トークンを無料でもらえます。", n)}</b>
@@ -3211,7 +3430,7 @@ const Account: React.FC<{ go: (h: string) => void }> = ({ go }) => {
       <p className="lead-price">
         {tr("リール1本")} <b>{tr("約{0}円", MIN_PER_REEL)}</b> {tr("から")}
       </p>
-      <p className="cost" style={{ marginTop: -6, marginBottom: 12 }}>{tr("※プロプランで字幕リール（2,000トークン）を作った場合")}</p>
+      <p className="cost" style={{ marginTop: -6, marginBottom: 12 }}>{tr("※プロプランで字幕リール（2トークン）を作った場合")}</p>
       <div className="plans">
         {PLANS.map((p) => {
           const current = me?.plan === p.id;
@@ -3249,7 +3468,7 @@ const Account: React.FC<{ go: (h: string) => void }> = ({ go }) => {
         })}
       </div>
       {inStore ? <p className="cost">{tr("このプランはiPhoneのアプリで契約しています。変更・解約はiPhoneの「設定」→ Apple ID →「サブスクリプション」からできます。")}</p> : null}
-      <p className="cost">{tr("消費トークン: 自分の素材だけ 2,000 ／ AI写真・エフェクト 5,000 ／ AI動画あり 12,000")}</p>
+      <p className="cost">{tr("消費トークン: 自分の素材だけ 2 ／ AI写真・エフェクト 5 ／ AI動画あり 12 ／ 書き出し 1")}</p>
       {billing && appConfig?.payg ? <PayAsYouGo payg={appConfig.payg} busy={busy} onBuy={(tokens) => open('topup', tokens)} /> : null}
       {billing && me?.subscribed ? (
         <div className="row" style={{ flexWrap: 'wrap', gap: 8, marginTop: 8 }}>
@@ -3285,7 +3504,7 @@ const Account: React.FC<{ go: (h: string) => void }> = ({ go }) => {
   );
 };
 
-const PAYG_PRESETS = [5_000, 10_000, 30_000, 100_000];
+const PAYG_PRESETS = [5, 10, 30, 100];
 
 /**
  * Pay as you go on the website: any amount of tokens, any time, no plan needed. A unit costs a little more
@@ -3294,7 +3513,7 @@ const PAYG_PRESETS = [5_000, 10_000, 30_000, 100_000];
 const PayAsYouGo: React.FC<{ payg: NonNullable<NonNullable<typeof appConfig>['payg']>; busy: string; onBuy: (tokens: number) => void }> = ({ payg, busy, onBuy }) => {
   const min = payg.min * payg.unit;
   const max = payg.max * payg.unit;
-  const [tokens, setTokens] = useState(10_000);
+  const [tokens, setTokens] = useState(10);
   const units = Math.round(tokens / payg.unit);
   const ok = units >= payg.min && units <= payg.max;
   const yen = units * payg.unitYen;
@@ -3412,10 +3631,10 @@ const StorePlans: React.FC<{ me: Me | null; onChanged: () => Promise<unknown> }>
         })}
       </div>
       {webPlan ? <p className="cost">{tr("このプランはアプリ以外で契約しています。")}</p> : null}
-      <p className="cost">{tr("消費トークン: 自分の素材だけ 2,000 ／ AI写真・エフェクト 5,000 ／ AI動画あり 12,000")}</p>
+      <p className="cost">{tr("消費トークン: 自分の素材だけ 2 ／ AI写真・エフェクト 5 ／ AI動画あり 12 ／ 書き出し 1")}</p>
       <div className="row" style={{ flexWrap: 'wrap', gap: 8, marginTop: 8 }}>
         <button className="btn ghost small" disabled={!products?.topup || !!busy} onClick={buy('topup')}>
-          {busy === 'topup' ? tr("処理中…") : tr("トークンを{0}追加する", fmtN(iap.topupTokens ?? 10_000))}
+          {busy === 'topup' ? tr("処理中…") : tr("トークンを{0}追加する", fmtN(iap.topupTokens ?? 10))}
           {products?.topup ? ` (${products.topup.price})` : ''}
         </button>
         {me?.store === 'app_store' || me?.store === 'play_store' ? (
@@ -3586,6 +3805,7 @@ const App = () => {
           ))}
         </div>
         <div className="spacer" />
+        <ThemeButton />
         <button className="langbtn" onClick={() => go('#/search')} aria-label={tr("検索")}>
           <Icon name="search" />
         </button>
@@ -3779,7 +3999,7 @@ const SignIn: React.FC = () => {
         ) : null}
       </div>
       {msg ? <div className="cost">{msg}</div> : null}
-      <p className="cost">{tr("登録して電話番号を確認すると、{0}トークン分を無料で試せます。", fmtN(appConfig?.freeTokens ?? 10_000))}</p>
+      <p className="cost">{tr("登録して電話番号を確認すると、{0}トークン分を無料で試せます。", fmtN(appConfig?.freeTokens ?? 10))}</p>
       <p className="legal">
         <a href="/legal/terms.html" target="_blank" rel="noreferrer">{tr("利用規約")}</a>
         <a href="/legal/privacy.html" target="_blank" rel="noreferrer">{tr("プライバシーポリシー")}</a>

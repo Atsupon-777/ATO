@@ -145,8 +145,12 @@ export async function webhook(raw: Buffer, signature: string | undefined) {
       // Konbini and bank transfer finish later: completed arrives unpaid, async_payment_succeeded once the money is in.
       case 'checkout.session.async_payment_succeeded':
         if (o.mode === 'subscription' && o.subscription) a.subscriptionId = String(o.subscription);
-        // Pay as you go carries its token count; a session from before that was the fixed 30 (now 30,000) pack.
-        if (o.mode === 'payment' && o.metadata?.kind === 'topup' && o.payment_status === 'paid') a.extra += Number(o.metadata.tokens) || TOPUP_TOKENS;
+        // Pay as you go carries its token count; a session from before that was the fixed 30-token pack.
+        if (o.mode === 'payment' && o.metadata?.kind === 'topup' && o.payment_status === 'paid') {
+          // A Checkout opened while counts were 1000x larger (until 2026-10-21) carries 2,000-500,000.
+          const t = Number(o.metadata.tokens);
+          a.extra += t >= 1000 ? Math.round(t / 1000) : t || TOPUP_TOKENS;
+        }
         break;
       case 'invoice.payment_failed':
         // Stripe retries the card; the account page asks the customer to update it meanwhile.

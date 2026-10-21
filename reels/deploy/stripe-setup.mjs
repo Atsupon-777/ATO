@@ -28,9 +28,9 @@ const post = async (path, body) => {
 // Pay as you go needs no price here: the app prices it inline (PAYG_UNIT / PAYG_UNIT_YEN in env.yaml).
 const only = process.env.ONLY ? process.env.ONLY.split(',') : null;
 const items = [
-  { env: 'STRIPE_PRICE_STARTER', name: 'Editless スターター', yen: 9800, monthly: true, desc: '毎月60,000トークン' },
-  { env: 'STRIPE_PRICE_STANDARD', name: 'Editless スタンダード', yen: 29800, monthly: true, desc: '毎月200,000トークン' },
-  { env: 'STRIPE_PRICE_PRO', name: 'Editless プロ', yen: 79800, monthly: true, desc: '毎月600,000トークン' },
+  { env: 'STRIPE_PRICE_STARTER', name: 'Editless スターター', yen: 9800, monthly: true, desc: '毎月60トークン' },
+  { env: 'STRIPE_PRICE_STANDARD', name: 'Editless スタンダード', yen: 29800, monthly: true, desc: '毎月200トークン' },
+  { env: 'STRIPE_PRICE_PRO', name: 'Editless プロ', yen: 79800, monthly: true, desc: '毎月600トークン' },
 ];
 const out = [];
 // ONLY=STRIPE_PRICE_PRO (comma-separated) creates just those.

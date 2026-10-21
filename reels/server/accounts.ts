@@ -9,25 +9,25 @@ import { dataDir } from './paths.ts';
 export type PlanId = 'free' | 'starter' | 'standard' | 'pro';
 
 /**
- * Token counts were multiplied by 1000 on 2026-10-18 (a reel went from 2 to 2,000 tokens, same ratios).
- * Accounts saved before that carry no `tokenScale` and are converted once when the file is loaded.
+ * Unit of `tokens` and `extra`. A reel takes 2 / 5 / 12 tokens. From 2026-10-18 to 2026-10-21 counts were kept
+ * 1000 times larger (tokenScale 1000); accounts saved in another scale are converted once when the file is loaded.
  */
-export const TOKEN_SCALE = 1000;
+export const TOKEN_SCALE = 1;
 /** Monthly token allowance of each plan. Prices live in Stripe (STRIPE_PRICE_<PLAN>). */
-export const PLAN_TOKENS: Record<PlanId, number> = { free: 0, starter: 60_000, standard: 200_000, pro: 600_000 };
+export const PLAN_TOKENS: Record<PlanId, number> = { free: 0, starter: 60, standard: 200, pro: 600 };
 /** Free tokens a new account can claim once, after confirming a phone number by SMS. */
-export const FREE_TOKENS = Number(process.env.FREE_TOKENS ?? 10_000);
+export const FREE_TOKENS = Number(process.env.FREE_TOKENS ?? 10);
 /**
  * Pay as you go: tokens are bought in units of PAYG_UNIT, any number of units between PAYG_MIN and PAYG_MAX.
  * PAYG_UNIT_YEN is the price of one unit (tax included), charged inline at Checkout; no Stripe price to keep in step.
  * A unit costs a little more than the same tokens on any plan, so a plan stays the better deal.
  */
-export const PAYG_UNIT = Number(process.env.PAYG_UNIT ?? 1000);
+export const PAYG_UNIT = Number(process.env.PAYG_UNIT ?? 1);
 export const PAYG_UNIT_YEN = Number(process.env.PAYG_UNIT_YEN ?? 200);
 export const PAYG_MIN = Number(process.env.PAYG_MIN ?? 2);
 export const PAYG_MAX = Number(process.env.PAYG_MAX ?? 500);
 /** Tokens from a top-up that carries no token count (a Checkout started before pay as you go, or an in-app pack). */
-export const TOPUP_TOKENS = Number(process.env.TOPUP_TOKENS ?? 30_000);
+export const TOPUP_TOKENS = Number(process.env.TOPUP_TOKENS ?? 30);
 
 export type Account = {
   uid: string;
@@ -76,8 +76,9 @@ async function load() {
   let converted = false;
   for (const a of accounts.values()) {
     if (a.tokenScale === TOKEN_SCALE) continue;
-    a.tokens = (a.tokens ?? 0) * TOKEN_SCALE;
-    a.extra = (a.extra ?? 0) * TOKEN_SCALE;
+    const k = TOKEN_SCALE / (a.tokenScale ?? 1);
+    a.tokens = Math.round((a.tokens ?? 0) * k);
+    a.extra = Math.round((a.extra ?? 0) * k);
     a.tokenScale = TOKEN_SCALE;
     converted = true;
   }

@@ -218,6 +218,22 @@ export const beatStyleSchema = z.object({
   color: zColor().optional(),
 });
 
+export const stickerIds = ['heart', 'star', 'sparkle', 'arrow', 'burst', 'check', 'fire', 'new'] as const;
+/** One premium-edit layer: a sticker or a line of text. x / y are the centre, 0..1 of the frame. */
+export const overlaySchema = z.object({
+  kind: z.enum(['sticker', 'text']),
+  sticker: z.enum(stickerIds).optional(),
+  text: z.string().max(40).optional(),
+  x: z.number().min(0).max(1),
+  y: z.number().min(0).max(1),
+  /** 1 = default size. */
+  scale: z.number().min(0.4).max(3).default(1),
+  color: zColor().optional(),
+  /** Seconds into the reel; unset shows it the whole time. */
+  from: z.number().min(0).optional(),
+  to: z.number().min(0).optional(),
+});
+
 export const effectSegmentSchema = z.object({
   effect: z.enum(effectIds),
   /** Source range in seconds. */
@@ -256,8 +272,11 @@ export const effectsReelSchema = z.object({
   brightness: z.number().min(0.5).max(1.5).optional(),
   /** Caption height for the whole reel (0 top, 1 bottom); when set it wins over each beat's captionPos. */
   captionY: z.number().min(0.05).max(0.9).optional(),
+  /** Premium edit: stickers and hand-written telops laid over the whole reel, placed by the user. */
+  overlays: z.array(overlaySchema).max(12).optional(),
 });
 
+export type Overlay = z.infer<typeof overlaySchema>;
 export type EffectSegment = z.infer<typeof effectSegmentSchema>;
 export type BeatStyle = z.infer<typeof beatStyleSchema>;
 export type EffectsReelProps = z.infer<typeof effectsReelSchema>;

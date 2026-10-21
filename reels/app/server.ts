@@ -20,7 +20,7 @@ import { buildSaasProps } from '../server/saas.ts';
 import { buildTalkProps } from '../server/talk.ts';
 import { isLang, type Lang } from '../src/lang.ts';
 import { authEnabled, LOCAL_USER, verifyIdToken, webConfig, type User } from '../server/auth.ts';
-import { FreeClaimError, NotEnoughTokens, balance, charge, claimFree, getAccount, refund, removeAccount, update, PLAN_TOKENS, FREE_TOKENS, PAYG_UNIT, PAYG_UNIT_YEN, PAYG_MIN, PAYG_MAX, TOKEN_SCALE } from '../server/accounts.ts';
+import { FreeClaimError, NotEnoughTokens, balance, charge, claimFree, getAccount, refund, removeAccount, update, PLAN_TOKENS, FREE_TOKENS, PAYG_UNIT, PAYG_UNIT_YEN, PAYG_MIN, PAYG_MAX } from '../server/accounts.ts';
 import { billingEnabled, cancelSubscription, checkout, isPurchase, paygUnits, portal, webhook } from '../server/billing.ts';
 import { iapConfig, revenuecatWebhook } from '../server/appstore.ts';
 import { deleteFirebaseUser } from '../server/google.ts';
@@ -63,10 +63,18 @@ type Job = {
   owner?: string;
   /** Tokens this job took. */
   tokens?: number;
+  /** The premium edit (stickers, telops) has been paid for once, so later exports cost only EXPORT_TOKENS. */
+  premiumPaid?: boolean;
 };
 
-/** Tokens each kind of reel takes: own footage only 2,000, AI photo or effects 5,000, with AI video 12,000. */
-const tokensFor = (t: Template, input: Record<string, any>) => (t === 'ProductShine' ? (input.video ? 12_000 : 5_000) : t === 'EffectsReel' || t === 'FivePass' || t === 'SaaSPromo' ? 5_000 : 2_000);
+/** Each export costs a little; the first export that carries premium-edit layers adds PREMIUM_TOKENS once. */
+const EXPORT_TOKENS = 1;
+const PREMIUM_TOKENS = 2;
+const exportCost = (job: Job) =>
+  EXPORT_TOKENS + ((job.props as { overlays?: unknown[] } | undefined)?.overlays?.length && !job.premiumPaid ? PREMIUM_TOKENS : 0);
+
+/** Tokens each kind of reel takes: own footage only 2, AI photo or effects 5, with AI video 12. */
+const tokensFor = (t: Template, input: Record<string, any>) => (t === 'ProductShine' ? (input.video ? 12 : 5) : t === 'EffectsReel' || t === 'FivePass' || t === 'SaaSPromo' ? 5 : 2);
 
 const jobs = new Map<string, Job>();
 
@@ -83,8 +91,8 @@ async function loadJobs() {
         job.status = job.props ? 'ready' : 'error';
         job.error ??= job.props ? undefined : 'サーバー再起動で中断されました';
       }
-      // Jobs made before tokens were scaled up (2026-10-18) recorded 2 / 5 / 12.
-      if (job.tokens && job.tokens < TOKEN_SCALE) job.tokens *= TOKEN_SCALE;
+      // Jobs made between 2026-10-18 and 2026-10-21 recorded 2,000 / 5,000 / 12,000.
+      if (job.tokens && job.tokens >= 1000) job.tokens = Math.round(job.tokens / 1000);
       jobs.set(id, job);
     } catch {}
   }
@@ -223,7 +231,7 @@ const absolutize = (v: unknown): unknown => {
 };
 
 let renderQueue = Promise.resolve();
-function startRender(job: Job) {
+function startRender(job: Job, cost = 0) {
   job.status = 'rendering';
   job.renderProgress = 0;
   job.renderStartedAt = new Date().toISOString();
@@ -239,11 +247,15 @@ function startRender(job: Job) {
       if (job.template === 'FivePass') await loudnorm(out);
       job.video = `jobs/${job.id}/${path.basename(out)}`;
       job.status = 'done';
+      if (cost > EXPORT_TOKENS) job.premiumPaid = true;
+      job.tokens = (job.tokens ?? 0) + cost;
       if (job.owner) notifyJob(job.owner, 'done', job);
     } catch (e) {
       console.error(e);
       job.status = 'ready';
       job.error = `書き出しに失敗しました: ${e instanceof Error ? e.message : e}`;
+      // Nothing came out, so the export tokens go back.
+      if (cost) await refund(job.owner ?? LOCAL_USER.uid, cost).catch(console.error);
     }
     job.renderProgress = undefined;
     await save(job);
@@ -433,7 +445,7 @@ const server = http.createServer(async (req, res) => {
       return res.writeHead(200, { 'Content-Type': types['.js'] }).end(await appJs);
     }
     if (/^\/legal\/[\w-]+\.html$/.test(p)) return sendFile(req, res, path.join(webDir, p));
-    if (/^\/icons\/icon(-\d+)?\.(svg|png)$/.test(p)) return sendFile(req, res, path.join(webDir, p));
+    if (/^\/icons\/(icon(-\d+)?\.(svg|png)|ato-mark\.png)$/.test(p)) return sendFile(req, res, path.join(webDir, p));
     // Home-screen app files live at the site root. The service worker must always be re-checked.
     if (pwaFiles.has(p)) {
       if (p === '/sw.js') res.setHeader('Cache-Control', 'no-cache');
@@ -605,7 +617,14 @@ const server = http.createServer(async (req, res) => {
       if (m[2] === '/render' && req.method === 'POST') {
         if (!job.props) return json(res, 400, { error: 'まだ生成中です' });
         if (job.status === 'rendering') return json(res, 409, { error: '書き出し中です' });
-        startRender(job);
+        const cost = exportCost(job);
+        try {
+          await charge(user!.uid, cost);
+        } catch (e) {
+          if (e instanceof NotEnoughTokens) return json(res, 402, { error: e.message, code: 'tokens' });
+          throw e;
+        }
+        startRender(job, cost);
         return json(res, 200, job);
       }
     }

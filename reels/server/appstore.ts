@@ -3,15 +3,15 @@
 //   REVENUECAT_WEBHOOK_AUTH      the Authorization value set on the RevenueCat webhook (secret)
 //   REVENUECAT_IOS_KEY           RevenueCat public SDK key for iOS (appl_...), handed to the app by /api/config
 //   REVENUECAT_ANDROID_KEY       the same for Android (goog_...), for later
-//   IAP_PRODUCT_TOPUP            consumable token pack (default reels_tokens_10000)
-//   IAP_TOPUP_TOKENS             tokens in that pack (default 10,000); the App Store can't sell any amount, so the app sells a fixed pack
+//   IAP_PRODUCT_TOPUP            consumable token pack (default reels_tokens_10)
+//   IAP_TOPUP_TOKENS             tokens in that pack (default 10); the App Store can't sell any amount, so the app sells a fixed pack
 //   IAP_PRODUCT_STARTER / _STANDARD / _PRO   monthly auto-renewing subscriptions (default reels_<plan>_monthly)
 import { timingSafeEqual } from 'node:crypto';
 import { PLAN_TOKENS, getAccount, update, type PlanId } from './accounts.ts';
 
-export const IAP_TOPUP_TOKENS = Number(process.env.IAP_TOPUP_TOKENS ?? 10_000);
+export const IAP_TOPUP_TOKENS = Number(process.env.IAP_TOPUP_TOKENS ?? 10);
 export const IAP_PRODUCTS = {
-  topup: process.env.IAP_PRODUCT_TOPUP || 'reels_tokens_10000',
+  topup: process.env.IAP_PRODUCT_TOPUP || 'reels_tokens_10',
   starter: process.env.IAP_PRODUCT_STARTER || 'reels_starter_monthly',
   standard: process.env.IAP_PRODUCT_STANDARD || 'reels_standard_monthly',
   pro: process.env.IAP_PRODUCT_PRO || 'reels_pro_monthly',

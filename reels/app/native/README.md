@@ -49,10 +49,10 @@ iPhone 用は設定済みです（2026-10-21）：iOS アプリ「Editless」を
 
    | 製品ID | 種類 | 中身 |
    | --- | --- | --- |
-   | `reels_tokens_10000` | 消耗型 | 10,000トークン（Webの都度購入のように量は選べないので固定パック） |
-   | `reels_starter_monthly` | 自動更新サブスクリプション（1か月） | スターター：毎月60,000トークン |
-   | `reels_standard_monthly` | 同上 | スタンダード：毎月200,000トークン |
-   | `reels_pro_monthly` | 同上 | プロ：毎月600,000トークン |
+   | `reels_tokens_10` | 消耗型 | 10トークン（Webの都度購入のように量は選べないので固定パック） |
+   | `reels_starter_monthly` | 自動更新サブスクリプション（1か月） | スターター：毎月60トークン |
+   | `reels_standard_monthly` | 同上 | スタンダード：毎月200トークン |
+   | `reels_pro_monthly` | 同上 | プロ：毎月600トークン |
 
    3つのプランは同じサブスクリプショングループに入れてください。価格は篤さんが決めてください（Apple の手数料は Small Business Program で15%）。
 3. 「アプリ内課金キー」（.p8）を作り、RevenueCat にアップロード
