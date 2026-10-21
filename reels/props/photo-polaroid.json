@@ -1,0 +1,36 @@
+{
+  "photos": [
+    {
+      "src": "samples/photos/puppy.jpg",
+      "caption": "first beach day"
+    },
+    {
+      "src": "samples/photos/cat.jpg",
+      "caption": "lazy sundays"
+    },
+    {
+      "src": "samples/photos/travel.jpg",
+      "caption": "that white dress"
+    },
+    {
+      "src": "samples/photos/cafe.jpg",
+      "caption": "our corner table"
+    },
+    {
+      "src": "samples/photos/florist.jpg",
+      "caption": "peonies for you"
+    }
+  ],
+  "title": "Our Little Summer",
+  "subtitle": "Things we want to remember",
+  "cta": "Tag your person",
+  "handle": "@us.in.frames",
+  "motion": "polaroid",
+  "style": "editorial",
+  "palette": {
+    "bg": "#EDE6DA",
+    "ink": "#2A241E",
+    "accent": "#B5643C"
+  },
+  "bpm": 100
+}

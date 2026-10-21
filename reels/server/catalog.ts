@@ -5,6 +5,8 @@ import { mkdir, readFile, rename, writeFile } from 'node:fs/promises';
 import path from 'node:path';
 import { extraRecipes, type Recipe } from '../src/effects/recipes.ts';
 import { videoCategories, videoTemplates } from '../src/effects/video-catalog.ts';
+import { photoCategories, photoTemplates } from '../src/templates/photoreel-catalog.ts';
+import { serviceIndustries, serviceTemplates } from '../src/templates/servicereel-catalog.ts';
 import { dataDir, publicDir } from './paths.ts';
 
 export type CatalogKind = 'video' | 'photo' | 'service';
@@ -53,6 +55,8 @@ async function load() {
 const sources: (() => Omit<CatalogEntry, 'uses' | 'added' | 'sample'>[])[] = [
   () =>
     videoTemplates.map((v) => ({ id: v.id, kind: 'video' as const, ja: v.ja, en: v.en, categories: v.categories, premium: v.premium })),
+  () => photoTemplates.map((t) => ({ id: t.id, kind: 'photo' as const, ja: t.nameJa, en: t.nameEn, categories: t.categories, count: t.count })),
+  () => serviceTemplates.map((t) => ({ id: t.id, kind: 'service' as const, ja: t.nameJa, en: t.nameEn, categories: t.industries })),
   () =>
     extraRecipes.map((r) => ({ id: r.id, kind: 'video' as const, ja: r.name, en: r.en ?? r.name, categories: r.categories ?? [], premium: r.premium })),
 ];
@@ -70,7 +74,7 @@ export async function catalog(): Promise<{ entries: CatalogEntry[]; categories: 
   if (fresh) await save(seenFile, seen);
   return { entries, categories: { video: videoCategories, photo: categoryRows.photo, service: categoryRows.service } };
 }
-export const categoryRows: Record<'photo' | 'service', { id: string; ja: string; en: string }[]> = { photo: [], service: [] };
+export const categoryRows: Record<'photo' | 'service', { id: string; ja: string; en: string }[]> = { photo: photoCategories, service: serviceIndustries };
 
 /** Counts a reel started from a template, for the 人気 sort. */
 export async function countUse(id: string) {

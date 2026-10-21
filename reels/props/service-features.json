@@ -1,0 +1,21 @@
+{
+  "layout": "features",
+  "screen": "none",
+  "style": "vivid",
+  "name": "Brightway English",
+  "tagline": "Speak with confidence in 90 days.",
+  "category": "English school · Online + Osaka",
+  "photos": ["samples/photos/creator.jpg", "samples/photos/travel.jpg", "samples/photos/cafe.jpg"],
+  "hook": ["Speak English", "without the fear."],
+  "hookEmphasis": "fear.",
+  "features": [
+    { "title": "1-on-1 with native coaches", "body": "Real conversations from your very first lesson.", "photo": "samples/photos/creator.jpg" },
+    { "title": "Lessons built around your trips", "body": "Travel, work or study abroad, your goal sets the plan.", "photo": "samples/photos/travel.jpg" },
+    { "title": "Practise anywhere, any time", "body": "15-minute sessions fit a coffee break.", "photo": "samples/photos/cafe.jpg" }
+  ],
+  "cta": "Book a trial lesson",
+  "ctaNote": "Details in our profile",
+  "accent": "#FF6B3D",
+  "accent2": "#111216",
+  "bpm": 120
+}

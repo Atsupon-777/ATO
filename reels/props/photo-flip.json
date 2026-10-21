@@ -1,0 +1,36 @@
+{
+  "photos": [
+    {
+      "src": "samples/photos/serum.jpg",
+      "caption": "Hydrate"
+    },
+    {
+      "src": "samples/photos/beauty.jpg",
+      "caption": "Gloss"
+    },
+    {
+      "src": "samples/photos/blonde.jpg",
+      "caption": "Breathe"
+    },
+    {
+      "src": "samples/photos/florist.jpg",
+      "caption": "Unwind"
+    },
+    {
+      "src": "samples/photos/fitness.jpg",
+      "caption": "Move"
+    }
+  ],
+  "title": "Glow Ritual",
+  "subtitle": "Your 5-step evening",
+  "cta": "Shop the ritual",
+  "handle": "@glow.ritual",
+  "motion": "flip",
+  "style": "bold",
+  "palette": {
+    "bg": "#120A10",
+    "ink": "#FFFFFF",
+    "accent": "#FF8FC8"
+  },
+  "bpm": 118
+}

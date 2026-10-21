@@ -14,6 +14,10 @@ import { effectIds, effectsReelSchema, productShineSchema, saasPromoSchema, talk
 import { pass1, restoreVersion, runPass } from '../server/fivepass.ts';
 import { loudnorm } from '../server/loudnorm.ts';
 import { catalog, countUse } from '../server/catalog.ts';
+import { buildServiceProps } from '../server/service.ts';
+import { buildPhotoProps } from '../server/photo.ts';
+import { photoReelSchema } from '../src/photoreel.ts';
+import { serviceReelSchema } from '../src/servicereel.ts';
 import { buildEffectsProps } from '../server/effects.ts';
 import { buildProductReel, STYLES, type Style } from '../server/product.ts';
 import { renderTemplate } from '../server/render.ts';
@@ -41,6 +45,8 @@ const schemas = {
   TalkCaptions: talkCaptionsSchema,
   EffectsReel: effectsReelSchema,
   FivePass: fivePassSchema,
+  ServiceReel: serviceReelSchema,
+  PhotoReel: photoReelSchema,
 };
 type Template = keyof typeof schemas;
 
@@ -75,7 +81,7 @@ const exportCost = (job: Job) =>
   EXPORT_TOKENS + ((job.props as { overlays?: unknown[] } | undefined)?.overlays?.length && !job.premiumPaid ? PREMIUM_TOKENS : 0);
 
 /** Tokens each kind of reel takes: own footage only 2, AI photo or effects 5, with AI video 12. */
-const tokensFor = (t: Template, input: Record<string, any>) => (t === 'ProductShine' ? (input.video ? 12 : 5) : t === 'EffectsReel' || t === 'FivePass' || t === 'SaaSPromo' ? 5 : 2);
+const tokensFor = (t: Template, input: Record<string, any>) => (t === 'ProductShine' ? (input.video ? 12 : 5) : t === 'EffectsReel' || t === 'FivePass' || t === 'SaaSPromo' || t === 'ServiceReel' ? 5 : 2);
 
 const jobs = new Map<string, Job>();
 
@@ -166,6 +172,38 @@ async function startJob(template: Template, input: Record<string, any>, user: Us
           desktop,
           mobile: upload(input.mobile),
           logo: upload(input.logo),
+          lang,
+          jobId: id,
+          onStep,
+        });
+        job.props = res.props;
+        job.usage = res.usage;
+      } else if (template === 'PhotoReel') {
+        const photos = (Array.isArray(input.photos) ? input.photos : []).map(upload).filter(Boolean) as string[];
+        const res = await buildPhotoProps({
+          template: String(input.templateId || ''),
+          photos,
+          description: String(input.description || ''),
+          handle: String(input.handle || ''),
+          lang,
+          jobId: id,
+          onStep,
+        });
+        job.props = res.props;
+        job.usage = res.usage;
+        job.title = res.props.title || job.title;
+      } else if (template === 'ServiceReel') {
+        const photos = (Array.isArray(input.photos) ? input.photos : []).map(upload).filter(Boolean) as string[];
+        const res = await buildServiceProps({
+          template: String(input.templateId || ''),
+          name: String(input.name || '').slice(0, 24),
+          url: String(input.url || ''),
+          description: String(input.description || ''),
+          facts: String(input.facts || ''),
+          phone: upload(input.phone),
+          desktop: upload(input.desktop),
+          logo: upload(input.logo),
+          photos,
           lang,
           jobId: id,
           onStep,
@@ -654,7 +692,7 @@ const server = http.createServer(async (req, res) => {
 });
 
 const thumbOf = (t: Template, props?: Record<string, any>) =>
-  !props ? undefined : t === 'ProductShine' ? props.photo : t === 'SaaSPromo' ? props.desktop : undefined;
+  !props ? undefined : t === 'ProductShine' ? props.photo : t === 'SaaSPromo' ? props.desktop : t === 'ServiceReel' ? (props.desktop ?? props.phone ?? props.photos?.[0]) : t === 'PhotoReel' ? props.photos?.[0]?.src : undefined;
 
 await loadJobs();
 server.listen(PORT, () => console.log(`Editless on ${ORIGIN} (login ${authEnabled ? 'on' : 'off'}, billing ${billingEnabled ? 'on' : 'off'})`));

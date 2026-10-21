@@ -1,0 +1,22 @@
+{
+  "layout": "kinetic",
+  "screen": "none",
+  "style": "noir",
+  "name": "Menya Kaze",
+  "tagline": "Tonkotsu simmered for 18 hours. Open till 2am.",
+  "category": "Ramen · Shinjuku",
+  "photos": ["samples/photos/ramen.jpg"],
+  "hook": ["18 hours.", "One bowl.", "Zero shortcuts."],
+  "hookEmphasis": "Zero",
+  "features": [
+    { "title": "Broth simmered 18 hours" },
+    { "title": "Noodles made every morning" },
+    { "title": "Open till 2am" }
+  ],
+  "offer": "Free egg this week",
+  "cta": "Find us in Shinjuku",
+  "ctaNote": "Map & menu in our profile",
+  "accent": "#FF4B2B",
+  "accent2": "#FFB800",
+  "bpm": 128
+}

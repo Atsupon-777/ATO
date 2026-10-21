@@ -25,6 +25,38 @@ import { FivePass, fivePassDuration } from './templates/FivePass';
 import fivePassDemo from '../props/fivepass-demo.json';
 import { ProductFilm, productFilmDuration } from './templates/ProductFilm';
 import filmDemo from '../props/film-demo.json';
+import { PhotoReel, photoReelDuration } from './templates/PhotoReel';
+import { photoReelSchema, type PhotoReelProps } from './photoreel';
+import photoCinematic from '../props/photo-cinematic.json';
+
+// Remotion merges defaultProps under a job's props, so the PhotoReel defaults carry only required fields:
+// an optional field left out of a job (handle, cta, captions…) must stay empty, not show sample text.
+const photoDefaults: PhotoReelProps = {
+  photos: photoCinematic.photos.map(({ src }) => ({ src })),
+  title: photoCinematic.title,
+  motion: 'cinematic',
+  style: 'editorial',
+  palette: photoCinematic.palette,
+  bpm: photoCinematic.bpm,
+};
+import { ServiceReel, serviceReelDuration } from './templates/ServiceReel';
+import { serviceReelSchema, type ServiceReelProps } from './servicereel';
+import serviceFeatures from '../props/service-features.json';
+
+// Remotion merges defaultProps under every input, so ServiceReel's default carries only required fields:
+// a real job must never inherit a sample's logo, photos, stats or testimonial.
+const serviceDefault: ServiceReelProps = {
+  layout: 'features',
+  screen: 'none',
+  style: serviceFeatures.style as ServiceReelProps['style'],
+  name: serviceFeatures.name,
+  tagline: serviceFeatures.tagline,
+  hook: serviceFeatures.hook,
+  features: serviceFeatures.features.map((f) => ({ title: f.title })),
+  cta: serviceFeatures.cta,
+  accent: serviceFeatures.accent,
+  bpm: serviceFeatures.bpm,
+};
 
 export const RemotionRoot: React.FC = () => (
   <>
@@ -97,6 +129,28 @@ export const RemotionRoot: React.FC = () => (
       height={1920}
       durationInFrames={productFilmDuration(filmDemo as ProductFilmProps, FPS)}
       calculateMetadata={({ props }) => ({ durationInFrames: productFilmDuration(props, FPS) })}
+    />
+    <Composition
+      id="PhotoReel"
+      component={PhotoReel}
+      schema={photoReelSchema}
+      defaultProps={photoDefaults}
+      fps={FPS}
+      width={1080}
+      height={1920}
+      durationInFrames={photoReelDuration(photoDefaults, FPS)}
+      calculateMetadata={({ props }) => ({ durationInFrames: photoReelDuration(props, FPS) })}
+    />
+    <Composition
+      id="ServiceReel"
+      component={ServiceReel}
+      schema={serviceReelSchema}
+      defaultProps={serviceDefault}
+      fps={FPS}
+      width={1080}
+      height={1920}
+      durationInFrames={serviceReelDuration(serviceDefault, FPS)}
+      calculateMetadata={({ props }) => ({ durationInFrames: serviceReelDuration(props, FPS) })}
     />
   </>
 );

@@ -1,0 +1,36 @@
+{
+  "photos": [
+    {
+      "src": "samples/photos/travel.jpg",
+      "caption": "Santorini, 6pm"
+    },
+    {
+      "src": "samples/photos/puppy.jpg",
+      "caption": "Beach run"
+    },
+    {
+      "src": "samples/photos/cat.jpg",
+      "caption": "Window seat"
+    },
+    {
+      "src": "samples/photos/sushi-story-1.jpg",
+      "caption": "Dinner downtown"
+    },
+    {
+      "src": "samples/photos/matcha-story-1.jpg",
+      "caption": "Leaving Uji"
+    }
+  ],
+  "title": "Roll No. 12",
+  "subtitle": "Shot on film, summer 2026",
+  "cta": "More frames on the grid",
+  "handle": "@roll.twelve",
+  "motion": "filmstrip",
+  "style": "editorial",
+  "palette": {
+    "bg": "#14110E",
+    "ink": "#F4EDE2",
+    "accent": "#E2A34D"
+  },
+  "bpm": 96
+}

@@ -1,0 +1,36 @@
+{
+  "photos": [
+    {
+      "src": "samples/photos/travel.jpg",
+      "caption": "Santorini light"
+    },
+    {
+      "src": "samples/photos/fashion.jpg",
+      "caption": "Crosswalk, 5pm"
+    },
+    {
+      "src": "samples/photos/puppy.jpg",
+      "caption": "Last swim"
+    },
+    {
+      "src": "samples/photos/florist.jpg",
+      "caption": "Market flowers"
+    },
+    {
+      "src": "samples/photos/cat.jpg",
+      "caption": "Window warmth"
+    }
+  ],
+  "title": "Golden Hour Tapes",
+  "subtitle": "Shot on old film",
+  "cta": "Follow for more tapes",
+  "handle": "@golden.tapes",
+  "motion": "burn",
+  "style": "minimal",
+  "palette": {
+    "bg": "#120F0D",
+    "ink": "#F7F1E8",
+    "accent": "#F0A050"
+  },
+  "bpm": 96
+}

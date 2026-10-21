@@ -1,0 +1,67 @@
+{
+  "layout": "clickthrough",
+  "screen": "desktop",
+  "style": "clean",
+  "name": "Lumina",
+  "tagline": "The booking app salons actually enjoy.",
+  "category": "Salon booking app",
+  "logo": "samples/lumina-logo.png",
+  "url": "lumina.app",
+  "phone": "samples/lumina-mobile.jpg",
+  "desktop": "samples/lumina-desktop.jpg",
+  "hook": [
+    "Your whole salon.",
+    "One screen."
+  ],
+  "hookEmphasis": "One screen.",
+  "features": [
+    {
+      "title": "Book in one tap",
+      "body": "New appointments land straight in the schedule.",
+      "focus": {
+        "x": 0.9,
+        "y": 0.07,
+        "zoom": 2.0
+      }
+    },
+    {
+      "title": "See the whole day",
+      "body": "Every stylist, every chair, colour-coded.",
+      "focus": {
+        "x": 0.42,
+        "y": 0.5,
+        "zoom": 1.7
+      }
+    },
+    {
+      "title": "Know what's working",
+      "body": "Revenue trends without a spreadsheet.",
+      "focus": {
+        "x": 0.82,
+        "y": 0.48,
+        "zoom": 1.9
+      }
+    }
+  ],
+  "stats": [
+    {
+      "value": 128,
+      "label": "bookings this week"
+    },
+    {
+      "value": 1.2,
+      "suffix": "%",
+      "label": "no-show rate"
+    },
+    {
+      "value": 342,
+      "label": "reminders sent automatically"
+    }
+  ],
+  "cta": "Start free trial",
+  "ctaNote": "Details in our profile",
+  "accent": "#7C5CFF",
+  "accent2": "#FF7A59",
+  "bpm": 120,
+  "photos": []
+}

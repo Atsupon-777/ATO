@@ -5,6 +5,8 @@ import { Player, Thumbnail, type PlayerRef } from '@remotion/player';
 import { accentColors, accents, cameraMoves, captionStyles, combinationCount, fontChoices, grades, textures, transitions } from '../../src/effects/axes';
 import { recipeById, recipes, rollStyles } from '../../src/effects/recipes';
 import { videoCategories, videoTemplates } from '../../src/effects/video-catalog';
+import { serviceIndustries, serviceLayouts, serviceStyles, serviceTemplates } from '../../src/templates/servicereel-catalog';
+import type { ServiceReelProps } from '../../src/servicereel';
 import { ProductShine, productShineFrames } from '../../src/templates/ProductShine';
 import { SaaSPromo, saasPromoBeats } from '../../src/templates/SaaSPromo';
 import { TalkCaptions, talkCaptionsDuration } from '../../src/templates/TalkCaptions';
@@ -19,6 +21,12 @@ import saasSample from '../../props/saas-sample.json';
 import talkSample from '../../props/talk-sample.json';
 import effectsSample from '../../props/effects-demo.json';
 import fivePassSample from '../../props/fivepass-demo.json';
+import serviceSample from '../../props/service-features.json';
+import photoSample from '../../props/photo-cinematic.json';
+import { PhotoReel, photoReelDuration } from '../../src/templates/PhotoReel';
+import { photoCategories, photoMotions, photoStyles, photoTemplates } from '../../src/templates/photoreel-catalog';
+import type { PhotoReelProps } from '../../src/photoreel';
+import { ServiceReel, serviceReelDuration } from '../../src/templates/ServiceReel';
 
 import { LANG_NAMES, langs, type Lang } from '../../src/lang';
 import { lang, setLang, tr } from './i18n';
@@ -33,7 +41,7 @@ function mixCount() {
     : tr("約{0}通り", new Intl.NumberFormat(lang, { notation: 'compact', maximumFractionDigits: 1 }).format(n));
 }
 
-type TemplateId = 'ProductShine' | 'SaaSPromo' | 'TalkCaptions' | 'EffectsReel' | 'FivePass';
+type TemplateId = 'ProductShine' | 'SaaSPromo' | 'TalkCaptions' | 'EffectsReel' | 'FivePass' | 'ServiceReel' | 'PhotoReel';
 
 const TEMPLATES: Record<
   TemplateId,
@@ -78,6 +86,22 @@ const TEMPLATES: Record<
     component: FivePass,
     frames: (p) => fivePassDuration(p, FPS),
     sample: fivePassSample,
+  },
+  ServiceReel: {
+    name: tr("サービス紹介"),
+    tag: tr("テンプレートから"),
+    desc: tr("お店・スクール・アプリなどのサービスを、選んだテンプレートの見せ方で紹介します。文章はAIが書き、BGMもAIが作ります。"),
+    component: ServiceReel,
+    frames: (p) => serviceReelDuration(p, FPS),
+    sample: serviceSample,
+  },
+  PhotoReel: {
+    name: tr("写真を見せる"),
+    tag: tr("写真から"),
+    desc: tr("写真を1〜10枚載せるだけ。選んだテンプレートの動きで、タイトル・キャプション・BGMまでAIが仕上げます。"),
+    component: PhotoReel,
+    frames: (p) => photoReelDuration(p, FPS),
+    sample: photoSample,
   },
 };
 
@@ -174,7 +198,7 @@ const uploadFile = async (f: File) => {
 
 // Tokens per reel, the same table as the server (A: own material 2, B: AI photo or effects 5, C: AI video 12).
 const tokensFor = (t: TemplateId, input: Record<string, any>) =>
-  t === 'ProductShine' ? (input.video ? 12 : 5) : t === 'EffectsReel' || t === 'FivePass' || t === 'SaaSPromo' ? 5 : 2;
+  t === 'ProductShine' ? (input.video ? 12 : 5) : t === 'EffectsReel' || t === 'FivePass' || t === 'SaaSPromo' || t === 'ServiceReel' ? 5 : 2;
 /** Tokens to export a finished reel (each time), and extra for the premium edit (stickers, captions added by hand). */
 const EXPORT_TOKENS = 1;
 const PREMIUM_TOKENS = 2;
@@ -343,19 +367,22 @@ const VideoLang: React.FC<{ template: TemplateId; value: string; onChange: (v: s
   );
 };
 
-const NewJob: React.FC<{ template: TemplateId; fx?: EffectId; mixArg?: string; onStarted: (job: Job) => void; onBack: () => void }> = ({ template, fx, mixArg, onStarted, onBack }) => {
-  const [input, setInput] = useState<Record<string, any>>({ lang: template === 'TalkCaptions' || template === 'EffectsReel' || template === 'FivePass' ? '' : lang, style: 'luxury', cta: tr("詳しくはプロフィールへ"), effects: fx ? [fx] : [], recipe: mixArg ?? 'all' });
+const NewJob: React.FC<{ template: TemplateId; fx?: EffectId; mixArg?: string; tplArg?: string; onStarted: (job: Job) => void; onBack: () => void }> = ({ template, fx, mixArg, tplArg, onStarted, onBack }) => {
+  // tplArg is a catalog template ("tpl-<id>"), which is also the key of its sample render.
+  const tplId = tplArg?.slice(4);
+  const [input, setInput] = useState<Record<string, any>>({ lang: template === 'TalkCaptions' || template === 'EffectsReel' || template === 'FivePass' ? '' : lang, style: 'luxury', cta: tr("詳しくはプロフィールへ"), effects: fx ? [fx] : [], recipe: (template === 'EffectsReel' && tplId) || mixArg || 'all', templateId: tplId });
   const [err, setErr] = useState('');
   const [busy, setBusy] = useState(false);
   const set = (k: string) => (v: any) => setInput((s) => ({ ...s, [k]: v }));
   const t = TEMPLATES[template];
   const ready =
-    template === 'ProductShine' ? input.photo && input.brand && input.name : template === 'SaaSPromo' ? input.desktop && input.name : input.video;
+    template === 'ProductShine' ? input.photo && input.brand && input.name : template === 'SaaSPromo' ? input.desktop && input.name : template === 'ServiceReel' ? input.name && input.description : template === 'PhotoReel' ? input.photo1 : input.video;
   const submit = async () => {
     setBusy(true);
     setErr('');
     try {
-      const body = Object.fromEntries(Object.entries(input).map(([k, v]) => [k, v && typeof v === 'object' ? v.file : v]));
+      const body: Record<string, any> = Object.fromEntries(Object.entries(input).map(([k, v]) => [k, v && typeof v === 'object' ? v.file : v]));
+      body.photos = Array.from({ length: 10 }, (_, i) => body[`photo${i + 1}`]).filter(Boolean);
       onStarted(await api<Job>('/api/jobs', { method: 'POST', body: JSON.stringify({ template, input: body }) }));
       // In the app: ask once whether to send a notification when it's ready (the reason is obvious right now).
       enablePush(registerPushToken);
@@ -369,7 +396,7 @@ const NewJob: React.FC<{ template: TemplateId; fx?: EffectId; mixArg?: string; o
       <div className="stage">
         <div className="player">
           <div style={{ aspectRatio: '9 / 16' }}>
-            <ShowVideo k={fx ?? (mixArg ? `mix-${mixArg}` : template)} controls />
+            <ShowVideo k={tplArg ?? fx ?? (mixArg ? `mix-${mixArg}` : template)} controls />
           </div>
         </div>
         <p className="cost" style={{ textAlign: 'center' }}>{tr("このテンプレートで実際に作った見本")}</p>
@@ -424,6 +451,42 @@ const NewJob: React.FC<{ template: TemplateId; fx?: EffectId; mixArg?: string; o
                 <Field label={tr("最後のひとこと（CTA）")} max={16} value={input.cta ?? ''} onChange={set('cta')} />
                 <Field label={tr("アカウント名")} max={30} value={input.handle ?? ''} onChange={set('handle')} placeholder="@your_brand" />
               </div>
+            </>
+          ) : template === 'PhotoReel' ? (
+            <>
+              <div className="photodrops">
+                {Array.from({ length: Math.min(10, Object.keys(input).filter((k) => /^photo\d+$/.test(k) && input[k]).length + 1) }, (_, i) => (
+                  <Drop key={i} label={tr("写真{0}", i + 1)} hint={i ? tr("任意") : tr("1枚目は必須")} accept="image/*" value={input[`photo${i + 1}`]} onChange={set(`photo${i + 1}`)} />
+                ))}
+              </div>
+              <p className="cost">{tr("写真は10枚まで。順番はAIが見やすく並べ替えます。")}</p>
+              <Field label={tr("どんな写真か（任意）")} multiline value={input.description ?? ''} onChange={set('description')} placeholder={tr("例: 京都の週末旅行。カフェと紅葉")} />
+              <Field label={tr("アカウント名（任意）")} max={30} value={input.handle ?? ''} onChange={set('handle')} placeholder="@your_account" />
+            </>
+          ) : template === 'ServiceReel' ? (
+            <>
+              <div className="grid2">
+                <Field label={tr("サービス名・お店の名前")} max={24} value={input.name ?? ''} onChange={set('name')} placeholder="Salon Mirai" />
+                <Field label={tr("URL（任意）")} max={40} value={input.url ?? ''} onChange={set('url')} placeholder="salon-mirai.jp" />
+              </div>
+              <Field label={tr("どんなサービスか")} multiline value={input.description ?? ''} onChange={set('description')} placeholder={tr("例: 渋谷の美容室。くせ毛を活かすカットが得意")} />
+              <Field
+                label={tr("数字・料金・お客様の声・キャンペーン（動画ではここに書いたことだけを使います）")}
+                multiline
+                value={input.facts ?? ''}
+                onChange={set('facts')}
+                placeholder={tr("例: リピート率92%、カット 6,600円、初回20%オフ")}
+              />
+              <div className="grid2">
+                <Drop label={tr("スマホ画面（任意）")} hint={tr("アプリやサイトのスクリーンショット")} accept="image/*" value={input.phone} onChange={set('phone')} />
+                <Drop label={tr("PC画面（任意）")} hint={tr("サイトや管理画面のスクリーンショット")} accept="image/*" value={input.desktop} onChange={set('desktop')} />
+              </div>
+              <div className="grid2">
+                {[1, 2, 3, 4].map((n) => (
+                  <Drop key={n} label={tr("写真{0}（任意）", n)} hint={tr("お店・商品・人の写真")} accept="image/*" value={input[`photo${n}`]} onChange={set(`photo${n}`)} />
+                ))}
+              </div>
+              <Drop label={tr("ロゴ（任意）")} hint={tr("透過PNGがおすすめ")} accept="image/*" value={input.logo} onChange={set('logo')} />
             </>
           ) : template === 'SaaSPromo' ? (
             <>
@@ -551,6 +614,8 @@ const Generating: React.FC<{ job: Job }> = ({ job }) => {
       ? ['cut-out', 'studio shot', 'plan and copy', ...(jobTokens(job) >= 12 ? ['motion clip (Veo)'] : []), 'build props']
       : job.template === 'SaaSPromo'
         ? ['copy and layout', 'build props']
+        : job.template === 'ServiceReel' || job.template === 'PhotoReel'
+          ? ['copy', 'music']
         : job.template === 'EffectsReel'
           ? ['audio', 'transcribe', 'matte', 'plan effects']
           : ['audio', 'transcribe', 'build props'];
@@ -813,6 +878,10 @@ const Editor: React.FC<{ id: string }> = ({ id }) => {
           <ProductPanel p={props} update={update} />
         ) : job.template === 'SaaSPromo' ? (
           <SaasPanel p={props} update={update} />
+        ) : job.template === 'ServiceReel' ? (
+          <ServicePanel p={props} update={update} />
+        ) : job.template === 'PhotoReel' ? (
+          <PhotoPanel p={props} update={update} />
         ) : job.template === 'EffectsReel' ? (
           <EffectsPanel p={props} update={update} playerRef={playerRef} />
         ) : job.template === 'FivePass' ? (
@@ -2232,6 +2301,71 @@ const PickFlow: React.FC<{
   );
 };
 
+/** Photo reels are finished by picking another motion or type style. */
+const PhotoPanel: React.FC<PanelProps<PhotoReelProps>> = ({ p, update }) => {
+  const set = (fn: (x: PhotoReelProps) => void) => update((x) => (fn(x), x));
+  const nm = (x: { ja: string; en: string }) => (lang === 'ja' ? x.ja : x.en);
+  return (
+    <>
+      <div className="panel">
+        <h2>{tr("動き")}</h2>
+        <div className="chips">
+          {photoMotions
+            .filter((m) => p.photos.length >= m.minPhotos)
+            .map((m) => (
+              <button key={m.id} className={`chip ${p.motion === m.id ? 'on' : ''}`} onClick={() => set((x) => void (x.motion = m.id))}>
+                {nm(m)}
+                <small>{m.desc}</small>
+              </button>
+            ))}
+        </div>
+      </div>
+      <div className="panel">
+        <h2>{tr("スタイル")}</h2>
+        <div className="chips">
+          {photoStyles.map((st) => (
+            <button key={st.id} className={`chip ${p.style === st.id ? 'on' : ''}`} onClick={() => set((x) => void ((x.style = st.id), (x.palette = { ...st.palette, accent: x.palette.accent })))}>
+              {nm(st)}
+              <small>{st.desc}</small>
+            </button>
+          ))}
+        </div>
+      </div>
+    </>
+  );
+};
+
+/** Service reels are finished by picking: another way of showing it, another look. */
+const ServicePanel: React.FC<PanelProps<ServiceReelProps>> = ({ p, update }) => {
+  const set = (fn: (x: ServiceReelProps) => void) => update((x) => (fn(x), x));
+  const nm = (x: { ja: string; en: string }) => (lang === 'ja' ? x.ja : x.en);
+  return (
+    <>
+      <div className="panel">
+        <h2>{tr("見せ方")}</h2>
+        <div className="chips">
+          {serviceLayouts.map((l) => (
+            <button key={l.id} className={`chip ${p.layout === l.id ? 'on' : ''}`} onClick={() => set((x) => void (x.layout = l.id))}>
+              {nm(l)}
+              <small>{l.desc}</small>
+            </button>
+          ))}
+        </div>
+      </div>
+      <div className="panel">
+        <h2>{tr("スタイル")}</h2>
+        <div className="chips">
+          {serviceStyles.map((st) => (
+            <button key={st.id} className={`chip ${p.style === st.id ? 'on' : ''}`} onClick={() => set((x) => void (x.style = st.id))}>
+              {nm(st)}
+            </button>
+          ))}
+        </div>
+      </div>
+    </>
+  );
+};
+
 const EffectsPanel: React.FC<PanelProps<EffectsReelProps> & { playerRef: React.RefObject<PlayerRef | null> }> = ({ p, update, playerRef }) => {
   const set = (fn: (p: EffectsReelProps) => void) => mut(update, fn)();
   // Segments play back to back, so a segment's place on the timeline is the sum of the ones before it.
@@ -2909,7 +3043,7 @@ const KINDS: { id: CatalogKind; name: string }[] = [
   { id: 'service', name: tr("サービス紹介") },
 ];
 const HREF: Record<CatalogKind, (id: string) => string> = {
-  video: (id) => `#/new/EffectsReel/mix-${id}`,
+  video: (id) => `#/new/EffectsReel/tpl-${id}`,
   photo: (id) => `#/new/PhotoReel/tpl-${id}`,
   service: (id) => `#/new/ServiceReel/tpl-${id}`,
 };
@@ -2919,8 +3053,12 @@ const PAGE = 24;
 let catalogData: Promise<CatalogData> | null = null;
 const loadCatalog = () =>
   (catalogData ??= api<CatalogData>('/api/catalog').catch(() => ({
-    entries: videoTemplates.map((v) => ({ id: v.id, kind: 'video' as const, ja: v.ja, en: v.en, categories: v.categories, premium: v.premium, uses: 0, added: '', sample: `tpl-${v.id}` })),
-    categories: { video: videoCategories, photo: [], service: [] },
+    entries: [
+      ...videoTemplates.map((v) => ({ id: v.id, kind: 'video' as const, ja: v.ja, en: v.en, categories: v.categories as string[], premium: v.premium, uses: 0, added: '', sample: `tpl-${v.id}` })),
+      ...photoTemplates.map((t) => ({ id: t.id, kind: 'photo' as const, ja: t.nameJa, en: t.nameEn, categories: t.categories as string[], count: t.count, uses: 0, added: '', sample: `tpl-${t.id}` })),
+      ...serviceTemplates.map((t) => ({ id: t.id, kind: 'service' as const, ja: t.nameJa, en: t.nameEn, categories: t.industries as string[], uses: 0, added: '', sample: `tpl-${t.id}` })),
+    ],
+    categories: { video: videoCategories, photo: photoCategories, service: serviceIndustries },
   })));
 
 /** Same order for everyone on a given day, different the next: "おすすめ" keeps changing without being random per tap. */
@@ -3964,7 +4102,7 @@ const App = () => {
       <main className={route === 'reels' ? 'wide' : immersive ? 'immersive' : ''}>
         <div className="page" key={`${route ?? ''}/${arg ?? ''}`}>
         {route === 'new' && arg in TEMPLATES ? (
-          <NewJob key={hash} template={arg as TemplateId} fx={effectIds.includes(arg2 as EffectId) ? (arg2 as EffectId) : undefined} mixArg={arg2?.startsWith('mix-') ? arg2.slice(4) : undefined} onBack={() => history.back()} onStarted={(j) => go(`#/job/${j.id}`)} />
+          <NewJob key={hash} template={arg as TemplateId} fx={effectIds.includes(arg2 as EffectId) ? (arg2 as EffectId) : undefined} mixArg={arg2?.startsWith('mix-') ? arg2.slice(4) : undefined} tplArg={arg2?.startsWith('tpl-') ? arg2 : undefined} onBack={() => history.back()} onStarted={(j) => go(`#/job/${j.id}`)} />
         ) : route === 'job' && arg ? (
           <Editor key={arg} id={arg} />
         ) : route === 'history' || route === 'me' ? (
