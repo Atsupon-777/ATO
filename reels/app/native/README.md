@@ -35,13 +35,10 @@ App Store で契約したプランは Web 側では「App Storeで契約中」�
 
 ### 2. Firebase コンソール（プロジェクト reel-studio-511907）
 
-1. プロジェクトの設定 → マイアプリ → **iOS アプリを追加**（バンドルID `com.atosns.reelsstudio`）
-2. `GoogleService-Info.plist` をダウンロードし、`reels/ios/App/App/` に置く（Xcode で App フォルダにドラッグし「Copy items if needed」「App ターゲット」にチェック）
-3. `reels/ios/App/App/Info.plist` の2か所を置き換える
-   - `REPLACE_WITH_REVERSED_CLIENT_ID` → `GoogleService-Info.plist` の `REVERSED_CLIENT_ID`
-   - `REPLACE_WITH_ENCODED_APP_ID` → Firebase の iOS アプリ設定にある「エンコードされたアプリ ID」（`app-1-…-ios-…`）
-4. Authentication → ログイン方法 → **Apple** を有効にする（iPhone アプリだけなら Services ID などの入力は不要）
-5. Android も出すとき：Android アプリ（パッケージ名 `com.atosns.reelsstudio`）を追加、`google-services.json` を `reels/android/app/` に置き、Google ログイン用に SHA-1 を登録
+iPhone 用は設定済みです（2026-10-21）：iOS アプリ「Editless」を登録し、`GoogleService-Info.plist` を `reels/ios/App/App/` に置いて Xcode プロジェクトに追加、`Info.plist` の2か所も埋め、Authentication の **Apple** ログインも有効にしました。
+
+残り：
+1. Android も出すとき：Android アプリ（パッケージ名 `com.atosns.reelsstudio`）を追加、`google-services.json` を `reels/android/app/` に置き、Google ログイン用に SHA-1 を登録
 
 `GoogleService-Info.plist` と `google-services.json` は秘密ではありません（アプリに入る公開設定）。
 

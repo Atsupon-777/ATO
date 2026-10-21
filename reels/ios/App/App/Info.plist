@@ -89,7 +89,7 @@
 			<key>CFBundleURLSchemes</key>
 			<array>
 				<!-- REVERSED_CLIENT_ID from GoogleService-Info.plist, e.g. com.googleusercontent.apps.281128954417-xxxx -->
-				<string>REPLACE_WITH_REVERSED_CLIENT_ID</string>
+				<string>com.googleusercontent.apps.281128954417-o2sce15uaoo3am309h5u2e9osvr6qjtk</string>
 			</array>
 		</dict>
 		<dict>
@@ -98,7 +98,7 @@
 			<key>CFBundleURLSchemes</key>
 			<array>
 				<!-- "Encoded App ID" of the iOS app in Firebase settings, e.g. app-1-281128954417-ios-xxxx -->
-				<string>REPLACE_WITH_ENCODED_APP_ID</string>
+				<string>app-1-281128954417-ios-9e64c7635aca2a5dfd8310</string>
 			</array>
 		</dict>
 	</array>
