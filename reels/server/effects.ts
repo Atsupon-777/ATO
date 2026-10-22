@@ -290,7 +290,7 @@ export async function planEffectsReel(t: {
   }
 
   const props: EffectsReelProps = effectsReelSchema.parse({
-    music: await music,
+    music: (await music) || undefined,
     speech: speechOnReel(words, segments),
     video: talk.props.video,
     matte: `jobs/${talk.jobId}/matte.webm`,

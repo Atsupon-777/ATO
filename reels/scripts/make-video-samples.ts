@@ -51,6 +51,7 @@ for (const f of sources) {
 
 // Music is shared by templates with the same style and tempo (it only depends on those).
 const music = new Map<string, Promise<string | undefined>>();
+// Lyria fails now and then; a second try usually works. An empty music path means the sample has none.
 const musicFor = (talk: (typeof talks)[number], recipe: { id: string; mood?: string }, key: string) => {
   if (!music.has(key))
     music.set(
@@ -60,7 +61,16 @@ const musicFor = (talk: (typeof talks)[number], recipe: { id: string; mood?: str
         out: path.join(publicDir, 'jobs', 'sample-music', key),
         usage,
         step: 'music',
-      }).then(
+      })
+        .catch(() =>
+          generateMusic({
+            prompt: `Instrumental background music for a short vertical social video. Mood: ${recipe.mood}. No vocals, loopable, modern production.`,
+            out: path.join(publicDir, 'jobs', 'sample-music', key),
+            usage,
+            step: 'music',
+          }),
+        )
+        .then(
         (f) => `jobs/sample-music/${path.basename(f)}`,
         () => undefined,
       ),
@@ -79,7 +89,7 @@ for (const [n, v] of todo.entries()) {
   const recipe = recipeById(v.id);
   const t0 = Date.now();
   try {
-    const props = await planEffectsReel({ ...talk, recipe: v.id, lang: 'en', usage, music: await musicFor(talk, recipe, `${v.style}-${v.tempo}`) });
+    const props = await planEffectsReel({ ...talk, recipe: v.id, lang: 'en', usage, music: (await musicFor(talk, recipe, `${v.style}-${v.tempo}`)) ?? '' });
     const inputProps = props as unknown as Record<string, unknown>;
     const composition = await selectComposition({ serveUrl, id: 'EffectsReel', inputProps, browserExecutable: process.env.REMOTION_BROWSER ?? null });
     const raw = path.join(tmp, `${v.id}.mp4`);
