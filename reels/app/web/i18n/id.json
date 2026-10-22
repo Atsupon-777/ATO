@@ -780,5 +780,10 @@
  "支払い遅延": "Tertunggak",
  "AI原価＋サーバー代": "Biaya AI + server",
  "前の月": "Bulan sebelumnya",
- "このページはオーナーだけが見られます。": "Hanya pemilik yang dapat melihat halaman ini."
+ "このページはオーナーだけが見られます。": "Hanya pemilik yang dapat melihat halaman ini.",
+ "オーナーが付与したトークン": "Token yang diberikan pemilik",
+ "{0} に {1} トークンを付与しました（残高 {2}）": "{1} token diberikan ke {0} (saldo {2})",
+ "トークンを付与": "Beri token",
+ "テストや審査用に、メールアドレスのアカウントへトークンを付けます。売上には入りません。": "Tambahkan token ke akun lewat email, untuk pengujian atau peninjauan. Tidak dihitung sebagai penjualan.",
+ "付与する": "Berikan"
 }

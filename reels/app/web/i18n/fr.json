@@ -780,5 +780,10 @@
  "支払い遅延": "Impayés",
  "AI原価＋サーバー代": "Coût IA + serveur",
  "前の月": "Mois précédent",
- "このページはオーナーだけが見られます。": "Seul le propriétaire peut voir cette page."
+ "このページはオーナーだけが見られます。": "Seul le propriétaire peut voir cette page.",
+ "オーナーが付与したトークン": "Jetons offerts par le propriétaire",
+ "{0} に {1} トークンを付与しました（残高 {2}）": "{1} jetons ajoutés à {0} (solde {2})",
+ "トークンを付与": "Offrir des jetons",
+ "テストや審査用に、メールアドレスのアカウントへトークンを付けます。売上には入りません。": "Ajoute des jetons à un compte par e-mail, pour des tests ou la vérification. Non compté dans les ventes.",
+ "付与する": "Offrir"
 }

@@ -152,6 +152,7 @@ export async function metrics(jobs: JobLike[], month = thisMonth()) {
     consumed: sumOp('reel', 'export', 'music') - sumOp('refund') + unloggedUse,
     refunded: sumOp('refund'),
     free: sumOp('free'),
+    granted: sumOp('grant'),
     outstanding: accounts.reduce((a, x) => a + (x.tokens ?? 0) + (x.extra ?? 0), 0),
   };
 

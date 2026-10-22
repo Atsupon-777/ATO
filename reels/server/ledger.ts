@@ -41,7 +41,7 @@ export type SaleEntry = {
 export type AiEntry = { at: string; kind: 'ai'; jobId: string; uid: string; template: string; step: string; usd: number; jpy: number };
 
 /** Tokens leaving or returning to a balance. `op` says why. */
-export type TokenEntry = { at: string; kind: 'tokens'; uid: string; jobId?: string; template?: string; op: 'reel' | 'export' | 'music' | 'refund' | 'free'; tokens: number };
+export type TokenEntry = { at: string; kind: 'tokens'; uid: string; jobId?: string; template?: string; op: 'reel' | 'export' | 'music' | 'refund' | 'free' | 'grant'; tokens: number };
 
 export type LedgerEntry = SaleEntry | AiEntry | TokenEntry;
 

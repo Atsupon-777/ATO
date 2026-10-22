@@ -3830,7 +3830,7 @@ type Metrics = {
   payingByPlan: { plan: string; users: number; mrr: number; stripe: number; app_store: number; play_store: number; pastDue: number }[];
   users: { total: number; newInMonth: number; freeClaims: number; freeClaimsTotal: number; paying: number };
   reels: { made: number; failed: number; exports: number; byTemplate: { template: string; reels: number; failed: number; exports: number; aiCost: number; avgAiCost: number | null }[] };
-  tokens: { sold: number; consumed: number; refunded: number; free: number; outstanding: number };
+  tokens: { sold: number; consumed: number; refunded: number; free: number; granted?: number; outstanding: number };
   trend: MonthSummary[];
 };
 
@@ -4027,6 +4027,7 @@ const Admin: React.FC = () => {
             <dt>{tr("使われたトークン")}</dt><dd>{fmtN(data.tokens.consumed)}</dd>
             <dt>{tr("失敗で返したトークン")}</dt><dd>{fmtN(data.tokens.refunded)}</dd>
             <dt>{tr("無料で配ったトークン")}</dt><dd>{fmtN(data.tokens.free)}</dd>
+            <dt>{tr("オーナーが付与したトークン")}</dt><dd>{fmtN(data.tokens.granted ?? 0)}</dd>
             <dt>{tr("未使用の残高（全ユーザー）")}</dt><dd>{fmtN(data.tokens.outstanding)}</dd>
           </dl>
         </div>
@@ -4040,7 +4041,39 @@ const Admin: React.FC = () => {
           </dl>
         </div>
       </div>
+      <GrantTokens />
       <p className="cost admnote">{tr("この画面はオーナーだけが見られます。手数料はStripe・ストアが金額を返さないときは推定（Stripe 3.6%・ストア30%）、サーバー代は概算です。月は日本時間で区切っています。")}</p>
+    </div>
+  );
+};
+
+// Owner only: give tokens to an account by its email (own testing, App Review). Never counted as a sale.
+const GrantTokens: React.FC = () => {
+  const [email, setEmail] = useState('');
+  const [n, setN] = useState(100);
+  const [busy, setBusy] = useState(false);
+  const [msg, setMsg] = useState('');
+  const go = async () => {
+    setBusy(true);
+    setMsg('');
+    try {
+      const r = await api<{ email: string; granted: number; balance: number }>('/api/admin/grant', { method: 'POST', body: JSON.stringify({ email, tokens: n }) });
+      setMsg(tr("{0} に {1} トークンを付与しました（残高 {2}）", r.email, fmtN(r.granted), fmtN(r.balance)));
+    } catch (e) {
+      setMsg((e as Error).message);
+    }
+    setBusy(false);
+  };
+  return (
+    <div className="admpanel admgrant">
+      <h2>{tr("トークンを付与")}</h2>
+      <p className="cost">{tr("テストや審査用に、メールアドレスのアカウントへトークンを付けます。売上には入りません。")}</p>
+      <div className="admgrantrow">
+        <input type="email" placeholder="name@example.com" value={email} onChange={(e) => setEmail(e.target.value)} />
+        <input type="number" min={1} max={10000} value={n} onChange={(e) => setN(Number(e.target.value))} />
+        <button className="btn" disabled={busy || !email.includes('@') || !(n >= 1)} onClick={go}>{tr("付与する")}</button>
+      </div>
+      {msg && <p className="cost">{msg}</p>}
     </div>
   );
 };

@@ -25,7 +25,7 @@ import { buildSaasProps } from '../server/saas.ts';
 import { buildTalkProps } from '../server/talk.ts';
 import { isLang, type Lang } from '../src/lang.ts';
 import { authEnabled, LOCAL_USER, verifyIdToken, webConfig, type User } from '../server/auth.ts';
-import { FreeClaimError, NotEnoughTokens, balance, charge, claimFree, getAccount, refund, removeAccount, update, PLAN_TOKENS, FREE_TOKENS, PAYG_UNIT, PAYG_UNIT_YEN, PAYG_MIN, PAYG_MAX } from '../server/accounts.ts';
+import { FreeClaimError, NotEnoughTokens, balance, charge, claimFree, getAccount, refund, removeAccount, update, allAccounts, PLAN_TOKENS, FREE_TOKENS, PAYG_UNIT, PAYG_UNIT_YEN, PAYG_MIN, PAYG_MAX } from '../server/accounts.ts';
 import { billingEnabled, cancelSubscription, checkout, isPurchase, paygUnits, portal, webhook } from '../server/billing.ts';
 import { iapConfig, revenuecatWebhook } from '../server/appstore.ts';
 import { deleteFirebaseUser } from '../server/google.ts';
@@ -558,6 +558,20 @@ const server = http.createServer(async (req, res) => {
       if (month && !/^\d{4}-(0[1-9]|1[0-2])$/.test(month)) return json(res, 400, { error: 'month must be YYYY-MM' });
       res.setHeader('Cache-Control', 'no-store');
       return json(res, 200, await metrics([...jobs.values()], month || undefined));
+    }
+    // Owner gives tokens to an account by email (testing, App Review). Logged as a grant, never as a sale.
+    if (p === '/api/admin/grant' && req.method === 'POST') {
+      const a = await getAccount(user!.uid, user!.email);
+      if (!isAdmin(user!, a.email)) return json(res, 404, { error: 'not found' });
+      const { email, tokens } = await readBody(req);
+      const n = Math.floor(Number(tokens));
+      if (typeof email !== 'string' || !email.includes('@') || !(n >= 1 && n <= 10000)) return json(res, 400, { error: 'email and 1-10000 tokens' });
+      const target = (await allAccounts()).find((x) => x.email?.toLowerCase() === email.trim().toLowerCase());
+      if (!target) return json(res, 404, { error: 'このメールのアカウントが見つかりません（一度ログインしてもらってください）' });
+      await update(target.uid, (x) => void (x.extra += n));
+      await recordTokens({ uid: target.uid, op: 'grant', tokens: n });
+      const after = await getAccount(target.uid);
+      return json(res, 200, { email: target.email, granted: n, balance: balance(after) });
     }
     if (p === '/api/media-key' && req.method === 'GET') return json(res, 200, { key: await mediaKey(user!), hours: MEDIA_KEY_HOURS });
     // Push notifications in the app: its FCM token, so a finished export can tell the phone.
