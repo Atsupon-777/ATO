@@ -96,9 +96,20 @@ export async function imageToVideo(opts: {
   pollMs?: number;
 }): Promise<string> {
   const seconds = opts.seconds ?? 8;
-  // Veo only allows 1080p for 8-second clips. The Gemini Developer API always returns audio
+  // Veo allows 1080p only for 8-second clips. The Gemini Developer API always returns audio
   // (generateAudio is Vertex-only); the template plays the clip muted.
   const resolution = seconds === 8 ? (opts.resolution ?? '1080p') : '720p';
+  try {
+    return await veoOnce({ ...opts, seconds, resolution });
+  } catch (e) {
+    // Veo has stretches where 1080p jobs all end in "internal server issue" (code 13) while 720p works.
+    if (resolution === '1080p' && /code":13|internal server/.test(String(e))) return veoOnce({ ...opts, seconds, resolution: '720p' });
+    throw e;
+  }
+}
+
+async function veoOnce(opts: Parameters<typeof imageToVideo>[0] & { seconds: number; resolution: '720p' | '1080p' }): Promise<string> {
+  const { seconds, resolution } = opts;
   let op = await ai().models.generateVideos({
     model: models.video,
     prompt: opts.prompt,
