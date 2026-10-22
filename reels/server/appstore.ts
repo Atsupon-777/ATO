@@ -91,8 +91,18 @@ export async function revenuecatWebhook(body: any, auth: string | undefined) {
         break;
       // Apple / Google refunded the customer (RevenueCat reports it as a cancellation by customer support).
       case 'CANCELLATION':
-        if (ev.cancel_reason === 'CUSTOMER_SUPPORT')
-          sale = saleOf(ev, uid, store, plan ?? (ev.product_id === IAP_PRODUCTS.small ? 'topup_small' : ev.product_id === IAP_PRODUCTS.topup ? 'topup' : String(ev.product_id ?? 'unknown')), 0, true);
+        if (ev.cancel_reason !== 'CUSTOMER_SUPPORT') break;
+        // Refunded: take back what the purchase gave (whatever is left of it), so a refund never keeps the tokens.
+        if (ev.product_id === IAP_PRODUCTS.topup) a.extra = Math.max(0, a.extra - IAP_TOPUP_TOKENS);
+        if (ev.product_id === IAP_PRODUCTS.small) a.extra = Math.max(0, a.extra - IAP_SMALL_TOKENS);
+        if (plan && a.store === store && a.storeProduct === ev.product_id) {
+          a.plan = 'free';
+          a.tokens = 0;
+          a.store = undefined;
+          a.storeProduct = undefined;
+          a.pastDue = undefined;
+        }
+        sale = saleOf(ev, uid, store, plan ?? (ev.product_id === IAP_PRODUCTS.small ? 'topup_small' : ev.product_id === IAP_PRODUCTS.topup ? 'topup' : String(ev.product_id ?? 'unknown')), 0, true);
         break;
       // First month and each renewal refill the monthly allowance, the same as a paid Stripe invoice.
       case 'INITIAL_PURCHASE':
