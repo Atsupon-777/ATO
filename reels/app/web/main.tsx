@@ -3098,9 +3098,12 @@ const TemplateBrowser: React.FC<{ onOpen: (it: CatalogItem) => void }> = ({ onOp
   const nm = (x: { ja: string; en: string }) => (lang === 'ja' ? x.ja : x.en);
   // Only templates with a real render are shown: the sample must be what the template actually makes.
   const all = (data?.entries ?? []).filter((e) => e.sample && (!keys || keys.has(e.sample)));
-  const cats = data?.categories[kind] ?? [];
+  // A kind whose samples are not rendered yet gets no tab.
+  const kinds = KINDS.filter((k) => all.some((e) => e.kind === k.id));
+  const cur = kinds.some((k) => k.id === kind) ? kind : (kinds[0]?.id ?? kind);
+  const cats = data?.categories[cur] ?? [];
   const list = all
-    .filter((e) => e.kind === kind && (!cat || e.categories.includes(cat)) && (!count || e.count === count))
+    .filter((e) => e.kind === cur && (!cat || e.categories.includes(cat)) && (!count || e.count === count))
     .sort((a, b) => (sort === 'popular' ? b.uses - a.uses : sort === 'new' ? b.added.localeCompare(a.added) : 0) || dayRank(a.id) - dayRank(b.id));
   useEffect(() => {
     const el = more.current;
@@ -3129,8 +3132,8 @@ const TemplateBrowser: React.FC<{ onOpen: (it: CatalogItem) => void }> = ({ onOp
         <span className="cost">{tr("{0}種", fmtN(all.length))}</span>
       </div>
       <div className="kindtabs" role="tablist">
-        {KINDS.map((k) => (
-          <button key={k.id} role="tab" aria-selected={kind === k.id} className={kind === k.id ? 'on' : ''} onClick={() => (setKind(k.id), setCat(''), setCount(0))}>
+        {kinds.map((k) => (
+          <button key={k.id} role="tab" aria-selected={cur === k.id} className={cur === k.id ? 'on' : ''} onClick={() => (setKind(k.id), setCat(''), setCount(0))}>
             {k.name} <small>{fmtN(all.filter((e) => e.kind === k.id).length)}</small>
           </button>
         ))}
@@ -3146,14 +3149,14 @@ const TemplateBrowser: React.FC<{ onOpen: (it: CatalogItem) => void }> = ({ onOp
           {tr("すべて")}
         </button>
         {cats
-          .filter((c) => all.some((e) => e.kind === kind && e.categories.includes(c.id)))
+          .filter((c) => all.some((e) => e.kind === cur && e.categories.includes(c.id)))
           .map((c) => (
             <button key={c.id} className={`fchip ${cat === c.id ? 'on' : ''}`} onClick={() => setCat(cat === c.id ? '' : c.id)}>
               {nm(c)}
             </button>
           ))}
       </div>
-      {kind === 'photo' ? (
+      {cur === 'photo' ? (
         <div className="chipbar">
           {[0, 1, 3, 5, 10].map((n) => (
             <button key={n} className={`fchip ${count === n ? 'on' : ''}`} onClick={() => setCount(n)}>
