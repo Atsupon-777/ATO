@@ -10,6 +10,34 @@
 //   IAP_PRODUCT_STARTER / _STANDARD / _PRO   monthly auto-renewing subscriptions (default reels_<plan>_monthly)
 import { timingSafeEqual } from 'node:crypto';
 import { PLAN_TOKENS, getAccount, update, type PlanId } from './accounts.ts';
+import { USD_JPY, recordSale } from './ledger.ts';
+
+const pct = (x: unknown) => (typeof x === 'number' && Number.isFinite(x) && x >= 0 && x <= 1 ? x : undefined);
+
+/** The ledger line of a RevenueCat purchase or refund: yen as charged (JPY), else RevenueCat's USD price at USD_JPY. */
+function saleOf(ev: any, uid: string, store: 'app_store' | 'play_store', product: string, tokens: number, refund = false) {
+  const local = Number(ev.price_in_purchased_currency);
+  const usd = Number(ev.price);
+  const gross = ev.currency === 'JPY' && Number.isFinite(local) ? local : Number.isFinite(usd) ? usd * USD_JPY : 0;
+  if (!gross) return null;
+  const amount = refund ? -Math.abs(gross) : Math.abs(gross);
+  const tax = pct(ev.tax_percentage);
+  const commission = pct(ev.commission_percentage);
+  return {
+    channel: store,
+    uid,
+    product,
+    tokens: refund ? 0 : tokens,
+    grossJpy: amount,
+    // A refund takes back the proceeds only: the store returns its commission, so the fee goes negative too.
+    feeJpy: commission !== undefined ? amount * commission : undefined,
+    taxJpy: tax !== undefined ? amount * tax : undefined,
+    refund: refund || undefined,
+    test: ev.environment === 'SANDBOX' || undefined,
+    at: ev.event_timestamp_ms ? new Date(Number(ev.event_timestamp_ms)).toISOString() : undefined,
+    eventId: `rc:${ev.id}`,
+  };
+}
 
 export const IAP_TOPUP_TOKENS = Number(process.env.IAP_TOPUP_TOKENS ?? 10);
 export const IAP_SMALL_TOKENS = Number(process.env.IAP_SMALL_TOKENS ?? 3);
@@ -48,6 +76,7 @@ export async function revenuecatWebhook(body: any, auth: string | undefined) {
   await getAccount(uid);
   const store = ev.store === 'PLAY_STORE' ? 'play_store' : 'app_store';
   let applied = false;
+  let sale = null as ReturnType<typeof saleOf>;
   await update(uid, (a) => {
     if (a.events?.includes(`rc:${ev.id}`)) return;
     a.events = [...(a.events ?? []), `rc:${ev.id}`].slice(-200);
@@ -57,6 +86,13 @@ export async function revenuecatWebhook(body: any, auth: string | undefined) {
       case 'NON_RENEWING_PURCHASE':
         if (ev.product_id === IAP_PRODUCTS.topup) a.extra += IAP_TOPUP_TOKENS;
         if (ev.product_id === IAP_PRODUCTS.small) a.extra += IAP_SMALL_TOKENS;
+        if (ev.product_id === IAP_PRODUCTS.topup) sale = saleOf(ev, uid, store, 'topup', IAP_TOPUP_TOKENS);
+        if (ev.product_id === IAP_PRODUCTS.small) sale = saleOf(ev, uid, store, 'topup_small', IAP_SMALL_TOKENS);
+        break;
+      // Apple / Google refunded the customer (RevenueCat reports it as a cancellation by customer support).
+      case 'CANCELLATION':
+        if (ev.cancel_reason === 'CUSTOMER_SUPPORT')
+          sale = saleOf(ev, uid, store, plan ?? (ev.product_id === IAP_PRODUCTS.small ? 'topup_small' : ev.product_id === IAP_PRODUCTS.topup ? 'topup' : String(ev.product_id ?? 'unknown')), 0, true);
         break;
       // First month and each renewal refill the monthly allowance, the same as a paid Stripe invoice.
       case 'INITIAL_PURCHASE':
@@ -65,6 +101,8 @@ export async function revenuecatWebhook(body: any, auth: string | undefined) {
         if (!plan) break;
         a.plan = plan;
         if (ev.type !== 'UNCANCELLATION') a.tokens = PLAN_TOKENS[plan];
+        // A free trial has no price, so it books nothing.
+        if (ev.type !== 'UNCANCELLATION') sale = saleOf(ev, uid, store, plan, PLAN_TOKENS[plan]);
         a.store = store;
         a.storeProduct = ev.product_id;
         a.pastDue = undefined;
@@ -84,5 +122,6 @@ export async function revenuecatWebhook(body: any, auth: string | undefined) {
         break;
     }
   });
+  if (applied && sale) await recordSale(sale);
   return { type: ev.type, uid, applied, environment: ev.environment };
 }

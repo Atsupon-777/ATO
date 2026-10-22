@@ -701,6 +701,45 @@
   .themebtn svg { width: 18px; height: 18px; }
   @media (max-width: 420px) { .stickers { grid-template-columns: repeat(4, minmax(0, 1fr)); } .pickgridlist { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
   @media (max-width: 520px) { .langbtn .lname { display: none; } .langbtn { padding: 8px; } .top { gap: 10px; } }
+  /* Owner dashboard (#/admin) */
+  .admlink { width: 100%; margin: -8px 0 18px; }
+  .admin h2 { margin-top: 28px; }
+  .admhead { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; margin-bottom: 16px; }
+  .admhead h1 { margin: 0; }
+  .admmonth { gap: 6px; align-items: center; }
+  .admmonth .inp { width: auto; padding: 7px 10px; font-size: 13px; color-scheme: light dark; }
+  .admcards { display: grid; grid-template-columns: repeat(auto-fill, minmax(170px, 1fr)); gap: 10px; }
+  .admcard { background: var(--panel); border: 1px solid var(--line); border-radius: 14px; padding: 14px 16px; display: grid; gap: 4px; min-width: 0; }
+  .admcard span { font-size: 12px; color: var(--mute); }
+  .admcard b { font-size: 22px; font-weight: 900; font-variant-numeric: tabular-nums; overflow-wrap: anywhere; }
+  .admcard small { font-size: 11px; color: var(--mute); }
+  .admcard.good b { color: var(--ok); }
+  .admcard.bad b { color: var(--danger); }
+  .admchart { margin: 0 0 12px; background: var(--panel); border: 1px solid var(--line); border-radius: 14px; padding: 14px 16px 8px; }
+  .admchart svg { width: 100%; height: auto; max-height: 280px; display: block; }
+  .admchart .gl { stroke: var(--line); stroke-width: 1; stroke-dasharray: 2 4; }
+  .admchart .axis { stroke: var(--line); stroke-width: 1; }
+  .admchart .admbar.net, .admlegend .sw.net { fill: var(--accent-line); background: var(--accent-line); }
+  .admchart .admbar.cost, .admlegend .sw.cost { fill: var(--gold); background: var(--gold); }
+  .admchart .admbar:hover { opacity: .8; }
+  .admchart .lbl { fill: var(--mute); font-size: 13px; }
+  .admlegend { display: flex; gap: 16px; font-size: 12px; color: var(--mute); margin-bottom: 6px; }
+  .admlegend .sw { display: inline-block; width: 10px; height: 10px; border-radius: 3px; margin-right: 6px; vertical-align: -1px; }
+  .admtable { overflow-x: auto; background: var(--panel); border: 1px solid var(--line); border-radius: 14px; }
+  .admtable table { width: 100%; border-collapse: collapse; font-size: 13px; font-variant-numeric: tabular-nums; }
+  .admtable th, .admtable td { padding: 9px 12px; text-align: right; white-space: nowrap; border-bottom: 1px solid var(--line); }
+  .admtable th { font-size: 11px; font-weight: 600; color: var(--mute); }
+  .admtable th:first-child, .admtable td:first-child { text-align: left; }
+  .admtable tbody tr:last-child td { border-bottom: 0; }
+  .admtable tr.on td { background: color-mix(in srgb, var(--accent) 10%, transparent); font-weight: 700; }
+  .admtable td.neg { color: var(--danger); }
+  .admgrid { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 12px; margin-top: 8px; }
+  .admpanel { background: var(--panel); border: 1px solid var(--line); border-radius: 14px; padding: 4px 16px 12px; }
+  .admpanel h2 { margin: 12px 0 8px !important; }
+  .admpanel dl { display: grid; grid-template-columns: 1fr auto; gap: 6px 12px; margin: 0; font-size: 13px; }
+  .admpanel dt { color: var(--mute); }
+  .admpanel dd { margin: 0; text-align: right; font-weight: 700; font-variant-numeric: tabular-nums; }
+  .admnote { margin-top: 18px; }
 </style>
 </head>
 <body>

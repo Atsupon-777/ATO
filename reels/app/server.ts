@@ -33,6 +33,8 @@ import { generateMusic } from '../server/gemini.ts';
 import { Usage } from '../server/usage.ts';
 import { dataDir } from '../server/paths.ts';
 import { addDevice, notifyJob, removeDevice } from '../server/push.ts';
+import { recordAi, recordTokens } from '../server/ledger.ts';
+import { isAdmin, metrics } from '../server/metrics.ts';
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const publicDir = path.join(root, 'public');
@@ -136,6 +138,7 @@ async function startJob(template: Template, input: Record<string, any>, user: Us
   };
   jobs.set(id, job);
   await save(job);
+  recordTokens({ uid: user.uid, jobId: id, template, op: 'reel', tokens: cost });
   const onStep = (n: number, total: number, label: string) => {
     job.step = { n, total, label, at: new Date().toISOString() };
     save(job);
@@ -252,6 +255,8 @@ async function startJob(template: Template, input: Record<string, any>, user: Us
       }
       job.status = 'ready';
       job.step = undefined;
+      // The generation's AI spend, once, for the owner's dashboard.
+      recordAi({ jobId: id, uid: user.uid, template, step: 'gen', usd: job.usage?.totalUsd ?? 0 });
       notifyJob(user.uid, 'ready', job);
     } catch (e) {
       console.error(e);
@@ -259,6 +264,7 @@ async function startJob(template: Template, input: Record<string, any>, user: Us
       job.error = e instanceof Error ? e.message : String(e);
       // Nothing was made, so the tokens go back.
       await refund(user.uid, cost).catch(console.error);
+      recordTokens({ uid: user.uid, jobId: id, template, op: 'refund', tokens: cost });
       job.tokens = 0;
     }
     await save(job);
@@ -300,6 +306,7 @@ function startRender(job: Job, cost = 0) {
       job.error = `書き出しに失敗しました: ${e instanceof Error ? e.message : e}`;
       // Nothing came out, so the export tokens go back.
       if (cost) await refund(job.owner ?? LOCAL_USER.uid, cost).catch(console.error);
+      if (cost) recordTokens({ uid: job.owner ?? LOCAL_USER.uid, jobId: job.id, template: job.template, op: 'refund', tokens: cost });
     }
     job.renderProgress = undefined;
     await save(job);
@@ -525,7 +532,7 @@ const server = http.createServer(async (req, res) => {
 
     if (p === '/api/me' && req.method === 'GET') {
       const a = await getAccount(user!.uid, user!.email);
-      return json(res, 200, { email: a.email, plan: a.plan, tokens: a.tokens, extra: a.extra, balance: balance(a), billing: billingEnabled, subscribed: Boolean(a.subscriptionId), store: a.store ?? (a.subscriptionId ? 'stripe' : undefined), pastDue: Boolean(a.pastDue), freePending: Boolean(a.freePending), displayName: a.displayName, avatar: a.avatar, auth: authEnabled });
+      return json(res, 200, { admin: isAdmin(user!, a.email) || undefined, email: a.email, plan: a.plan, tokens: a.tokens, extra: a.extra, balance: balance(a), billing: billingEnabled, subscribed: Boolean(a.subscriptionId), store: a.store ?? (a.subscriptionId ? 'stripe' : undefined), pastDue: Boolean(a.pastDue), freePending: Boolean(a.freePending), displayName: a.displayName, avatar: a.avatar, auth: authEnabled });
     }
     // Account deletion (App Store guideline 5.1.1(v)): web plan cancelled, jobs, uploads, account and login removed.
     // An App Store subscription can only be cancelled by the customer in their Apple ID settings; the app says so.
@@ -542,6 +549,15 @@ const server = http.createServer(async (req, res) => {
       await deleteFirebaseUser(user!.uid);
       for (const [t, v] of verified) if (v.user.uid === user!.uid) verified.delete(t);
       return json(res, 200, { deleted: true });
+    }
+    // The owner's business dashboard (#/admin): revenue, costs and profit. Owners only, never customers.
+    if (p === '/api/admin/metrics' && req.method === 'GET') {
+      const a = await getAccount(user!.uid, user!.email);
+      if (!isAdmin(user!, a.email)) return json(res, 404, { error: 'not found' });
+      const month = url.searchParams.get('month') ?? '';
+      if (month && !/^\d{4}-(0[1-9]|1[0-2])$/.test(month)) return json(res, 400, { error: 'month must be YYYY-MM' });
+      res.setHeader('Cache-Control', 'no-store');
+      return json(res, 200, await metrics([...jobs.values()], month || undefined));
     }
     if (p === '/api/media-key' && req.method === 'GET') return json(res, 200, { key: await mediaKey(user!), hours: MEDIA_KEY_HOURS });
     // Push notifications in the app: its FCM token, so a finished export can tell the phone.
@@ -647,6 +663,7 @@ const server = http.createServer(async (req, res) => {
             const r = await runPass(n, { jobId: job.id, note: typeof note === 'string' && note.trim() ? note.trim().slice(0, 500) : undefined });
             job.props = r.props;
             job.versions = { ...(job.versions ?? {}), [n]: r.version };
+            recordAi({ jobId: job.id, uid: user!.uid, template: job.template, step: `pass${n}`, usd: r.usage.totalUsd });
           } catch (e) {
             console.error(e);
             job.error = e instanceof Error ? e.message : String(e);
@@ -671,6 +688,7 @@ const server = http.createServer(async (req, res) => {
         if (job.status === 'generating' || job.status === 'rendering') return json(res, 409, { error: '処理中です' });
         try {
           await charge(user!.uid, MUSIC_TOKENS);
+          recordTokens({ uid: user!.uid, jobId: job.id, template: job.template, op: 'music', tokens: MUSIC_TOKENS });
         } catch (e) {
           if (e instanceof NotEnoughTokens) return json(res, 402, { error: e.message, code: 'tokens' });
           throw e;
@@ -686,6 +704,7 @@ const server = http.createServer(async (req, res) => {
             usage,
             step: 'music',
           });
+          recordAi({ jobId: job.id, uid: user!.uid, template: job.template, step: 'music', usd: usage.totalUsd });
           job.props = { ...job.props, music: `jobs/${job.id}/${path.basename(f)}` };
           if (job.status === 'done' || job.status === 'error') job.status = 'ready';
           await save(job);
@@ -693,6 +712,7 @@ const server = http.createServer(async (req, res) => {
         } catch (e) {
           console.error(e);
           await refund(user!.uid, MUSIC_TOKENS);
+          recordTokens({ uid: user!.uid, jobId: job.id, template: job.template, op: 'refund', tokens: MUSIC_TOKENS });
           return json(res, 502, { error: '曲を作れませんでした。トークンは戻しました。もう一度お試しください。' });
         }
       }
@@ -702,6 +722,7 @@ const server = http.createServer(async (req, res) => {
         const cost = exportCost(job);
         try {
           await charge(user!.uid, cost);
+          recordTokens({ uid: user!.uid, jobId: job.id, template: job.template, op: 'export', tokens: cost });
         } catch (e) {
           if (e instanceof NotEnoughTokens) return json(res, 402, { error: e.message, code: 'tokens' });
           throw e;

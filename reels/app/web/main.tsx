@@ -3527,7 +3527,7 @@ const FAQ = [
 
 const jobTokens = (j: Job) => j.tokens ?? (j.template === 'ProductShine' ? (j.props?.clip ? 12 : 5) : j.template === 'EffectsReel' || j.template === 'FivePass' || j.template === 'SaaSPromo' ? 5 : 2);
 
-type Me = { email?: string; plan: 'free' | 'starter' | 'standard' | 'pro'; tokens: number; extra: number; balance: number; billing: boolean; subscribed: boolean; store?: 'stripe' | 'app_store' | 'play_store'; pastDue?: boolean; freePending?: boolean; displayName?: string; avatar?: string; auth: boolean };
+type Me = { admin?: boolean; email?: string; plan: 'free' | 'starter' | 'standard' | 'pro'; tokens: number; extra: number; balance: number; billing: boolean; subscribed: boolean; store?: 'stripe' | 'app_store' | 'play_store'; pastDue?: boolean; freePending?: boolean; displayName?: string; avatar?: string; auth: boolean };
 const PLAN_NAMES: Record<Me['plan'], string> = { free: tr("無料"), starter: tr("スターター"), standard: tr("スタンダード"), pro: tr("プロ") };
 
 // Free tokens are claimed once per phone number: SMS code, then the server checks the number is new.
@@ -3702,6 +3702,11 @@ const Account: React.FC<{ go: (h: string) => void }> = ({ go }) => {
           ) : null}
         </div>
       ) : null}
+      {me?.admin ? (
+        <button className="btn ghost small admlink" onClick={() => go('#/admin')}>
+          {tr("経営ダッシュボードを開く")}
+        </button>
+      ) : null}
       {editing && me ? <ProfileSheet me={me} onClose={() => setEditing(false)} onSaved={loadMe} /> : null}
       {me?.freePending ? <FreeClaim onDone={loadMe} /> : null}
       {paid ? <div className="okmsg">{tr("お支払いありがとうございます。トークンは数秒で反映されます。")}</div> : null}
@@ -3806,6 +3811,237 @@ const Account: React.FC<{ go: (h: string) => void }> = ({ go }) => {
       <History onOpen={(id) => go(`#/job/${id}`)} />
       {me?.auth ? <DeleteAccount me={me} /> : null}
     </>
+  );
+};
+
+// ---------- owner dashboard (#/admin) ----------
+// Revenue, costs and profit for the owner. The server answers /api/admin/metrics only for ADMIN_EMAILS / ADMIN_UIDS,
+// so this page shows nothing to anyone else; it is the one place AI cost is shown, and never to customers.
+
+type MoneyRow = { key: string; gross: number; fee: number; tax: number; net: number; count: number; tokens: number };
+type MonthSummary = { month: string; gross: number; fees: number; tax: number; net: number; aiCost: number; serverCost: number; grossProfit: number; profit: number; margin: number | null; salesCount: number; refunds: number; refundJpy: number; testSales: number; reels: number };
+type Metrics = {
+  month: string;
+  currentMonth: string;
+  assumptions: { usdJpy: number; serverCostMonth: number; serverCostShare: number; serverCostSince: string; feesEstimated: boolean };
+  summary: MonthSummary & { mrr: number; payingUsers: number; pastDue: number };
+  byChannel: MoneyRow[];
+  byProduct: MoneyRow[];
+  payingByPlan: { plan: string; users: number; mrr: number; stripe: number; app_store: number; play_store: number; pastDue: number }[];
+  users: { total: number; newInMonth: number; freeClaims: number; freeClaimsTotal: number; paying: number };
+  reels: { made: number; failed: number; exports: number; byTemplate: { template: string; reels: number; failed: number; exports: number; aiCost: number; avgAiCost: number | null }[] };
+  tokens: { sold: number; consumed: number; refunded: number; free: number; outstanding: number };
+  trend: MonthSummary[];
+};
+
+const yen = (n: number): string => (n < 0 ? `−${yen(-n)}` : tr("{0}円", fmtN(n)));
+const CHANNEL_NAMES: Record<string, string> = { stripe: 'Stripe (Web)', app_store: 'App Store', play_store: 'Google Play' };
+const productName = (k: string) =>
+  ({ payg: tr("都度購入"), topup: tr("トークンパック"), topup_small: tr("トークンパック（小）"), refund: tr("返金"), subscription: tr("サブスク（プラン不明）") } as Record<string, string>)[k] ??
+  PLAN_NAMES[k as Me['plan']] ??
+  k;
+const shiftMonth = (m: string, by: number) => {
+  const [y, mo] = m.split('-').map(Number);
+  return new Date(Date.UTC(y, mo - 1 + by, 1)).toISOString().slice(0, 7);
+};
+
+/** Net revenue against AI + server cost, month by month. Plain SVG; each bar names its value on hover. */
+const TrendChart: React.FC<{ trend: MonthSummary[] }> = ({ trend }) => {
+  const W = 600, H = 200, padL = 8, padB = 24, padT = 12;
+  const cost = (m: MonthSummary) => m.aiCost + m.serverCost;
+  const max = Math.max(1, ...trend.flatMap((m) => [m.net, cost(m)]));
+  const slot = (W - padL * 2) / trend.length;
+  const bw = Math.min(26, slot / 3);
+  const h = (v: number) => (Math.max(0, v) / max) * (H - padB - padT);
+  const base = H - padB;
+  return (
+    <figure className="admchart">
+      <div className="admlegend">
+        <span><i className="sw net" />{tr("純売上")}</span>
+        <span><i className="sw cost" />{tr("AI原価＋サーバー代")}</span>
+      </div>
+      <svg viewBox={`0 0 ${W} ${H}`} role="img" aria-label={tr("直近6か月の推移")}>
+        {[0.25, 0.5, 0.75, 1].map((f) => (
+          <line key={f} x1={padL} x2={W - padL} y1={base - f * (H - padB - padT)} y2={base - f * (H - padB - padT)} className="gl" />
+        ))}
+        <line x1={padL} x2={W - padL} y1={base} y2={base} className="axis" />
+        {trend.map((m, i) => {
+          const cx = padL + slot * i + slot / 2;
+          return (
+            <g key={m.month}>
+              <rect className="admbar net" x={cx - bw - 1} y={base - h(m.net)} width={bw} height={Math.max(h(m.net), 0.5)} rx={3}>
+                <title>{`${m.month} ${tr("純売上")}: ${yen(m.net)}`}</title>
+              </rect>
+              <rect className="admbar cost" x={cx + 1} y={base - h(cost(m))} width={bw} height={Math.max(h(cost(m)), 0.5)} rx={3}>
+                <title>{`${m.month} ${tr("AI原価＋サーバー代")}: ${yen(cost(m))}`}</title>
+              </rect>
+              <text x={cx} y={H - 5} textAnchor="middle" className="lbl">{m.month.slice(2).replace('-', '/')}</text>
+            </g>
+          );
+        })}
+      </svg>
+      <figcaption className="cost">{tr("最大 {0}", yen(max))}</figcaption>
+    </figure>
+  );
+};
+
+const Admin: React.FC = () => {
+  const [month, setMonth] = useState('');
+  const [data, setData] = useState<Metrics | null>(null);
+  const [err, setErr] = useState('');
+  useEffect(() => {
+    setErr('');
+    api<Metrics>(`/api/admin/metrics${month ? `?month=${month}` : ''}`).then(
+      (d) => (setData(d), month || setMonth(d.month)),
+      (e) => setErr(e.message),
+    );
+  }, [month]);
+  if (err && !data) return <div className="err">{err === 'not found' ? tr("このページはオーナーだけが見られます。") : err}</div>;
+  if (!data) return <p className="cost">{tr("読み込み中…")}</p>;
+  const s = data.summary;
+  const isCurrent = data.month === data.currentMonth;
+  const cards: { label: string; value: string; note?: string; tone?: 'good' | 'bad' }[] = [
+    { label: isCurrent ? tr("今月の売上") : tr("売上"), value: yen(s.gross), note: tr("{0}件・返金{1}件", fmtN(s.salesCount), fmtN(s.refunds)) },
+    { label: tr("手数料"), value: yen(s.fees), note: data.assumptions.feesEstimated ? tr("推定を含む") : undefined },
+    { label: tr("純売上"), value: yen(s.net), note: s.tax ? tr("税{0}を除く", yen(s.tax)) : undefined },
+    { label: tr("AI原価"), value: yen(s.aiCost), note: tr("1ドル={0}円で換算", data.assumptions.usdJpy) },
+    { label: tr("サーバー代(概算)"), value: yen(s.serverCost), note: data.assumptions.serverCostShare < 1 ? tr("月{0}を経過日数で按分", yen(data.assumptions.serverCostMonth)) : tr("月{0}", yen(data.assumptions.serverCostMonth)) },
+    { label: tr("利益"), value: yen(s.profit), tone: s.profit >= 0 ? 'good' : 'bad', note: tr("粗利 {0}", yen(s.grossProfit)) },
+    { label: tr("利益率"), value: s.margin === null ? '—' : `${s.margin}%`, tone: s.margin === null ? undefined : s.margin >= 0 ? 'good' : 'bad' },
+    { label: 'MRR', value: yen(s.mrr), note: tr("現在の契約から") },
+    { label: tr("有料ユーザー"), value: fmtN(s.payingUsers), note: s.pastDue ? tr("支払い遅延 {0}", fmtN(s.pastDue)) : undefined },
+  ];
+  const MoneyTable: React.FC<{ rows: MoneyRow[]; name: (k: string) => string }> = ({ rows, name }) =>
+    rows.length ? (
+      <div className="admtable">
+        <table>
+          <thead>
+            <tr><th>{tr("項目")}</th><th>{tr("件数")}</th><th>{tr("売上")}</th><th>{tr("手数料")}</th><th>{tr("純売上")}</th><th>{tr("トークン")}</th></tr>
+          </thead>
+          <tbody>
+            {rows.map((r) => (
+              <tr key={r.key}><td>{name(r.key)}</td><td>{fmtN(r.count)}</td><td>{yen(r.gross)}</td><td>{yen(r.fee)}</td><td>{yen(r.net)}</td><td>{fmtN(r.tokens)}</td></tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+    ) : (
+      <p className="cost">{tr("この月の売上はまだありません")}</p>
+    );
+  return (
+    <div className="admin">
+      <Crumbs items={[{ label: tr("ホーム"), href: '#/' }, { label: tr("アカウント"), href: '#/me' }, { label: tr("経営ダッシュボード") }]} />
+      <div className="admhead">
+        <h1>{tr("経営ダッシュボード")}</h1>
+        <div className="row admmonth">
+          <button className="btn ghost small" onClick={() => setMonth(shiftMonth(data.month, -1))} aria-label={tr("前の月")}>‹</button>
+          <input className="inp" type="month" value={month} max={data.currentMonth} onChange={(e) => e.target.value && setMonth(e.target.value)} aria-label={tr("月")} />
+          <button className="btn ghost small" disabled={data.month >= data.currentMonth} onClick={() => setMonth(shiftMonth(data.month, 1))} aria-label={tr("次の月")}>›</button>
+        </div>
+      </div>
+      {err ? <div className="err">{err}</div> : null}
+      <div className="admcards">
+        {cards.map((c) => (
+          <div key={c.label} className={`admcard ${c.tone ?? ''}`}>
+            <span>{c.label}</span>
+            <b>{c.value}</b>
+            {c.note ? <small>{c.note}</small> : null}
+          </div>
+        ))}
+      </div>
+      {s.testSales ? <p className="cost">{tr("テスト決済{0}件は集計から除いています。", fmtN(s.testSales))}</p> : null}
+
+      <h2>{tr("直近6か月の推移")}</h2>
+      <TrendChart trend={data.trend} />
+      <div className="admtable">
+        <table>
+          <thead>
+            <tr><th>{tr("月")}</th><th>{tr("売上")}</th><th>{tr("手数料")}</th><th>{tr("純売上")}</th><th>{tr("AI原価")}</th><th>{tr("サーバー代(概算)")}</th><th>{tr("利益")}</th><th>{tr("利益率")}</th><th>{tr("作ったリール")}</th></tr>
+          </thead>
+          <tbody>
+            {data.trend.map((m) => (
+              <tr key={m.month} className={m.month === data.month ? 'on' : ''}>
+                <td>{m.month}</td><td>{yen(m.gross)}</td><td>{yen(m.fees)}</td><td>{yen(m.net)}</td><td>{yen(m.aiCost)}</td><td>{yen(m.serverCost)}</td>
+                <td className={m.profit < 0 ? 'neg' : ''}>{yen(m.profit)}</td><td>{m.margin === null ? '—' : `${m.margin}%`}</td><td>{fmtN(m.reels)}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+
+      <h2>{tr("プラン・商品別の売上")}</h2>
+      <MoneyTable rows={data.byProduct} name={productName} />
+      <h2>{tr("チャネル別の売上")}</h2>
+      <MoneyTable rows={data.byChannel} name={(k) => CHANNEL_NAMES[k] ?? k} />
+
+      <h2>{tr("有料ユーザー（現在）")}</h2>
+      {data.payingByPlan.length ? (
+        <div className="admtable">
+          <table>
+            <thead>
+              <tr><th>{tr("プラン")}</th><th>{tr("人数")}</th><th>MRR</th><th>Web</th><th>App Store</th><th>Google Play</th><th>{tr("支払い遅延")}</th></tr>
+            </thead>
+            <tbody>
+              {data.payingByPlan.map((r) => (
+                <tr key={r.plan}><td>{PLAN_NAMES[r.plan as Me['plan']] ?? r.plan}</td><td>{fmtN(r.users)}</td><td>{yen(r.mrr)}</td><td>{fmtN(r.stripe)}</td><td>{fmtN(r.app_store)}</td><td>{fmtN(r.play_store)}</td><td>{fmtN(r.pastDue)}</td></tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      ) : (
+        <p className="cost">{tr("有料プランの契約はまだありません")}</p>
+      )}
+
+      <h2>{tr("テンプレート別のリール")}</h2>
+      {data.reels.byTemplate.length ? (
+        <div className="admtable">
+          <table>
+            <thead>
+              <tr><th>{tr("テンプレート")}</th><th>{tr("作成")}</th><th>{tr("失敗")}</th><th>{tr("書き出し")}</th><th>{tr("AI原価")}</th><th>{tr("1本あたりAI原価")}</th></tr>
+            </thead>
+            <tbody>
+              {data.reels.byTemplate.map((r) => (
+                <tr key={r.template}><td>{TEMPLATES[r.template as TemplateId]?.name ?? r.template}</td><td>{fmtN(r.reels)}</td><td>{fmtN(r.failed)}</td><td>{fmtN(r.exports)}</td><td>{yen(r.aiCost)}</td><td>{r.avgAiCost === null ? '—' : yen(r.avgAiCost)}</td></tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      ) : (
+        <p className="cost">{tr("この月のリールはまだありません")}</p>
+      )}
+
+      <div className="admgrid">
+        <div className="admpanel">
+          <h2>{tr("リール")}</h2>
+          <dl>
+            <dt>{tr("作ったリール")}</dt><dd>{fmtN(data.reels.made)}</dd>
+            <dt>{tr("書き出し")}</dt><dd>{fmtN(data.reels.exports)}</dd>
+            <dt>{tr("失敗したジョブ")}</dt><dd>{fmtN(data.reels.failed)}</dd>
+            <dt>{tr("返金")}</dt><dd>{tr("{0}件", fmtN(s.refunds))} / {yen(s.refundJpy)}</dd>
+          </dl>
+        </div>
+        <div className="admpanel">
+          <h2>{tr("トークン")}</h2>
+          <dl>
+            <dt>{tr("販売したトークン")}</dt><dd>{fmtN(data.tokens.sold)}</dd>
+            <dt>{tr("使われたトークン")}</dt><dd>{fmtN(data.tokens.consumed)}</dd>
+            <dt>{tr("失敗で返したトークン")}</dt><dd>{fmtN(data.tokens.refunded)}</dd>
+            <dt>{tr("無料で配ったトークン")}</dt><dd>{fmtN(data.tokens.free)}</dd>
+            <dt>{tr("未使用の残高（全ユーザー）")}</dt><dd>{fmtN(data.tokens.outstanding)}</dd>
+          </dl>
+        </div>
+        <div className="admpanel">
+          <h2>{tr("ユーザー")}</h2>
+          <dl>
+            <dt>{tr("総ユーザー")}</dt><dd>{fmtN(data.users.total)}</dd>
+            <dt>{tr("新規登録")}</dt><dd>{fmtN(data.users.newInMonth)}</dd>
+            <dt>{tr("無料トークン受け取り")}</dt><dd>{fmtN(data.users.freeClaims)} <small className="cost">({tr("累計{0}", fmtN(data.users.freeClaimsTotal))})</small></dd>
+            <dt>{tr("有料ユーザー")}</dt><dd>{fmtN(data.users.paying)}</dd>
+          </dl>
+        </div>
+      </div>
+      <p className="cost admnote">{tr("この画面はオーナーだけが見られます。手数料はStripe・ストアが金額を返さないときは推定（Stripe 3.6%・ストア15%）、サーバー代は概算です。月は日本時間で区切っています。")}</p>
+    </div>
   );
 };
 
@@ -4092,7 +4328,7 @@ const App = () => {
   const go = (h: string) => (location.hash = h);
   const [, route, arg, arg2] = hash.split('?')[0].split('/');
   const query = new URLSearchParams(hash.split('?')[1] ?? '');
-  const tab = route === 'reels' || route === 'job' ? 'reels' : route === 'me' || route === 'history' ? 'me' : route === 'new' || route === 'start' ? 'new' : 'home';
+  const tab = route === 'reels' || route === 'job' ? 'reels' : route === 'me' || route === 'history' || route === 'admin' ? 'me' : route === 'new' || route === 'start' ? 'new' : 'home';
   const tabs = [
     { id: 'home', label: tr("ホーム"), icon: 'home', onClick: () => go('#/') },
     { id: 'new', label: tr("作成"), icon: 'plus', onClick: () => go('#/start') },
@@ -4129,6 +4365,8 @@ const App = () => {
           <NewJob key={hash} template={arg as TemplateId} fx={effectIds.includes(arg2 as EffectId) ? (arg2 as EffectId) : undefined} mixArg={arg2?.startsWith('mix-') ? arg2.slice(4) : undefined} tplArg={arg2?.startsWith('tpl-') ? arg2 : undefined} onBack={() => history.back()} onStarted={(j) => go(`#/job/${j.id}`)} />
         ) : route === 'job' && arg ? (
           <Editor key={arg} id={arg} />
+        ) : route === 'admin' ? (
+          <Admin />
         ) : route === 'history' || route === 'me' ? (
           <Account go={go} />
         ) : route === 'reels' ? (

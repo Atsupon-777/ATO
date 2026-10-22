@@ -4,6 +4,7 @@ import { createHash } from 'node:crypto';
 import { mkdir, readFile, rename, writeFile } from 'node:fs/promises';
 import path from 'node:path';
 import { authEnabled } from './auth.ts';
+import { recordTokens } from './ledger.ts';
 import { dataDir } from './paths.ts';
 
 export type PlanId = 'free' | 'starter' | 'standard' | 'pro';
@@ -15,6 +16,13 @@ export type PlanId = 'free' | 'starter' | 'standard' | 'pro';
 export const TOKEN_SCALE = 1;
 /** Monthly token allowance of each plan. Prices live in Stripe (STRIPE_PRICE_<PLAN>). */
 export const PLAN_TOKENS: Record<PlanId, number> = { free: 0, starter: 60, standard: 200, pro: 600 };
+/** Monthly price of each plan on the website, tax included (the same figures as the account page). For the owner's MRR. */
+export const PLAN_PRICE_JPY: Record<PlanId, number> = {
+  free: 0,
+  starter: Number(process.env.PLAN_PRICE_STARTER_JPY ?? 9800),
+  standard: Number(process.env.PLAN_PRICE_STANDARD_JPY ?? 29800),
+  pro: Number(process.env.PLAN_PRICE_PRO_JPY ?? 79800),
+};
 /** Free tokens a new account can claim once, after confirming a phone number by SMS. */
 export const FREE_TOKENS = Number(process.env.FREE_TOKENS ?? 10);
 /**
@@ -138,6 +146,7 @@ export async function claimFree(uid: string, phone: string) {
   a.freePending = false;
   a.extra += FREE_TOKENS;
   await persist();
+  recordTokens({ uid, op: 'free', tokens: FREE_TOKENS });
   return a;
 }
 
@@ -147,6 +156,9 @@ export async function refund(uid: string, n: number) {
   a.extra += n;
   await persist();
 }
+
+/** Every account, for the owner's dashboard. */
+export const allAccounts = async () => [...(await load()).values()];
 
 export async function update(uid: string, fn: (a: Account) => void) {
   const a = await getAccount(uid);

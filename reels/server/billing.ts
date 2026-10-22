@@ -6,6 +6,7 @@
 //   STRIPE_TAX=1             turn on Stripe Tax (prices are tax-inclusive either way)
 import { createHmac, timingSafeEqual } from 'node:crypto';
 import { PAYG_MAX, PAYG_MIN, PAYG_UNIT, PAYG_UNIT_YEN, PLAN_TOKENS, TOPUP_TOKENS, findByCustomer, update, type Account, type PlanId } from './accounts.ts';
+import { readLedger, recordSale, type SaleEntry } from './ledger.ts';
 
 // A restricted key (rk_...) with only Checkout, Customer portal, Customers and Subscriptions is enough.
 const key = process.env.STRIPE_SECRET_KEY || '';
@@ -135,6 +136,14 @@ export async function webhook(raw: Buffer, signature: string | undefined) {
   const uid: string | undefined = await uidOf();
   if (!uid) return { ignored: ev.type };
   let applied = false;
+  /** What this event earned, for the owner's ledger; written once the event is known to be new. */
+  let sale = null as Parameters<typeof recordSale>[0] | null;
+  const base = { channel: 'stripe' as const, uid, eventId: String(ev.id), test: ev.livemode === false || undefined, at: ev.created ? new Date(ev.created * 1000).toISOString() : undefined };
+  /** Tax Stripe reports on a session or an invoice (only with Stripe Tax on). */
+  const taxOf = () => {
+    const t = o.total_details?.amount_tax ?? o.tax ?? (Array.isArray(o.total_taxes) ? o.total_taxes.reduce((n: number, x: any) => n + (x.amount ?? 0), 0) : undefined);
+    return typeof t === 'number' && t > 0 ? t : undefined;
+  };
   await update(uid, (a) => {
     if (a.events?.includes(ev.id)) return;
     a.events = [...(a.events ?? []), ev.id].slice(-200);
@@ -149,7 +158,10 @@ export async function webhook(raw: Buffer, signature: string | undefined) {
         if (o.mode === 'payment' && o.metadata?.kind === 'topup' && o.payment_status === 'paid') {
           // A Checkout opened while counts were 1000x larger (until 2026-10-21) carries 2,000-500,000.
           const t = Number(o.metadata.tokens);
-          a.extra += t >= 1000 ? Math.round(t / 1000) : t || TOPUP_TOKENS;
+          const added = t >= 1000 ? Math.round(t / 1000) : t || TOPUP_TOKENS;
+          a.extra += added;
+          // JPY is a zero-decimal currency in Stripe, so amounts are whole yen.
+          if (o.currency === 'jpy' || !o.currency) sale = { ...base, product: 'payg', tokens: added, grossJpy: Number(o.amount_total ?? 0), taxJpy: taxOf() };
         }
         break;
       case 'invoice.payment_failed':
@@ -167,8 +179,14 @@ export async function webhook(raw: Buffer, signature: string | undefined) {
           a.store = 'stripe';
           a.storeProduct = undefined;
         }
+        if (Number(o.amount_paid) > 0 && (o.currency === 'jpy' || !o.currency))
+          sale = { ...base, product: plan ?? 'subscription', tokens: plan ? PLAN_TOKENS[plan] : 0, grossJpy: Number(o.amount_paid), taxJpy: taxOf() };
         break;
       }
+      // A refund from the Dashboard. amount_refunded is the running total, so only the new part is booked.
+      case 'charge.refunded':
+        if (o.currency === 'jpy' || !o.currency) sale = { ...base, product: 'refund', tokens: 0, grossJpy: -Number(o.amount_refunded ?? 0), refund: true, ref: String(o.id) };
+        break;
       case 'customer.subscription.updated': {
         const plan = planOfPrice(o.items?.data?.[0]?.price?.id);
         a.subscriptionId = o.id;
@@ -187,5 +205,18 @@ export async function webhook(raw: Buffer, signature: string | undefined) {
         break;
     }
   });
+  if (applied && sale) await bookSale(sale);
   return { type: ev.type, uid, applied };
+}
+
+/** Writes a Stripe sale or refund to the ledger. A refund books only what earlier refunds of the same charge didn't. */
+async function bookSale(sale: Parameters<typeof recordSale>[0]) {
+  if (sale.refund && sale.ref) {
+    const before = (await readLedger()).filter((e): e is SaleEntry => e.kind === 'sale' && e.refund === true && e.ref === sale.ref).reduce((n, e) => n + e.grossJpy, 0);
+    const gross = sale.grossJpy - before;
+    if (gross >= 0) return;
+    // Stripe keeps its fee on a refund, so the fee doesn't come back: the refund is money out at face value.
+    return recordSale({ ...sale, grossJpy: gross, feeJpy: 0 });
+  }
+  if (sale.grossJpy > 0) return recordSale(sale);
 }
