@@ -735,7 +735,7 @@
  "トークンパック": "Pack de jetons",
  "失敗したジョブ": "Tâches échouées",
  "販売したトークン": "Jetons vendus",
- "この画面はオーナーだけが見られます。手数料はStripe・ストアが金額を返さないときは推定（Stripe 3.6%・ストア15%）、サーバー代は概算です。月は日本時間で区切っています。": "Seul le propriétaire peut voir cette page. Les frais sont estimés quand Stripe ou la boutique ne les communiquent pas (Stripe 3,6 %, boutiques 15 %), et le coût serveur est une estimation. Les mois suivent l'heure du Japon.",
+ "この画面はオーナーだけが見られます。手数料はStripe・ストアが金額を返さないときは推定（Stripe 3.6%・ストア30%）、サーバー代は概算です。月は日本時間で区切っています。": "Seul le propriétaire peut voir cette page. Les frais sont estimés quand Stripe ou la boutique ne les communiquent pas (Stripe 3,6 %, boutiques 30 %), et le coût serveur est une estimation. Les mois suivent l'heure du Japon.",
  "今月の売上": "Revenus du mois",
  "総ユーザー": "Utilisateurs au total",
  "失敗で返したトークン": "Jetons rendus après échec",

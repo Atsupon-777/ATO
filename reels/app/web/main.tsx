@@ -4040,7 +4040,7 @@ const Admin: React.FC = () => {
           </dl>
         </div>
       </div>
-      <p className="cost admnote">{tr("この画面はオーナーだけが見られます。手数料はStripe・ストアが金額を返さないときは推定（Stripe 3.6%・ストア15%）、サーバー代は概算です。月は日本時間で区切っています。")}</p>
+      <p className="cost admnote">{tr("この画面はオーナーだけが見られます。手数料はStripe・ストアが金額を返さないときは推定（Stripe 3.6%・ストア30%）、サーバー代は概算です。月は日本時間で区切っています。")}</p>
     </div>
   );
 };

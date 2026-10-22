@@ -735,7 +735,7 @@
  "トークンパック": "Paket token",
  "失敗したジョブ": "Tugas gagal",
  "販売したトークン": "Token terjual",
- "この画面はオーナーだけが見られます。手数料はStripe・ストアが金額を返さないときは推定（Stripe 3.6%・ストア15%）、サーバー代は概算です。月は日本時間で区切っています。": "Hanya pemilik yang dapat melihat halaman ini. Biaya diperkirakan jika Stripe atau toko tidak melaporkannya (Stripe 3,6%, toko 15%), dan biaya server adalah perkiraan. Bulan mengikuti waktu Jepang.",
+ "この画面はオーナーだけが見られます。手数料はStripe・ストアが金額を返さないときは推定（Stripe 3.6%・ストア30%）、サーバー代は概算です。月は日本時間で区切っています。": "Hanya pemilik yang dapat melihat halaman ini. Biaya diperkirakan jika Stripe atau toko tidak melaporkannya (Stripe 3,6%, toko 30%), dan biaya server adalah perkiraan. Bulan mengikuti waktu Jepang.",
  "今月の売上": "Pendapatan bulan ini",
  "総ユーザー": "Total pengguna",
  "失敗で返したトークン": "Token dikembalikan karena gagal",

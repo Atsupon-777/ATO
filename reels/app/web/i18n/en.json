@@ -735,7 +735,7 @@
  "トークンパック": "Token pack",
  "失敗したジョブ": "Failed jobs",
  "販売したトークン": "Tokens sold",
- "この画面はオーナーだけが見られます。手数料はStripe・ストアが金額を返さないときは推定（Stripe 3.6%・ストア15%）、サーバー代は概算です。月は日本時間で区切っています。": "Only the owner can see this page. Fees are estimated when Stripe or the store doesn't report them (Stripe 3.6%, stores 15%), and server cost is an estimate. Months follow Japan time.",
+ "この画面はオーナーだけが見られます。手数料はStripe・ストアが金額を返さないときは推定（Stripe 3.6%・ストア30%）、サーバー代は概算です。月は日本時間で区切っています。": "Only the owner can see this page. Fees are estimated when Stripe or the store doesn't report them (Stripe 3.6%, stores 30%), and server cost is an estimate. Months follow Japan time.",
  "今月の売上": "Revenue this month",
  "総ユーザー": "Total users",
  "失敗で返したトークン": "Tokens returned for failures",
