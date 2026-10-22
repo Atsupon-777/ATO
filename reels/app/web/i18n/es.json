@@ -813,5 +813,21 @@
  "全画面テキスト": "Texto a pantalla completa",
  "画像に切り替え": "Pasar a imagen",
  "上下に分割": "Pantalla dividida",
- "別のカット割り": "Otro montaje"
+ "別のカット割り": "Otro montaje",
+ "ジャズ風": "Jazz",
+ "フォンク風": "Phonk",
+ "クラシック風": "Clásica",
+ "チル風": "Chill",
+ "ポップス風": "Pop",
+ "ミュート": "Silencio",
+ "小": "Bajo",
+ "中": "Medio",
+ "大": "Alto",
+ "音量": "Volumen",
+ "音楽の種類": "Estilo de música",
+ "最初の曲": "Primera pista",
+ "音楽なし": "Sin música",
+ "BGMは動画全体に流れます": "La música suena durante todo el video",
+ "BGM": "Música",
+ "動画全体の音楽と音量": "Música y volumen de todo el video"
 }

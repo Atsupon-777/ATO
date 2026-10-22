@@ -813,5 +813,21 @@
  "全画面テキスト": "Teks layar penuh",
  "画像に切り替え": "Beralih ke gambar",
  "上下に分割": "Layar terbagi",
- "別のカット割り": "Potongan lain"
+ "別のカット割り": "Potongan lain",
+ "ジャズ風": "Jazz",
+ "フォンク風": "Phonk",
+ "クラシック風": "Klasik",
+ "チル風": "Santai",
+ "ポップス風": "Pop",
+ "ミュート": "Bisu",
+ "小": "Kecil",
+ "中": "Sedang",
+ "大": "Besar",
+ "音量": "Volume",
+ "音楽の種類": "Jenis musik",
+ "最初の曲": "Lagu pertama",
+ "音楽なし": "Tanpa musik",
+ "BGMは動画全体に流れます": "Musik diputar di sepanjang video",
+ "BGM": "Musik",
+ "動画全体の音楽と音量": "Musik dan volume untuk seluruh video"
 }

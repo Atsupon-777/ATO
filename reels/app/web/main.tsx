@@ -294,6 +294,8 @@ type Job = {
   poster?: string;
   versions?: Record<number, number>;
   tokens?: number;
+  /** Music beds made for this reel, by genre (plus `original`). */
+  musicTracks?: Record<string, string>;
 };
 
 // Static preview build (no server): jobs come from window.ATO_DEMO, edits stay in memory,
@@ -2141,14 +2143,117 @@ const TRACKS: { id: 'video' | 'picture' | 'audio' | 'text'; name: string }[] = [
 ];
 const PICTURE_ACCENTS = new Set(['stickers', 'emoji', 'sparkles', 'arrows']);
 
+/** 音楽の種類 on the pick screen (the server holds the prompt for each). */
+const MUSIC_GENRES: { id: string; name: string; tint: string }[] = [
+  { id: 'jazz', name: tr("ジャズ風"), tint: '#c98b3c' },
+  { id: 'phonk', name: tr("フォンク風"), tint: '#9b4dff' },
+  { id: 'classical', name: tr("クラシック風"), tint: '#7c9cff' },
+  { id: 'chill', name: tr("チル風"), tint: '#3ddc97' },
+  { id: 'pop', name: tr("ポップス風"), tint: '#ff7eb6' },
+];
+/** Tokens a new kind of music takes (MUSIC_TOKENS on the server). */
+const MUSIC_TOKENS_UI = 1;
+/** BGM level under the voice (ducking stays on); 中 is the default. */
+const MUSIC_LEVELS: { v: number; name: string }[] = [
+  { v: 0, name: tr("ミュート") },
+  { v: 0.18, name: tr("小") },
+  { v: MUSIC_DEFAULT, name: tr("中") },
+  { v: 0.6, name: tr("大") },
+];
+const musicLevelOf = (p: EffectsReelProps) => {
+  const v = p.musicVolume ?? MUSIC_DEFAULT;
+  return MUSIC_LEVELS.reduce((a, b) => (Math.abs(b.v - v) < Math.abs(a.v - v) ? b : a)).v;
+};
+
+/**
+ * The 音声 choices on the pick screen: the kind of music (each new kind is made once, for MUSIC_TOKENS, and
+ * kept on the job so going back to it is free) and how loud it sits under the voice.
+ */
+const AudioOptions: React.FC<{
+  jobId: string;
+  p: EffectsReelProps;
+  first?: string;
+  update: PanelProps<EffectsReelProps>['update'];
+  tracks: Record<string, string>;
+  setTracks: React.Dispatch<React.SetStateAction<Record<string, string>>>;
+}> = ({ jobId, p, first, update, tracks, setTracks }) => {
+  const [busy, setBusy] = useState<string | null>(null);
+  const [err, setErr] = useState('');
+  useEffect(() => {
+    api<Job>(`/api/jobs/${jobId}`)
+      .then((j) => setTracks((t) => ({ ...t, ...(j.musicTracks ?? {}) })))
+      .catch(() => {});
+  }, [jobId]);
+  const original = tracks.original ?? first;
+  const setMusic = (music: string | undefined) => update((x) => ((x.music = music), x));
+  const pickGenre = async (g: string) => {
+    setErr('');
+    if (tracks[g]) return setMusic(tracks[g]);
+    setBusy(g);
+    try {
+      const j = await api<Job>(`/api/jobs/${jobId}/music`, { method: 'POST', body: JSON.stringify({ genre: g }) });
+      setTracks((t) => ({ ...t, ...(j.musicTracks ?? {}) }));
+      const music = (j.props as { music?: string } | undefined)?.music;
+      if (music) setMusic(music);
+    } catch (e) {
+      setErr(e instanceof Error ? e.message : String(e));
+    }
+    setBusy(null);
+  };
+  const level = musicLevelOf(p);
+  const check = (
+    <span className="edcheck" aria-hidden>
+      <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
+        <path d="M5 12.5l4.5 4.5L19 7.5" />
+      </svg>
+    </span>
+  );
+  const tile = (key: string, name: string, on: boolean, onClick: () => void, opts: { tint?: string; cost?: boolean; spin?: boolean; off?: boolean } = {}) => (
+    <button key={key} role="option" aria-selected={on} aria-busy={opts.spin || undefined} className={`gtile ${on ? 'on' : ''} ${opts.off ? 'none' : ''}`} style={opts.tint ? ({ '--tint': opts.tint } as React.CSSProperties) : undefined} disabled={busy !== null && !opts.spin} onClick={onClick}>
+      <span className="gicon" aria-hidden>
+        {opts.spin ? <i className="gspin" /> : <Glyph d={opts.off ? G.mute : G.sound} size={16} />}
+      </span>
+      <b>{name}</b>
+      {opts.spin ? <small>{tr("曲を作っています…")}</small> : opts.cost ? <small className="tokcost">{tr("{0}トークン", MUSIC_TOKENS_UI)}</small> : null}
+      {on ? check : null}
+    </button>
+  );
+  return (
+    <div className="audopts">
+      <div className="audsec">
+        <span className="audlabel">{tr("音量")}</span>
+        <div className="seg" role="radiogroup" aria-label={tr("BGMの大きさ")}>
+          {MUSIC_LEVELS.map((l) => (
+            <button key={l.v} role="radio" aria-checked={level === l.v} className={level === l.v ? 'on' : ''} disabled={!p.music} onClick={() => update((x) => ((x.musicVolume = l.v), (x.duck = undefined), x))}>
+              {l.name}
+            </button>
+          ))}
+        </div>
+      </div>
+      <div className="audsec">
+        <span className="audlabel">{tr("音楽の種類")}</span>
+        <div className="gtiles" role="listbox" aria-label={tr("音楽の種類")}>
+          {MUSIC_GENRES.map((g) => tile(g.id, g.name, Boolean(p.music && tracks[g.id] === p.music), () => pickGenre(g.id), { tint: g.tint, cost: !tracks[g.id], spin: busy === g.id }))}
+          {original ? tile('original', tr("最初の曲"), p.music === original, () => setMusic(original), { tint: '#dfff4f' }) : null}
+          {tile('none', tr("音楽なし"), !p.music, () => setMusic(undefined), { off: true })}
+        </div>
+        {err ? <p className="err">{err}</p> : null}
+      </div>
+    </div>
+  );
+};
+
 /**
  * The pick screen (owner's sketch): a small preview on the left, the versions to choose from on the right
  * ("どれにしますか？"), and under them the reel as scenes on a timeline. Tap a scene and the preview shows
  * that scene and the grid shows other editions of it; with no scene chosen, the grid holds whole-reel
  * versions. Nothing here is edited by hand: every change is a tap on a version the AI made.
  */
-const PickBoard: React.FC<{ p: EffectsReelProps; update: PanelProps<EffectsReelProps>['update']; onDone: () => void }> = ({ p, update, onDone }) => {
+const PickBoard: React.FC<{ job: Job; p: EffectsReelProps; update: PanelProps<EffectsReelProps>['update']; onDone: () => void }> = ({ job, p, update, onDone }) => {
   const [sel, setSel] = useState<number | null>(null);
+  // 音声 chosen: the grid holds the music choices (kind and level) for the whole reel
+  const [aud, setAud] = useState(false);
+  const [tracks, setTracks] = useState<Record<string, string>>(job.musicTracks ?? {});
   const [seed, setSeed] = useState(() => 1 + Math.floor(Math.random() * 1e5));
   // what the AI made, as it was when this screen opened
   const orig = useRef(structuredClone(p)).current;
@@ -2248,9 +2353,23 @@ const PickBoard: React.FC<{ p: EffectsReelProps; update: PanelProps<EffectsReelP
     pl.isPlaying() ? pl.pause() : pl.play();
   };
   const choose = (k: number | null) => {
-    setSel(k === sel ? null : k);
+    setAud(false);
+    setSel(k === sel && !aud ? null : k);
     setSeed((s) => s + 1);
   };
+  const chooseAudio = () => {
+    setSel(null);
+    setAud((a) => !a);
+  };
+  // the voice as a waveform where someone speaks (stable bars from the speech stretches), the BGM as a line
+  const wave = useMemo(() => {
+    const bars: { x: number; h: number }[] = [];
+    const r = rng(7);
+    for (const [a, b] of p.speech ?? []) {
+      for (let x = xAt(a * FPS); x < xAt(b * FPS); x += 4) bars.push({ x, h: 0.25 + 0.75 * Math.abs(Math.sin(x * 0.13) * 0.6 + r() * 0.4) });
+    }
+    return bars;
+  }, [p.speech, xs]);
   const seg = sc ? p.segments[sc.i] : null;
   return (
     <div className="board">
@@ -2264,7 +2383,7 @@ const PickBoard: React.FC<{ p: EffectsReelProps; update: PanelProps<EffectsReelP
             outFrame={sc ? sc.from + sc.dur - 1 : undefined}
             at={sc ? (sc.from + sc.dur * 0.5) / total : 0.3}
           />
-          {sc ? <span className="boardbadge">{tr("シーン {0}", sc.label)}</span> : null}
+          {sc ? <span className="boardbadge">{tr("シーン {0}", sc.label)}</span> : aud ? <span className="boardbadge">{tr("音声")}</span> : null}
           {playing ? (
             <button className="boardsound" onClick={() => setMuted((m) => !m)} aria-label={tr("音")} aria-pressed={!muted}>
               <Glyph d={muted ? G.mute : G.sound} size={16} />
@@ -2275,35 +2394,39 @@ const PickBoard: React.FC<{ p: EffectsReelProps; update: PanelProps<EffectsReelP
           <div className="boardoptsin">
             <div className="boardq">
               <b>{tr("どれにしますか？")}</b>
-              <small>{sc ? tr("シーン {0} の別バージョン", sc.label) : tr("動画全体の案")}</small>
+              <small>{aud ? tr("動画全体の音楽と音量") : sc ? tr("シーン {0} の別バージョン", sc.label) : tr("動画全体の案")}</small>
             </div>
-            <div className="boardgrid" role="listbox" aria-label={tr("どれにしますか？")}>
-              {editions.map((o) => {
-                const on = o.on(p);
-                return (
-                  <button key={o.id} role="option" aria-selected={on} className={`ed ${on ? 'on' : ''}`} onClick={() => take(o)}>
-                    <div className="edthumb">
-                      <ReelStill props={sc ? withOpt(p, o, true) : withOpt(p, o)} at={sc ? 0.6 : 0.3} bare />
-                      {o.kind ? <span className="edkind">{o.kind}</span> : null}
-                      {on ? (
-                        <span className="edcheck" aria-hidden>
-                          <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
-                            <path d="M5 12.5l4.5 4.5L19 7.5" />
-                          </svg>
-                        </span>
-                      ) : null}
-                      <b className="edname">{o.name}</b>
-                    </div>
-                  </button>
-                );
-              })}
-              <button className="ed more" onClick={() => setSeed((s) => s + 1)}>
-                <div className="edthumb">
-                  <Glyph d={G.similar} size={22} />
-                  <span>{tr("別の案を出す")}</span>
-                </div>
-              </button>
-            </div>
+            {aud ? (
+              <AudioOptions jobId={job.id} p={p} first={orig.music} update={update} tracks={tracks} setTracks={setTracks} />
+            ) : (
+              <div className="boardgrid" role="listbox" aria-label={tr("どれにしますか？")}>
+                {editions.map((o) => {
+                  const on = o.on(p);
+                  return (
+                    <button key={o.id} role="option" aria-selected={on} className={`ed ${on ? 'on' : ''}`} onClick={() => take(o)}>
+                      <div className="edthumb">
+                        <ReelStill props={sc ? withOpt(p, o, true) : withOpt(p, o)} at={sc ? 0.6 : 0.3} bare />
+                        {o.kind ? <span className="edkind">{o.kind}</span> : null}
+                        {on ? (
+                          <span className="edcheck" aria-hidden>
+                            <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
+                              <path d="M5 12.5l4.5 4.5L19 7.5" />
+                            </svg>
+                          </span>
+                        ) : null}
+                        <b className="edname">{o.name}</b>
+                      </div>
+                    </button>
+                  );
+                })}
+                <button className="ed more" onClick={() => setSeed((s) => s + 1)}>
+                  <div className="edthumb">
+                    <Glyph d={G.similar} size={22} />
+                    <span>{tr("別の案を出す")}</span>
+                  </div>
+                </button>
+              </div>
+            )}
           </div>
         </div>
       </div>
@@ -2324,8 +2447,8 @@ const PickBoard: React.FC<{ p: EffectsReelProps; update: PanelProps<EffectsReelP
           <span className="tltime" ref={time}>
             {clock(restFrame)} / {clock(total)}
           </span>
-          <span className="tlhint">{sc ? (seg?.caption ? `“${seg.caption}”` : '') : tr("シーンをタップして選べます")}</span>
-          <button className={`tlall ${sel === null ? 'on' : ''}`} onClick={() => (setSel(null), setSeed((s) => s + 1), playing && stopPlaying())}>
+          <span className="tlhint">{sc ? (seg?.caption ? `“${seg.caption}”` : '') : aud ? tr("BGMは動画全体に流れます") : tr("シーンをタップして選べます")}</span>
+          <button className={`tlall ${sel === null && !aud ? 'on' : ''}`} onClick={() => (setSel(null), setAud(false), setSeed((s) => s + 1), playing && stopPlaying())}>
             {tr("全体")}
           </button>
         </div>
@@ -2359,11 +2482,22 @@ const PickBoard: React.FC<{ p: EffectsReelProps; update: PanelProps<EffectsReelP
                     <span className={`tlcell picture ${pic ? '' : 'empty'} ${img ? 'img' : ''} ${lay === 'text' ? 'card' : ''}`} style={img ? { backgroundImage: `url("${asset(img)}")` } : undefined}>
                       {pic ? <span className="tlclamp">{pic}</span> : null}
                     </span>
-                    <span className="tlcell audio">{p.music ? <i className="tlmusic" /> : null}</span>
+                    <span className="tlcell audiogap" aria-hidden />
                     <span className={`tlcell text ${g.caption || g.text ? '' : 'empty'}`}>{g.caption || g.text ? <span className="tlclamp">{g.caption || g.text}</span> : null}</span>
                   </button>
                 );
               })}
+              <div className="tlaudrow">
+                <button className={`tlaudio ${aud ? 'on' : ''}`} onClick={chooseAudio} aria-pressed={aud} aria-label={tr("音声")}>
+                  <svg className="tlwave" width={width} height="100%" viewBox={`0 0 ${width} 100`} preserveAspectRatio="none" aria-hidden>
+                    {wave.map((b, k) => (
+                      <rect key={k} x={b.x} y={50 - b.h * 34} width={2} height={b.h * 68} rx={1} />
+                    ))}
+                  </svg>
+                  {p.music ? <i className="tlmusic" style={{ opacity: 0.35 + musicLevelOf(p) }} /> : null}
+                  <span className="tlaudname">{p.music ? (MUSIC_GENRES.find((g) => tracks[g.id] === p.music)?.name ?? tr("BGM")) : tr("音楽なし")}</span>
+                </button>
+              </div>
               <div className="tlhead" ref={head} aria-hidden>
                 <i />
               </div>
@@ -2597,7 +2731,7 @@ const PickFlow: React.FC<{
         </button>
       </div>
       {stage === 'feed' ? (
-        <PickBoard p={p} update={update} onDone={() => setStage('post')} />
+        <PickBoard job={job} p={p} update={update} onDone={() => setStage('post')} />
       ) : stage === 'tune' ? (
         <PickTune jobId={job.id} p={p} update={update} onNext={() => setStage('post')} />
       ) : (

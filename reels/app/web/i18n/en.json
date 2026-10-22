@@ -813,5 +813,21 @@
  "全画面テキスト": "Full-screen text",
  "画像に切り替え": "Cut to picture",
  "上下に分割": "Split screen",
- "別のカット割り": "Another cut"
+ "別のカット割り": "Another cut",
+ "ジャズ風": "Jazz",
+ "フォンク風": "Phonk",
+ "クラシック風": "Classical",
+ "チル風": "Chill",
+ "ポップス風": "Pop",
+ "ミュート": "Mute",
+ "小": "Low",
+ "中": "Mid",
+ "大": "High",
+ "音量": "Volume",
+ "音楽の種類": "Music style",
+ "最初の曲": "First track",
+ "音楽なし": "No music",
+ "BGMは動画全体に流れます": "The music plays under the whole video",
+ "BGM": "Music",
+ "動画全体の音楽と音量": "Music and volume for the whole video"
 }

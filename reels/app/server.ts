@@ -3,7 +3,7 @@
 // Jobs live in public/jobs/<id>/ (job.json + media), so a restart keeps history.
 // Login (FIREBASE_PROJECT_ID) and billing (STRIPE_SECRET_KEY) switch on from the environment; see deploy/README.md.
 import { createHash, createHmac, randomBytes, timingSafeEqual } from 'node:crypto';
-import { createReadStream, createWriteStream } from 'node:fs';
+import { createReadStream, createWriteStream, existsSync } from 'node:fs';
 import { mkdir, readFile, readdir, rm, stat, writeFile } from 'node:fs/promises';
 import http from 'node:http';
 import path from 'node:path';
@@ -77,6 +77,8 @@ type Job = {
   tokens?: number;
   /** The premium edit (stickers, telops) has been paid for once, so later exports cost only EXPORT_TOKENS. */
   premiumPaid?: boolean;
+  /** Music beds made for this reel, by genre (plus `original`, the one it was first made with): re-picking one is free. */
+  musicTracks?: Record<string, string>;
 };
 
 /** Each export costs a little; the first export that carries premium-edit layers adds PREMIUM_TOKENS once. */
@@ -121,6 +123,22 @@ const uploadOf = (user: User) => (name: unknown) => {
 
 /** Tokens for one 「別の曲」. */
 const MUSIC_TOKENS = 1;
+/** The music kinds the pick screen offers, each with the Lyria prompt that makes it. */
+const MUSIC_GENRES: Record<string, string> = {
+  jazz: 'Smooth modern jazz at about 90 BPM: brushed drums with a relaxed swing, a warm walking upright bass, soft Rhodes electric piano chords and a few gentle muted-trumpet phrases. Laid-back, warm, a stylish cafe feel.',
+  phonk: 'Drift phonk at about 130 BPM: heavy distorted 808 bass, punchy trap drums with crisp rolling hi-hats, the signature bright cowbell melody, dark Memphis-style atmosphere. Hypnotic, confident and energetic. No vocal chops or samples of voices.',
+  classical: 'Light classical piece at about 100 BPM: a string quartet with gentle piano, an elegant Baroque-inspired melody over steady pizzicato, clean concert-hall sound. Graceful and uplifting.',
+  chill: 'Chill lo-fi hip hop at about 80 BPM: dusty laid-back boom-bap drums, mellow jazzy piano chords, round warm bass, soft vinyl crackle. Calm, cozy and unhurried.',
+  pop: 'Upbeat modern pop at about 115 BPM: four-on-the-floor kick with claps, bright synth chords, plucky clean guitar and a catchy feel-good hook played on a synth lead. Polished, radio-ready, positive.',
+};
+const musicPrompt = (style: string) =>
+  `Instrumental background music for a short vertical social video (about 30 seconds) that someone talks over. ${style} Instrumental only: no vocals, no singing, no spoken words. Keep the midrange where the voice sits uncluttered, steady energy from start to finish, no long intro, loopable.`;
+/** Before a reel's music is replaced, keep the one it was made with so it can be picked again. */
+const keepOriginalMusic = (job: Job, next?: unknown) => {
+  const cur = (job.props as { music?: unknown } | undefined)?.music;
+  if (typeof cur !== 'string' || cur === next || job.musicTracks?.original || Object.values(job.musicTracks ?? {}).includes(cur)) return;
+  job.musicTracks = { ...job.musicTracks, original: cur };
+};
 
 async function startJob(template: Template, input: Record<string, any>, user: User) {
   const cost = tokensFor(template, input);
@@ -655,6 +673,7 @@ const server = http.createServer(async (req, res) => {
       if (m[2] === '/props' && req.method === 'PUT') {
         const parsed = schemas[job.template].safeParse((await readBody(req)).props);
         if (!parsed.success) return json(res, 400, { error: parsed.error.issues.map((i) => `${i.path.join('.')}: ${i.message}`).join('\n') });
+        keepOriginalMusic(job, (parsed.data as { music?: unknown }).music);
         job.props = parsed.data as Record<string, unknown>;
         // The 5-pass server reads its own props file, so edits made in the editor must land there too.
         if (job.template === 'FivePass') await writeFile(path.join(jobsDir, job.id, 'fivepass.json'), JSON.stringify(job.props, null, 2));
@@ -697,10 +716,21 @@ const server = http.createServer(async (req, res) => {
         await save(job);
         return json(res, 200, job);
       }
-      // 「別の曲」: a new AI music bed for the same reel, for MUSIC_TOKENS.
+      // 「別の曲」 / 音楽の種類: a new AI music bed for the same reel, for MUSIC_TOKENS. With a genre (jazz,
+      // phonk, classical, chill, pop) the track is kept on the job, so picking that genre again is free.
       if (m[2] === '/music' && req.method === 'POST') {
         if (!job.props || !['EffectsReel', 'ServiceReel', 'PhotoReel'].includes(job.template)) return json(res, 400, { error: 'この動画には曲を付けられません' });
         if (job.status === 'generating' || job.status === 'rendering') return json(res, 409, { error: '処理中です' });
+        const { mood, genre } = await readBody(req);
+        if (genre !== undefined && (typeof genre !== 'string' || !Object.prototype.hasOwnProperty.call(MUSIC_GENRES, genre))) return json(res, 400, { error: 'unknown genre' });
+        const cached = genre ? job.musicTracks?.[genre] : undefined;
+        if (cached && existsSync(path.join(publicDir, cached))) {
+          keepOriginalMusic(job, cached);
+          job.props = { ...job.props, music: cached };
+          if (job.status === 'done' || job.status === 'error') job.status = 'ready';
+          await save(job);
+          return json(res, 200, job);
+        }
         try {
           await charge(user!.uid, MUSIC_TOKENS);
           recordTokens({ uid: user!.uid, jobId: job.id, template: job.template, op: 'music', tokens: MUSIC_TOKENS });
@@ -708,19 +738,21 @@ const server = http.createServer(async (req, res) => {
           if (e instanceof NotEnoughTokens) return json(res, 402, { error: e.message, code: 'tokens' });
           throw e;
         }
-        const { mood } = await readBody(req);
         const moods = ['warm and hopeful', 'bright upbeat pop', 'chill lo-fi', 'cinematic and airy', 'punchy electronic', 'acoustic and cozy', 'sleek minimal house', 'funky groove'];
         const pick = typeof mood === 'string' && mood.trim() ? mood.trim().slice(0, 60) : moods[Math.floor(Math.random() * moods.length)];
         const usage = new Usage();
         try {
           const f = await generateMusic({
-            prompt: `Instrumental background music for a short vertical social video. Mood: ${pick}. No vocals, loopable, modern production, leaves room for a voice over it.`,
-            out: path.join(jobsDir, job.id, `music-${Date.now().toString(36)}`),
+            prompt: genre ? musicPrompt(MUSIC_GENRES[genre]) : `Instrumental background music for a short vertical social video. Mood: ${pick}. No vocals, loopable, modern production, leaves room for a voice over it.`,
+            out: path.join(jobsDir, job.id, `music-${genre ? `${genre}-` : ''}${Date.now().toString(36)}`),
             usage,
             step: 'music',
           });
           recordAi({ jobId: job.id, uid: user!.uid, template: job.template, step: 'music', usd: usage.totalUsd });
-          job.props = { ...job.props, music: `jobs/${job.id}/${path.basename(f)}` };
+          const music = `jobs/${job.id}/${path.basename(f)}`;
+          keepOriginalMusic(job, music);
+          if (genre) job.musicTracks = { ...job.musicTracks, [genre]: music };
+          job.props = { ...job.props, music };
           if (job.status === 'done' || job.status === 'error') job.status = 'ready';
           await save(job);
           return json(res, 200, job);
