@@ -3,7 +3,7 @@
 import React from 'react';
 import { AbsoluteFill, Audio, Sequence, staticFile, useCurrentFrame, useVideoConfig } from 'remotion';
 import type { FivePassProps } from '../schemas';
-import { asset } from '../lib/assets';
+import { alphaVideoOk, asset } from '../lib/assets';
 import { cjkVars, fonts } from '../lib/fonts';
 import { useFonts } from '../lib/useFonts';
 import { effects } from '../effects';
@@ -28,7 +28,7 @@ export const FivePass: React.FC<FivePassProps> = (p) => {
   const inEffect = scenes.some((s) => !isCard(s.type) && frame >= f(s.start) && frame < f(s.end));
   const source: Source = {
     video: p.video,
-    matte: p.pass >= 2 ? p.matte : undefined,
+    matte: p.pass >= 2 && alphaVideoOk() ? p.matte : undefined,
     focusX: p.focusX,
     trimBefore: 0,
     accent: '#E7B4CF',

@@ -1,6 +1,6 @@
-import React, { createContext, useContext } from 'react';
+import React, { createContext, useContext, useState } from 'react';
 import { AbsoluteFill, OffthreadVideo, useCurrentFrame, useVideoConfig } from 'remotion';
-import { asset } from '../lib/assets';
+import { asset, posterOf, useMediaSrc, usePreviewMode } from '../lib/assets';
 import { fonts } from '../lib/fonts';
 import { pop, progress } from '../lib/timing';
 import type { BeatStyle, EffectSegment } from '../schemas';
@@ -113,10 +113,18 @@ export const Footage: React.FC<{ style?: React.CSSProperties; muted?: boolean }>
   const s = useSource();
   const grade = [GRADES[s.style.grade ?? 'natural'].filter, bright(s)].filter(Boolean).join(' ');
   const { bg } = useContext(DepthContext);
+  const { still } = usePreviewMode();
+  const media = useMediaSrc(s.video);
+  const poster = still ? posterOf(s.video) : undefined;
   return (
     <AbsoluteFill style={style}>
       <AbsoluteFill style={{ transform: bg }}>
-        <OffthreadVideo src={asset(s.video)} trimBefore={s.trimBefore} muted style={{ ...cover(s.focusX), filter: grade || undefined }} />
+        {still ? (
+          // App posters: a still frame instead of a <video>, so a grid of them decodes nothing.
+          poster ? <img src={poster} alt="" style={{ ...cover(s.focusX), filter: grade || undefined }} /> : <AbsoluteFill style={{ background: 'radial-gradient(90% 60% at 50% 35%, #2a2a30, #0b0b0d)' }} />
+        ) : (
+          <OffthreadVideo src={media.url} onError={media.onError} trimBefore={s.trimBefore} muted style={{ ...cover(s.focusX), filter: grade || undefined }} />
+        )}
       </AbsoluteFill>
       <GradeOverlay />
     </AbsoluteFill>
@@ -127,7 +135,11 @@ export const Footage: React.FC<{ style?: React.CSSProperties; muted?: boolean }>
 export const Subject: React.FC<{ style?: React.CSSProperties; filter?: string }> = ({ style, filter }) => {
   const s = useSource();
   const { fg } = useContext(DepthContext);
-  if (!s.matte) return null;
+  const { still } = usePreviewMode();
+  // A matte that fails to play in a preview is dropped rather than left covering the footage.
+  const [failed, setFailed] = useState(false);
+  const media = useMediaSrc(s.matte ?? '');
+  if (!s.matte || still || failed) return null;
   // An outline filter replaces the person with their outline, so grade and glow only apply to the plain cut-out.
   const plain = !filter;
   const glow = plain && s.style.accents?.includes('glow') ? `drop-shadow(0 0 28px ${s.accent}) drop-shadow(0 0 60px ${s.accent}88)` : '';
@@ -137,6 +149,7 @@ export const Subject: React.FC<{ style?: React.CSSProperties; filter?: string }>
       <AbsoluteFill style={{ transform: fg }}>
       <OffthreadVideo
         src={asset(s.matte)}
+        onError={media.onError ? () => setFailed(true) : undefined}
         trimBefore={s.trimBefore}
         transparent
         muted

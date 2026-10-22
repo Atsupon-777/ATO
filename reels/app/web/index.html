@@ -2,7 +2,7 @@
 <html lang="ja">
 <head>
 <meta charset="utf-8" />
-<meta name="viewport" content="width=device-width, initial-scale=1" />
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, viewport-fit=cover" />
 <title>Editless</title>
 <!-- Home-screen app: manifest, icons (the header logo, enlarged) and an offline-only service worker. -->
 <link rel="manifest" href="/manifest.webmanifest" />
@@ -292,7 +292,7 @@
   .tcard:hover .tthumb, .tcard:focus-visible .tthumb { border-color: var(--accent-line); transform: translateY(-2px); }
   .tplay { position: absolute; right: 8px; bottom: 8px; width: 26px; height: 26px; border-radius: 50%; background: rgba(0,0,0,.55); color: #fff; font-size: 10px; display: grid; place-items: center; }
   .tnum { position: absolute; left: 8px; top: 8px; font-family: "Plus Jakarta Sans", sans-serif; font-weight: 800; font-size: 11px; background: rgba(0,0,0,.55); color: #fff; padding: 3px 8px; border-radius: 99px; }
-  .tname { font-size: 13px; font-weight: 700; margin-top: 6px; line-height: 1.35; }
+  .tname { font-size: 13px; font-weight: 700; margin-top: 2px; line-height: 1.3; letter-spacing: -.005em; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
   .sheet { position: fixed; inset: 0; background: rgba(0,0,0,.6); z-index: 50; display: grid; place-items: center; padding: 16px; backdrop-filter: blur(6px); }
   .sheetbox { background: var(--panel); border: 1px solid var(--line); border-radius: 18px; overflow: hidden; display: grid; grid-template-columns: minmax(240px, 340px) minmax(0, 340px); max-height: 92vh; }
   .sheetplayer { aspect-ratio: 9 / 16; background: #000; max-height: 92vh; }
@@ -307,7 +307,7 @@
   .searchbox input { flex: 1; background: none; border: 0; padding: 10px 0; font-size: 15px; outline: none; min-width: 0; }
   /* ---- reels feed ---- */
   main.wide { max-width: 520px; }
-  .feed { height: calc(100dvh - 150px); overflow-y: auto; scroll-snap-type: y mandatory; border-radius: 16px; scrollbar-width: none; }
+  .feed { height: calc(100dvh - var(--toph, 72px) - 64px); overflow-y: auto; overscroll-behavior: contain; scroll-snap-type: y mandatory; border-radius: 16px; scrollbar-width: none; }
   .feed::-webkit-scrollbar { display: none; }
   .feeditem { height: 100%; scroll-snap-align: start; display: grid; place-items: center; padding-bottom: 10px; }
   .feedvideo { position: relative; height: 100%; aspect-ratio: 9 / 16; max-width: 100%; border-radius: 16px; overflow: hidden; background: #000; }
@@ -366,7 +366,7 @@
     .sheet { padding: 0; place-items: end center; }
     .sheetbox { grid-template-columns: 1fr; border-radius: 18px 18px 0 0; width: 100%; max-height: 94dvh; overflow-y: auto; }
     .sheetplayer { max-height: 62dvh; aspect-ratio: auto; height: 62dvh; }
-    .feed { height: calc(100dvh - 160px); }
+    .feed { height: calc(100dvh - var(--toph, 72px) - 116px - env(safe-area-inset-bottom, 0px)); }
   }
   .mixgrid { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 8px; }
   .mix { text-align: left; background: var(--panel); border: 1px solid var(--line); border-radius: 12px; padding: 10px 12px; cursor: pointer; display: grid; gap: 4px; color: var(--ink); }
@@ -541,7 +541,7 @@
   .pickstages li.on button { background: var(--panel2); color: var(--ink); font-weight: 700; }
   .pickstages li.done button { color: var(--ink); }
   .pickstages li button:disabled { cursor: default; opacity: .6; }
-  .pickreel { position: relative; width: min(100%, calc((100dvh - 230px) * 9 / 16)); aspect-ratio: 9 / 16; margin: 0 auto; border-radius: 24px; overflow: hidden; background: #000; touch-action: pan-x; }
+  .pickreel { position: relative; width: min(100%, calc((100dvh - 230px) * 9 / 16)); aspect-ratio: 9 / 16; margin: 0 auto; border-radius: 24px; overflow: hidden; background: #000; touch-action: none; }
   .pickreel.tune { width: min(100%, calc((100dvh - 360px) * 9 / 16)); }
   .pickplayer { position: absolute; inset: 0; animation: pickin .35s var(--ease, ease) both; }
   @keyframes pickin { from { opacity: 0; transform: translateY(24px) scale(.98); } }
@@ -615,7 +615,9 @@
   .startmore .listrow { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
   .startmore .listrow small { color: var(--mute); font-size: 12px; }
   .recent { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; max-width: 560px; }
-  .recent button { aspect-ratio: 9 / 16; border-radius: 14px; overflow: hidden; border: 1px solid var(--line); background: #000; padding: 0; cursor: pointer; display: grid; place-items: center; color: var(--mute); }
+  .recent button { position: relative; aspect-ratio: 9 / 16; border-radius: 16px; overflow: hidden; border: 1px solid var(--line); background: #000; padding: 0; cursor: pointer; display: grid; place-items: center; color: var(--mute); }
+  .recent img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; }
+  .recent small { position: absolute; left: 0; right: 0; bottom: 0; padding: 26px 10px 9px; background: linear-gradient(transparent, rgba(0,0,0,.72)); color: #fff; font-size: 11px; font-weight: 700; text-align: left; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
   .thead .linkbtn { margin-left: auto; }
   .langbtn svg { width: 18px; height: 18px; }
   /* ---- luxury details: serif-free, but hairline gold, soft depth, tighter headings ---- */
@@ -689,8 +691,8 @@
   .layeredit .swatches button { width: 28px; height: 28px; border-radius: 999px; border: 2px solid var(--line); cursor: pointer; padding: 0; }
   .layeredit .swatches button.on { border-color: var(--ink); box-shadow: 0 0 0 2px var(--accent-line); }
   /* ---- template catalog ---- */
-  .kindtabs { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 4px; padding: 4px; border-radius: 16px; background: var(--panel); border: 1px solid var(--line); margin-bottom: 12px; max-width: 560px; }
-  .kindtabs button { border: 0; background: none; color: var(--mute); padding: 10px 6px; border-radius: 12px; cursor: pointer; font-weight: 700; font-size: 14px; }
+  .kindtabs { display: grid; grid-template-columns: repeat(var(--n, 3), minmax(0, 1fr)); gap: 4px; padding: 4px; border-radius: 16px; background: var(--panel); border: 1px solid var(--line); margin-bottom: 12px; max-width: 560px; }
+  .kindtabs button { border: 0; background: none; color: var(--mute); padding: 10px 4px; border-radius: 12px; cursor: pointer; font-weight: 700; font-size: 13px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; transition: background .25s var(--ease), color .25s; }
   .kindtabs button small { font-weight: 500; opacity: .7; margin-left: 2px; font-size: 11px; }
   .kindtabs button.on { background: var(--ink); color: var(--bg); }
   .chipsep { flex: none; width: 1px; background: var(--line); margin: 4px 2px; }
@@ -745,6 +747,97 @@
   .admgrantrow input[type=email] { flex: 1 1 220px; }
   .admgrantrow input[type=number] { width: 96px; }
   .admnote { margin-top: 18px; }
+
+  /* ================= app-wide fit: no sideways drift, no zoom on focus, safe areas ================= */
+  html { overflow-x: hidden; overscroll-behavior-x: none; -webkit-text-size-adjust: 100%; text-size-adjust: 100%; }
+  body { overflow-x: clip; overscroll-behavior-x: none; min-height: 100dvh; }
+  #root { overflow-x: clip; max-width: 100vw; }
+  img, video, svg, canvas { max-width: 100%; }
+  /* Page areas scroll up and down only; rows that scroll sideways do so inside themselves. */
+  main, .top, .tabbar, .sheet { touch-action: pan-y; }
+  .chipbar, .ctrack, .lookopts, .cutstrip, .buildsteps, .pickstrip, .plans, .crumbs ol, .admtable, .kindtabs { touch-action: pan-x pan-y; overscroll-behavior-x: contain; }
+  @media (max-width: 900px) { main { padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); } }
+  /* iOS zooms into any field under 16px when it is focused, and the page then sits shifted sideways. */
+  @media (pointer: coarse) { input, textarea, select, .searchbox input, .inp { font-size: 16px !important; } }
+
+  /* ================= premium layer: type, depth, motion ================= */
+  :root { --r-card: 16px; --hair: color-mix(in srgb, var(--ink) 9%, transparent); }
+  h1, h2, .hero h1, .pickmeta b, .sheetinfo .name, .foldhead b, .uptile b, .herotile b { font-family: "Plus Jakarta Sans", "Noto Sans JP", system-ui, sans-serif; }
+  h1 { font-weight: 800; letter-spacing: -.02em; line-height: 1.15; }
+  h2 { font-weight: 800; letter-spacing: -.01em; font-size: 17px; }
+  .hero { margin: 4px 0 18px; }
+  .hero h1 { font-size: clamp(26px, 7.4vw, 40px); }
+  .hero .sub { margin: 0; font-size: 15px; }
+  .top { border-bottom-color: var(--hair); }
+  .langbtn { width: 40px; height: 40px; justify-content: center; padding: 0; border-color: var(--hair); }
+  @media (min-width: 521px) { .langbtn:not(.themebtn) { width: auto; padding: 0 12px; } }
+  .top.away { display: none; }
+  .tsection { margin-bottom: 36px; }
+  .thead { margin-bottom: 14px; }
+  .thead h2 { font-size: 19px; }
+  .btn { border-radius: 14px; letter-spacing: .01em; }
+  .btn:not(.ghost):not(:disabled) { box-shadow: 0 8px 24px color-mix(in srgb, var(--accent) 22%, transparent), 0 1px 0 rgba(255,255,255,.25) inset; }
+  :root[data-theme="light"] .btn:not(.ghost):not(:disabled) { box-shadow: 0 8px 22px rgba(21,19,15,.18); }
+  .herotile { min-height: 180px; border-radius: 26px; }
+  /* one card for every template: same frame, same poster treatment, same label */
+  .tgrid { gap: 16px 10px; }
+  .tcard { display: grid; gap: 6px; align-content: start; }
+  .tthumb { border-radius: var(--r-card); border-color: var(--hair); box-shadow: 0 10px 28px rgba(0,0,0,.28); isolation: isolate; }
+  :root[data-theme="light"] .tthumb { box-shadow: 0 8px 22px rgba(60,48,20,.14); }
+  .tthumb::after { content: ""; position: absolute; inset: 0; border-radius: inherit; pointer-events: none; z-index: 2; background: linear-gradient(180deg, rgba(0,0,0,0) 62%, rgba(0,0,0,.38)); box-shadow: 0 0 0 1px rgba(255,255,255,.06) inset; }
+  .tplay { z-index: 3; width: 28px; height: 28px; background: rgba(10,10,11,.5); backdrop-filter: blur(6px); -webkit-backdrop-filter: blur(6px); border: 1px solid rgba(255,255,255,.18); }
+  .tprem, .tnum { z-index: 3; }
+  .tkick { font-size: 10px; font-weight: 800; letter-spacing: .08em; text-transform: uppercase; color: var(--mute); margin-top: 4px; }
+  .kindtabs { max-width: 640px; border-color: var(--hair); display: flex; overflow-x: auto; scrollbar-width: none; }
+  .kindtabs::-webkit-scrollbar { display: none; }
+  .kindtabs button { flex: 1 0 auto; padding: 10px 14px; }
+  .chipbar { padding-bottom: 12px; }
+  .fchip { border-color: var(--hair); }
+  @media (max-width: 900px) { .tgrid { gap: 14px 8px; } .tname { font-size: 12px; } }
+
+  /* back button and breadcrumbs: every sub-page */
+  .crumbs { display: flex; align-items: center; gap: 10px; margin: 0 0 14px; }
+  .crumbs ol { margin: 0; flex: 1; min-width: 0; }
+  .backbtn { flex: none; display: inline-flex; align-items: center; gap: 4px; height: 40px; min-width: 40px; padding: 0 10px 0 8px; border-radius: 999px; border: 1px solid var(--hair); background: var(--panel); color: var(--ink); cursor: pointer; font: inherit; font-weight: 700; font-size: 14px; transition: transform .15s var(--ease), border-color .2s; }
+  .backbtn:active { transform: scale(.94); }
+  .backbtn:hover { border-color: var(--accent-line); }
+  .genwrap { max-width: 520px; margin: 0 auto; padding-top: 8px; display: grid; gap: 6px; }
+  .genwrap .backbtn { justify-self: start; margin-bottom: 18px; }
+
+  /* sheets: a close button that is always there */
+  .sheetbox { position: relative; }
+  .sheetbar { grid-column: 1 / -1; position: sticky; top: 0; height: 0; z-index: 6; }
+  .sheetclose { position: absolute; top: 12px; left: 12px; width: 40px; height: 40px; border-radius: 999px; border: 1px solid rgba(255,255,255,.2); background: rgba(10,10,11,.55); color: #fff; display: grid; place-items: center; cursor: pointer; backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px); transition: transform .15s var(--ease); }
+  .sheetclose:active { transform: scale(.92); }
+  .sheetbox.list .sheetbar, .sheetbox:not(:has(.sheetplayer)) .sheetbar { height: 52px; position: static; }
+  .sheetbox:not(:has(.sheetplayer)) .sheetclose { background: var(--panel2); color: var(--ink); border-color: var(--hair); top: 6px; left: 8px; }
+  @media (max-width: 900px) { .sheetbar { top: 22px; } }
+  .showvideo { position: relative; width: 100%; height: 100%; }
+  .sheet { overscroll-behavior: contain; }
+
+  /* previews that could not play, or wait for a tap */
+  .pvfallback { position: relative; width: 100%; height: 100%; min-height: 120px; display: grid; place-items: center; background: radial-gradient(90% 60% at 50% 35%, #232327, #0b0b0d); color: rgba(255,255,255,.8); overflow: hidden; }
+  .pvfallback[role=button] { cursor: pointer; }
+  .pvfallback img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; }
+  .pvfallback small { position: relative; font-size: 12px; padding: 6px 12px; border-radius: 999px; background: rgba(10,10,11,.6); }
+  .pvplay { position: relative; width: 64px; height: 64px; border-radius: 999px; display: grid; place-items: center; background: rgba(10,10,11,.55); border: 1px solid rgba(255,255,255,.25); color: #fff; backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px); }
+
+  /* My videos feed */
+  .feedmedia { width: 100%; height: 100%; object-fit: cover; display: block; background: #000; }
+  .feedsound { position: absolute; top: 12px; right: 12px; z-index: 3; width: 40px; height: 40px; border-radius: 999px; border: 1px solid rgba(255,255,255,.18); background: rgba(10,10,11,.45); color: #fff; display: grid; place-items: center; cursor: pointer; backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px); }
+  .feedvideo { box-shadow: var(--shadow); }
+  .skeleton { background: linear-gradient(100deg, var(--panel) 30%, var(--panel2) 50%, var(--panel) 70%) 0 0 / 200% 100%; animation: shimmer 1.4s linear infinite; }
+  .feeditem .feedvideo.skeleton { width: 100%; }
+
+  /* pick flow: full screen, the take sized to the room left, the button always on screen */
+  main.immersive { max-width: 520px; padding: calc(env(safe-area-inset-top, 0px) + 10px) max(16px, env(safe-area-inset-right, 0px)) calc(env(safe-area-inset-bottom, 0px) + 16px) max(16px, env(safe-area-inset-left, 0px)) !important; }
+  .pick.pickfull { height: calc(100dvh - env(safe-area-inset-top, 0px) - env(safe-area-inset-bottom, 0px) - 26px); min-height: 460px; display: flex; flex-direction: column; gap: 12px; }
+  .pickfull > .pickhead, .pickfull > .pickcta, .pickfull > .pickhint, .pickfull > .err { flex: none; }
+  .pickstage { flex: 1 1 auto; min-height: 0; container-type: size; display: grid; place-items: center; }
+  .pickfull .pickreel { width: min(100cqw, 100cqh * 9 / 16); }
+  .pickfull .pickhint { margin: 0; font-size: 11px; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+  @media (max-height: 700px) { .pickfull .pickhint { display: none; } }
+  .pickhead .pickstages { min-width: 0; overflow-x: auto; scrollbar-width: none; }
 </style>
 </head>
 <body>

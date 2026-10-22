@@ -785,5 +785,7 @@
  "{0} に {1} トークンを付与しました（残高 {2}）": "Se dieron {1} tokens a {0} (saldo {2})",
  "トークンを付与": "Dar tokens",
  "テストや審査用に、メールアドレスのアカウントへトークンを付けます。売上には入りません。": "Añade tokens a una cuenta por correo, para pruebas o revisión. No cuenta como venta.",
- "付与する": "Dar"
+ "付与する": "Dar",
+ "再生": "Reproducir",
+ "プレビューを再生できませんでした": "No se pudo reproducir la vista previa"
 }

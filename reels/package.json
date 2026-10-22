@@ -10,9 +10,10 @@
     "typecheck": "tsc --noEmit",
     "fonts": "node scripts/fetch-fonts.mjs",
     "postinstall": "node scripts/fetch-fonts.mjs",
-    "app:build": "node scripts/build-native.mjs && cap sync",
-    "app:ios": "node scripts/build-native.mjs && cap sync ios && cap open ios",
-    "app:android": "node scripts/build-native.mjs && cap sync android && cap open android"
+    "app:build": "node scripts/build-native.mjs && NODE_OPTIONS=--experimental-strip-types cap sync",
+    "app:ios": "node scripts/build-native.mjs && NODE_OPTIONS=--experimental-strip-types cap sync ios && NODE_OPTIONS=--experimental-strip-types cap open ios",
+    "app:android": "node scripts/build-native.mjs && NODE_OPTIONS=--experimental-strip-types cap sync android && NODE_OPTIONS=--experimental-strip-types cap open android",
+    "cap": "NODE_OPTIONS=--experimental-strip-types cap"
   },
   "dependencies": {
     "@capacitor-community/media": "^9.1.0",
@@ -57,5 +58,8 @@
     "@types/react-dom": "^19.3.0",
     "esbuild": "^0.28.2",
     "typescript": "^7.0.2"
+  },
+  "engines": {
+    "node": ">=22.6"
   }
 }

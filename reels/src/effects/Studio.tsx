@@ -4,7 +4,7 @@
 // The full-frame graphics scenes keep the speaker in a small round window so the talk never disappears.
 import React from 'react';
 import { AbsoluteFill, Easing, OffthreadVideo, interpolate, useCurrentFrame, useVideoConfig } from 'remotion';
-import { asset } from '../lib/assets';
+import { posterOf, useMediaSrc, usePreviewMode } from '../lib/assets';
 import { fonts } from '../lib/fonts';
 import { clamp, easeInOut, easeOutExpo, pop, progress } from '../lib/timing';
 import { Caption, captionY, FONT_FAMILY, Footage, Sandwich, splitWords, useSource, type EffectProps } from './layers';
@@ -22,6 +22,8 @@ const SpeakerBubble: React.FC<{ x?: number; y?: number; size?: number; ring?: st
   const frame = useCurrentFrame();
   const { fps } = useVideoConfig();
   const s = useSource();
+  const media = useMediaSrc(s.video);
+  const { still } = usePreviewMode();
   const p = pop(frame, fps, 4, 14);
   return (
     <div
@@ -38,12 +40,17 @@ const SpeakerBubble: React.FC<{ x?: number; y?: number; size?: number; ring?: st
         transform: `scale(${p})`,
       }}
     >
-      <OffthreadVideo
-        src={asset(s.video)}
-        trimBefore={s.trimBefore}
-        muted
-        style={{ width: '100%', height: '100%', objectFit: 'cover', objectPosition: `${s.focusX * 100}% 30%` }}
-      />
+      {still ? (
+        <img src={posterOf(s.video)} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover', objectPosition: `${s.focusX * 100}% 30%` }} />
+      ) : (
+        <OffthreadVideo
+          src={media.url}
+          onError={media.onError}
+          trimBefore={s.trimBefore}
+          muted
+          style={{ width: '100%', height: '100%', objectFit: 'cover', objectPosition: `${s.focusX * 100}% 30%` }}
+        />
+      )}
     </div>
   );
 };

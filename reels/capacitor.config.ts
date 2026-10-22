@@ -8,8 +8,13 @@ const config: CapacitorConfig = {
   appName: 'Editless',
   webDir: 'app/native/www',
   backgroundColor: '#0a0a0b',
+  // App screens never pinch-zoom (that, plus focus zoom, is what left pages shifted sideways).
+  zoomEnabled: false,
   ios: {
     contentInset: 'never',
+    zoomEnabled: false,
+    // Long-press on a link opens nothing: an app screen, not a web page.
+    allowsLinkPreview: false,
     // Large uploads and video playback from the server.
     limitsNavigationsToAppBoundDomains: false,
   },

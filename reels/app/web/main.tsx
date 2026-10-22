@@ -32,6 +32,84 @@ import { LANG_NAMES, langs, type Lang } from '../../src/lang';
 import { lang, setLang, tr } from './i18n';
 import { authHeader, checkVerified, config as appConfig, confirmPhoneCode, deleteAccount, linkedPhone, registerPushToken, resendVerification, sendPhoneCode, resetPassword, signInApple, signInEmail, signInGoogle, signOut, signUpEmail, startAuth, useAuth } from './auth';
 import { apiUrl, enablePush, iapBuy, iapProducts, iapRestore, isNative, manageStoreSubscription, mediaQuery, pickFromLibrary, platform, saveToCameraRoll, shareVideo, type IapProduct } from './native';
+import { PreviewMode, posterOf } from '../../src/lib/assets';
+
+// ---------- live previews: light, few, and never able to take the app down ----------
+
+// Live previews play the light copies of job videos (src/lib/assets.ts); renders never set this.
+(globalThis as any).reels_preview = true;
+
+/** Phones (and the app): one live preview at a time, posters everywhere else. */
+const LITE = isNative || /iPhone|iPad|iPod|Android/.test(navigator.userAgent) || matchMedia('(pointer: coarse)').matches;
+
+/**
+ * Crash-loop guard. When iOS ends the web view (out of memory), the app reloads on the same page, and if
+ * that page is what used the memory it would loop forever. Three starts within 40 seconds, none of which
+ * lasted 15 seconds, switch live previews to tap-to-play posters for the next 10 minutes.
+ */
+const SAFE_MODE = (() => {
+  try {
+    const now = Date.now();
+    const boots = (JSON.parse(localStorage.getItem('editless-boots') || '[]') as number[]).filter((t) => now - t < 40_000);
+    boots.push(now);
+    localStorage.setItem('editless-boots', JSON.stringify(boots));
+    setTimeout(() => {
+      try {
+        localStorage.setItem('editless-boots', '[]');
+      } catch {}
+    }, 15_000);
+    if (boots.length >= 3) localStorage.setItem('editless-safe', String(now + 10 * 60_000));
+    return Number(localStorage.getItem('editless-safe') || 0) > now;
+  } catch {
+    return false;
+  }
+})();
+
+/** Catches a preview that throws, so one bad clip shows a still instead of a blank or broken page. */
+class PreviewBoundary extends React.Component<{ fallback: React.ReactNode; children: React.ReactNode }, { failed: boolean }> {
+  state = { failed: false };
+  static getDerivedStateFromError() {
+    return { failed: true };
+  }
+  componentDidCatch(e: unknown) {
+    console.warn('preview failed', e);
+  }
+  render() {
+    return this.state.failed ? this.props.fallback : this.props.children;
+  }
+}
+
+/** In place of a preview that could not play: the still, and a short note. */
+const PreviewFallback: React.FC<{ poster?: string; note?: string; onPlay?: () => void }> = ({ poster, note, onPlay }) => (
+  <div className="pvfallback" onClick={onPlay} role={onPlay ? 'button' : undefined} aria-label={onPlay ? tr("再生") : undefined}>
+    {poster ? <img src={poster} alt="" /> : null}
+    {onPlay ? (
+      <span className="pvplay" aria-hidden>
+        <svg viewBox="0 0 24 24" width="26" height="26" fill="currentColor">
+          <path d="M8 5v14l11-7z" />
+        </svg>
+      </span>
+    ) : null}
+    {note ? <small>{note}</small> : null}
+  </div>
+);
+
+/** Player error screen (Remotion's errorFallback): calm, on brand, no stack trace. */
+const playerError = () => <PreviewFallback note={tr("プレビューを再生できませんでした")} />;
+
+/**
+ * Wraps every live <Player>: catches its errors, and while the crash-loop guard is on, waits for a tap
+ * before mounting it.
+ */
+const LivePreview: React.FC<{ poster?: string; children: React.ReactNode }> = ({ poster, children }) => {
+  const [go, setGo] = useState(!SAFE_MODE);
+  if (!go) return <PreviewFallback poster={poster} onPlay={() => setGo(true)} />;
+  return <PreviewBoundary fallback={<PreviewFallback poster={poster} note={tr("プレビューを再生できませんでした")} />}>{children}</PreviewBoundary>;
+};
+
+/** A still frame for a job's props: the talking video's first frames, else its first photo or screenshot. */
+const propsPoster = (props: any): string | undefined =>
+  !props ? undefined : typeof props.video === 'string' ? posterOf(props.video) : (props.photo ?? props.photos?.[0]?.src ?? props.photos?.[0] ?? props.desktop ?? props.phone) ? media(String(props.photo ?? props.photos?.[0]?.src ?? props.photos?.[0] ?? props.desktop ?? props.phone)) : undefined;
 
 // 億 only reads naturally in Japanese and Chinese; other languages get a compact number ("96.3B").
 function mixCount() {
@@ -153,6 +231,8 @@ type Job = {
   video?: string;
   error?: string;
   thumb?: string;
+  /** Still frame address (server-cut), from the job list. */
+  poster?: string;
   versions?: Record<number, number>;
   tokens?: number;
 };
@@ -312,6 +392,7 @@ const Preview: React.FC<{ template: TemplateId; props: any; playerRef?: React.Re
   const frames = Math.max(1, t.frames(props));
   return (
     <div className="player">
+      <LivePreview poster={propsPoster(props)}>
       <Player
         ref={playerRef}
         component={t.component}
@@ -325,8 +406,10 @@ const Preview: React.FC<{ template: TemplateId; props: any; playerRef?: React.Re
         loop
         autoPlay={autoPlay}
         initiallyMuted={autoPlay}
+        errorFallback={playerError}
         acknowledgeRemotionLicense
       />
+      </LivePreview>
       <Watermark />
       {children}
     </div>
@@ -629,7 +712,8 @@ const Generating: React.FC<{ job: Job }> = ({ job }) => {
   const left = Math.max(5, curSec - inStep) + steps.slice(curIdx + 1).reduce((a, s) => a + (STEP_SECONDS[s] ?? 20), 0);
   const elapsed = Math.max(1, (now - Date.parse(job.createdAt)) / 1000);
   return (
-    <div style={{ maxWidth: 520, margin: '40px auto' }}>
+    <div className="genwrap">
+      <BackButton fallback="#/reels" />
       <h1>{tr("AIが作成しています")}</h1>
       <p className="sub">{tr("このページを閉じても作成は続きます。履歴からいつでも開けます。")}</p>
       <ProgressBar fraction={elapsed / (elapsed + left)} label={STEP_LABELS[steps[curIdx]] ?? tr("準備中")} left={left} />
@@ -810,11 +894,12 @@ const Editor: React.FC<{ id: string }> = ({ id }) => {
     setProps((p: any) => fn(structuredClone(p)));
   }, []);
 
-  if (!job) return <p className="sub">{tr("読み込み中…")}</p>;
+  if (!job) return <div className="genwrap"><BackButton fallback="#/reels" /><p className="sub">{tr("読み込み中…")}</p></div>;
   if (job.status === 'generating' && !(job.template === 'FivePass' && props)) return <Generating job={job} />;
   if (job.status === 'error' && !job.props)
     return (
-      <div style={{ maxWidth: 520, margin: '40px auto' }}>
+      <div className="genwrap">
+        <BackButton fallback="#/reels" />
         <h1>{tr("作成できませんでした")}</h1>
         <p className="err">{job.error}</p>
       </div>
@@ -1528,7 +1613,9 @@ const LiveCard: React.FC<{ base: EffectsReelProps; opt: LookOpt; n: number; mult
   const frames = Math.max(1, effectsReelDuration(props, FPS));
   const still = Math.min(frames - 1, Math.round(frames * 0.6));
   const on = opt.on(base);
-  const play = () => ref.current?.play();
+  // A still until asked to play: a grid of live players is what runs a phone out of memory.
+  const [live, setLive] = useState(false);
+  const play = () => (live ? ref.current?.play() : setLive(true));
   const stop = () => (ref.current?.pause(), ref.current?.seekTo(still));
   return (
     <div className={`livecard ${on ? 'on' : ''}`}>
@@ -1537,6 +1624,12 @@ const LiveCard: React.FC<{ base: EffectsReelProps; opt: LookOpt; n: number; mult
         {on ? <b>{multi ? '✓' : tr("選択中")}</b> : null}
       </div>
       <div className="livethumb" onPointerEnter={(e) => e.pointerType === 'mouse' && play()} onPointerLeave={(e) => e.pointerType === 'mouse' && stop()} onClick={() => (ref.current?.isPlaying() ? stop() : play())}>
+        {!live ? (
+          <div style={{ aspectRatio: '9 / 16' }}>
+            <ReelStill props={props} at={still / frames} />
+          </div>
+        ) : (
+        <LivePreview poster={posterOf(props.video)}>
         <Player
           ref={ref}
           component={EffectsReel}
@@ -1548,9 +1641,13 @@ const LiveCard: React.FC<{ base: EffectsReelProps; opt: LookOpt; n: number; mult
           initialFrame={still}
           style={{ width: '100%', aspectRatio: '9 / 16' }}
           loop
+          autoPlay
           initiallyMuted
+          errorFallback={playerError}
           acknowledgeRemotionLicense
         />
+        </LivePreview>
+        )}
       </div>
       <div className="livename">
         <b>
@@ -1724,6 +1821,7 @@ const withOpt = (base: EffectsReelProps, opt?: LookOpt, oneBeat?: boolean) => {
 /** The reel (or one beat of it) playing on a loop, sized by its box. */
 const ReelPlayer: React.FC<{ props: EffectsReelProps; playerRef?: React.RefObject<PlayerRef | null> }> = ({ props, playerRef }) => (
   <div className="wmwrap">
+    <LivePreview poster={posterOf(props.video)}>
     <Player
       ref={playerRef}
       component={EffectsReel}
@@ -1736,8 +1834,10 @@ const ReelPlayer: React.FC<{ props: EffectsReelProps; playerRef?: React.RefObjec
       autoPlay
       loop
       initiallyMuted
+      errorFallback={playerError}
       acknowledgeRemotionLicense
     />
+    </LivePreview>
     <Watermark />
   </div>
 );
@@ -1767,12 +1867,17 @@ const Watermark: React.FC<{ small?: boolean }> = ({ small }) => (
   </div>
 );
 
-/** A one-frame poster of a take, for grids and option strips (cheap: no playback). */
+const STILL = { still: true };
+/** A one-frame poster of a take, for grids and option strips (cheap: a still image under the graphics, no video decoded). */
 const ReelStill: React.FC<{ props: EffectsReelProps; at?: number }> = ({ props, at = 0.45 }) => {
   const frames = Math.max(1, effectsReelDuration(props, FPS));
   return (
     <div className="wmwrap">
-      <Thumbnail component={EffectsReel} inputProps={props} durationInFrames={frames} fps={FPS} compositionWidth={1080} compositionHeight={1920} frameToDisplay={Math.min(frames - 1, Math.round(frames * at))} style={{ width: '100%', height: '100%' }} />
+      <PreviewMode.Provider value={STILL}>
+        <PreviewBoundary fallback={<PreviewFallback poster={posterOf(props.video)} />}>
+          <Thumbnail component={EffectsReel} inputProps={props} durationInFrames={frames} fps={FPS} compositionWidth={1080} compositionHeight={1920} frameToDisplay={Math.min(frames - 1, Math.round(frames * at))} style={{ width: '100%', height: '100%' }} />
+        </PreviewBoundary>
+      </PreviewMode.Provider>
       <Watermark small />
     </div>
   );
@@ -1853,6 +1958,7 @@ const PickFeed: React.FC<{ p: EffectsReelProps; onPick: (o: LookOpt) => void; on
           </button>
         </div>
       ) : null}
+      <div className="pickstage">
       <div
         className="pickreel"
         onTouchStart={(e) => (touch.current = e.touches[0].clientY)}
@@ -1870,7 +1976,7 @@ const PickFeed: React.FC<{ p: EffectsReelProps; onPick: (o: LookOpt) => void; on
         }}
       >
         <div className="pickplayer" key={cur.id}>
-          <ReelPlayer props={props} playerRef={ref} />
+          {grid ? <ReelStill props={props} /> : <ReelPlayer props={props} playerRef={ref} />}
         </div>
         <div className="pickbars" aria-hidden>
           {takes.map((t, k) => (
@@ -1916,6 +2022,7 @@ const PickFeed: React.FC<{ p: EffectsReelProps; onPick: (o: LookOpt) => void; on
             <Glyph d={G.down} />
           </button>
         </div>
+      </div>
       </div>
       <div className="pickcta">
         {kept.length >= 2 ? (
@@ -2249,9 +2356,9 @@ const PickFlow: React.FC<{
   const [kept, setKept] = useState<LookOpt[]>([]);
   const take = (o: LookOpt) => update((x) => (o.apply(x), x));
   const at = PICK_STAGES.findIndex(([s]) => s === stage);
-  const back = () => (at > 0 ? setStage(PICK_STAGES[at - 1][0]) : (location.hash = '#/reels'));
+  const back = () => (at > 0 ? setStage(PICK_STAGES[at - 1][0]) : goBack('#/reels'));
   return (
-    <div className="pick">
+    <div className={`pick ${stage === 'feed' ? 'pickfull' : ''}`}>
       <div className="pickhead">
         <button className="iconround" onClick={back} aria-label={tr("戻る")}>
           <Glyph d={G.back} />
@@ -2715,8 +2822,24 @@ const usePanelAccordion = (root: React.RefObject<HTMLElement | null>) => {
   }, []);
 };
 
+/** Pages opened inside the app this session, so Back can return instead of leaving (a cold start from a link or notification has none). */
+let inAppSteps = 0;
+addEventListener('hashchange', () => inAppSteps++);
+/** Back: the previous page when there is one in the app, else `fallback` (one level up). */
+const goBack = (fallback = '#/') => (inAppSteps > 0 ? (inAppSteps -= 2, history.back()) : (location.hash = fallback));
+
+/** The round back button every sub-page starts with. */
+const BackButton: React.FC<{ fallback?: string; label?: string }> = ({ fallback, label }) => (
+  <button className="backbtn" onClick={() => goBack(fallback)} aria-label={tr("戻る")}>
+    <Glyph d={G.back} size={20} />
+    {label ? <span>{label}</span> : null}
+  </button>
+);
+
+/** Back button + where you are. Every sub-page has one. */
 const Crumbs: React.FC<{ items: { label: string; href?: string }[] }> = ({ items }) => (
   <nav className="crumbs" aria-label={tr("現在地")}>
+    <BackButton fallback={[...items].reverse().find((c, i) => i > 0 && c.href)?.href ?? '#/'} />
     <ol>
       {items.map((c, i) => (
         <li key={i}>{c.href && i < items.length - 1 ? <a href={c.href}>{c.label}</a> : <span aria-current={i === items.length - 1 ? 'page' : undefined}>{c.label}</span>}</li>
@@ -2784,6 +2907,11 @@ const Sheet: React.FC<{ onClose: () => void; className?: string; children: (clos
       <div ref={box} className={`sheetbox ${className}`} onClick={(e) => e.stopPropagation()}>
         <div className="grab" onPointerDown={onDown} onPointerMove={onMove} onPointerUp={onUp} onPointerCancel={onUp} aria-hidden>
           <span />
+        </div>
+        <div className="sheetbar">
+          <button className="sheetclose" onClick={close} aria-label={tr("閉じる")}>
+            <Glyph d={G.close} size={20} />
+          </button>
         </div>
         {children(close)}
       </div>
@@ -2934,7 +3062,7 @@ const EFFECT_DESC: Record<EffectId, string> = {
   flatBoard: tr("番号付きの柱が立ち上がるフラットなイラスト図解"),
 };
 
-type CatalogItem = { key: string; template: TemplateId; effect?: EffectId; mix?: string; name: string; desc: string; group: Group; href?: string; premium?: boolean; tags?: string[] };
+type CatalogItem = { key: string; template: TemplateId; effect?: EffectId; mix?: string; name: string; desc: string; group: Group; href?: string; premium?: boolean; tags?: string[]; kicker?: string };
 
 /** Finishing options the user picks after the AI has made the reel. Each value has a real render at showcase/<prefix>-<value>. */
 type LockAxis = 'caption' | 'camera' | 'transition' | 'grade' | 'texture';
@@ -2978,9 +3106,20 @@ const localized = (key: string) => {
   return key;
 };
 
+/** A sample render. `controls` = a quiet sound toggle (no system controls over the picture). */
 const ShowVideo: React.FC<{ k: string; controls?: boolean }> = ({ k, controls }) => {
   const s = showcase(k);
-  return <video src={s.video} poster={s.poster} autoPlay muted loop playsInline controls={controls} preload="auto" style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block', background: '#000' }} />;
+  const [sound, setSound] = useState(false);
+  const v = <video src={s.video} poster={s.poster} autoPlay muted={!sound} loop playsInline preload={controls ? 'auto' : 'metadata'} style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block', background: '#000' }} />;
+  if (!controls) return v;
+  return (
+    <div className="showvideo">
+      {v}
+      <button className="feedsound" onClick={(e) => (e.stopPropagation(), setSound((x) => !x))} aria-label={tr("音")} aria-pressed={sound}>
+        <Glyph d={sound ? G.sound : G.mute} size={18} />
+      </button>
+    </div>
+  );
 };
 
 /** Poster in the grid; plays while hovered (desktop). Tap opens the full preview. */
@@ -2996,6 +3135,7 @@ const TemplateCard: React.FC<{ it: CatalogItem; onOpen: () => void; i?: number }
         {it.premium ? <span className="tprem">{tr("プレミアム")}</span> : null}
         {it.effect ? <span className="tnum">{String(effectIds.indexOf(it.effect) + 1).padStart(2, '0')}</span> : null}
       </div>
+      {it.kicker ? <div className="tkick">{it.kicker}</div> : null}
       <div className="tname">{it.name}</div>
     </button>
   );
@@ -3050,19 +3190,23 @@ const useCatalogPicker = (go: (h: string) => void) => {
 
 // ---------- template catalog: video, photo and service templates by combination ----------
 
-type CatalogKind = 'video' | 'photo' | 'service';
+type CatalogKind = 'video' | 'photo' | 'service' | 'product';
 type CatalogEntry = { id: string; kind: CatalogKind; ja: string; en: string; categories: string[]; premium?: boolean; count?: number; sample?: string; uses: number; added: string };
-type CatalogData = { entries: CatalogEntry[]; categories: Record<CatalogKind, { id: string; ja: string; en: string }[]> };
+type CatalogData = { entries: CatalogEntry[]; categories: Partial<Record<CatalogKind, { id: string; ja: string; en: string }[]>> };
 const KINDS: { id: CatalogKind; name: string }[] = [
   { id: 'video', name: tr("動画") },
   { id: 'photo', name: tr("写真") },
   { id: 'service', name: tr("サービス紹介") },
+  { id: 'product', name: tr("商品") },
 ];
 const HREF: Record<CatalogKind, (id: string) => string> = {
   video: (id) => `#/new/EffectsReel/tpl-${id}`,
   photo: (id) => `#/new/PhotoReel/tpl-${id}`,
   service: (id) => `#/new/ServiceReel/tpl-${id}`,
+  product: () => '#/new/ProductShine',
 };
+/** The app's own starting points (each its own generator), filed under the same kinds as the catalog. */
+const FEATURED_KIND: Partial<Record<TemplateId, CatalogKind>> = { TalkCaptions: 'video', EffectsReel: 'video', FivePass: 'video', SaaSPromo: 'service', ProductShine: 'product' };
 const PAGE = 24;
 
 /** The catalog from the server (with use counts and server-added templates); the bundled lists stand in offline. */
@@ -3074,7 +3218,7 @@ const loadCatalog = () =>
       ...photoTemplates.map((t) => ({ id: t.id, kind: 'photo' as const, ja: t.nameJa, en: t.nameEn, categories: t.categories as string[], count: t.count, uses: 0, added: '', sample: `tpl-${t.id}` })),
       ...serviceTemplates.map((t) => ({ id: t.id, kind: 'service' as const, ja: t.nameJa, en: t.nameEn, categories: t.industries as string[], uses: 0, added: '', sample: `tpl-${t.id}` })),
     ],
-    categories: { video: videoCategories, photo: photoCategories, service: serviceIndustries },
+    categories: { video: videoCategories, photo: photoCategories, service: serviceIndustries, product: [] },
   })));
 
 /** Same order for everyone on a given day, different the next: "おすすめ" keeps changing without being random per tap. */
@@ -3084,10 +3228,15 @@ const dayRank = (id: string) => {
   return (h >>> 0) / 4294967296;
 };
 
-const TemplateBrowser: React.FC<{ onOpen: (it: CatalogItem) => void }> = ({ onOpen }) => {
+/**
+ * "Start from an example": one gallery for everything that can be made. The app's own templates come first,
+ * then every catalog template, all as the same 9:16 card. Only templates with a real render are shown, and
+ * each card opens the generator that made that render.
+ */
+const TemplateBrowser: React.FC<{ onOpen: (it: CatalogItem) => void; featured: CatalogItem[] }> = ({ onOpen, featured }) => {
   const [data, setData] = useState<CatalogData | null>(null);
   const keys = useShowcaseKeys();
-  const [kind, setKind] = useState<CatalogKind>('video');
+  const [kind, setKind] = useState<CatalogKind | 'all'>('all');
   const [sort, setSort] = useState<'pick' | 'popular' | 'new'>('pick');
   const [cat, setCat] = useState<string>('');
   const [count, setCount] = useState<number>(0);
@@ -3097,13 +3246,15 @@ const TemplateBrowser: React.FC<{ onOpen: (it: CatalogItem) => void }> = ({ onOp
   useEffect(() => setShown(PAGE), [kind, sort, cat, count]);
   const nm = (x: { ja: string; en: string }) => (lang === 'ja' ? x.ja : x.en);
   // Only templates with a real render are shown: the sample must be what the template actually makes.
-  const all = (data?.entries ?? []).filter((e) => e.sample && (!keys || keys.has(e.sample)));
-  // A kind whose samples are not rendered yet gets no tab.
-  const kinds = KINDS.filter((k) => all.some((e) => e.kind === k.id));
-  const cur = kinds.some((k) => k.id === kind) ? kind : (kinds[0]?.id ?? kind);
-  const cats = data?.categories[cur] ?? [];
+  const all = (data?.entries ?? []).filter((e) => e.sample && keys?.has(e.sample));
+  const feat = featured.filter((f) => FEATURED_KIND[f.template]);
+  const kindOf = (it: CatalogItem) => FEATURED_KIND[it.template]!;
+  // A kind with nothing rendered yet gets no tab.
+  const kinds = KINDS.filter((k) => all.some((e) => e.kind === k.id) || feat.some((f) => kindOf(f) === k.id));
+  const cur: CatalogKind | 'all' = kind === 'all' || kinds.some((k) => k.id === kind) ? kind : 'all';
+  const cats = cur === 'all' ? [] : (data?.categories[cur] ?? []);
   const list = all
-    .filter((e) => e.kind === cur && (!cat || e.categories.includes(cat)) && (!count || e.count === count))
+    .filter((e) => (cur === 'all' || e.kind === cur) && (!cat || e.categories.includes(cat)) && (!count || e.count === count))
     .sort((a, b) => (sort === 'popular' ? b.uses - a.uses : sort === 'new' ? b.added.localeCompare(a.added) : 0) || dayRank(a.id) - dayRank(b.id));
   useEffect(() => {
     const el = more.current;
@@ -3112,29 +3263,35 @@ const TemplateBrowser: React.FC<{ onOpen: (it: CatalogItem) => void }> = ({ onOp
     io.observe(el);
     return () => io.disconnect();
   }, [list.length > shown]);
-  if (!all.length) return null;
-  const catName = (id: string) => nm(cats.find((c) => c.id === id) ?? { ja: id, en: id });
-  const items: CatalogItem[] = list.slice(0, shown).map((e) => ({
+  if (!all.length && !feat.length) return null;
+  const catName = (k: CatalogKind, id: string) => nm((data?.categories[k] ?? []).find((c) => c.id === id) ?? { ja: id, en: id });
+  const kindName = (k: CatalogKind) => KINDS.find((x) => x.id === k)!.name;
+  const head = feat.filter((f) => (cur === 'all' || kindOf(f) === cur) && !cat && !count).map((f) => ({ ...f, kicker: kindName(kindOf(f)) }));
+  const items: CatalogItem[] = [...head, ...list.slice(0, shown).map((e): CatalogItem => ({
     key: e.sample!,
     template: 'EffectsReel',
     mix: e.id,
     name: nm(e),
-    desc: e.categories.map(catName).join(' ・ '),
+    desc: e.categories.map((c) => catName(e.kind, c)).join(' ・ '),
     group: 'mix',
     href: HREF[e.kind](e.id),
     premium: e.premium,
-    tags: [KINDS.find((k) => k.id === e.kind)!.name, ...e.categories.slice(0, 3).map(catName), ...(e.count ? [tr("{0}枚", e.count)] : [])],
-  }));
+    kicker: kindName(e.kind),
+    tags: [kindName(e.kind), ...e.categories.slice(0, 3).map((c) => catName(e.kind, c)), ...(e.count ? [tr("{0}枚", e.count)] : [])],
+  }))];
   return (
     <section className="tsection tbrowser">
       <div className="thead">
-        <h2>{tr("テンプレート")}</h2>
-        <span className="cost">{tr("{0}種", fmtN(all.length))}</span>
+        <h2>{tr("見本から選ぶ")}</h2>
+        <span className="cost">{tr("{0}種", fmtN(all.length + feat.length))}</span>
       </div>
-      <div className="kindtabs" role="tablist">
+      <div className="kindtabs" role="tablist" style={{ '--n': kinds.length + 1 } as React.CSSProperties}>
+        <button role="tab" aria-selected={cur === 'all'} className={cur === 'all' ? 'on' : ''} onClick={() => (setKind('all'), setCat(''), setCount(0))}>
+          {tr("すべて")}
+        </button>
         {kinds.map((k) => (
           <button key={k.id} role="tab" aria-selected={cur === k.id} className={cur === k.id ? 'on' : ''} onClick={() => (setKind(k.id), setCat(''), setCount(0))}>
-            {k.name} <small>{fmtN(all.filter((e) => e.kind === k.id).length)}</small>
+            {k.name}
           </button>
         ))}
       </div>
@@ -3144,10 +3301,12 @@ const TemplateBrowser: React.FC<{ onOpen: (it: CatalogItem) => void }> = ({ onOp
             {name}
           </button>
         ))}
-        <span className="chipsep" />
-        <button className={`fchip ${!cat ? 'on' : ''}`} onClick={() => setCat('')}>
-          {tr("すべて")}
-        </button>
+        {cats.length ? <span className="chipsep" /> : null}
+        {cats.length ? (
+          <button className={`fchip ${!cat ? 'on' : ''}`} onClick={() => setCat('')}>
+            {tr("すべて")}
+          </button>
+        ) : null}
         {cats
           .filter((c) => all.some((e) => e.kind === cur && e.categories.includes(c.id)))
           .map((c) => (
@@ -3303,13 +3462,11 @@ const Start: React.FC<{ go: (h: string) => void }> = ({ go }) => {
   );
 };
 
-/** The last few reels, newest first, as small posters. */
+/** The last few reels, newest first, as small posters (still images: nothing decodes on the home screen). */
 const RecentReels: React.FC<{ go: (h: string) => void }> = ({ go }) => {
   const [jobs, setJobs] = useState<Job[] | null>(null);
   useEffect(() => {
-    api<Job[]>('/api/jobs')
-      .then((list) => Promise.all(list.filter((j) => j.status !== 'error').slice(0, 3).map((j) => api<Job>(`/api/jobs/${j.id}`).catch(() => j))))
-      .then(setJobs, () => setJobs([]));
+    api<Job[]>('/api/jobs').then((list) => setJobs(list.filter((j) => j.status !== 'error').slice(0, 3)), () => setJobs([]));
   }, []);
   if (!jobs?.length) return null;
   return (
@@ -3322,14 +3479,11 @@ const RecentReels: React.FC<{ go: (h: string) => void }> = ({ go }) => {
       </div>
       <div className="recent">
         {jobs.map((j) => {
-          const t = TEMPLATES[j.template];
+          const poster = jobPoster(j);
           return (
             <button key={j.id} onClick={() => go(`#/job/${j.id}`)} aria-label={j.title}>
-              {j.props ? (
-                <Thumbnail component={t.component} inputProps={j.props} durationInFrames={Math.max(1, t.frames(j.props))} fps={FPS} compositionWidth={1080} compositionHeight={1920} frameToDisplay={30} style={{ width: '100%', height: '100%' }} />
-              ) : (
-                <span className="feedblank">{STATUS_LABEL[j.status]}</span>
-              )}
+              {poster ? <img src={poster} alt="" loading="lazy" /> : <span className="feedblank">{STATUS_LABEL[j.status]}</span>}
+              <small>{j.title}</small>
             </button>
           );
         })}
@@ -3381,11 +3535,7 @@ const Home: React.FC<{ go: (h: string) => void; initialGroup?: string }> = ({ go
         <small>{tr("AIがいくつもの案を作ります")}</small>
       </button>
       <RecentReels go={go} />
-      <div className="thead" style={{ marginTop: 8 }}>
-        <h2>{tr("見本から選ぶ")}</h2>
-      </div>
-      {GROUPS.filter((g) => g.id === 'base' && has(g.id)).map(section)}
-      <TemplateBrowser onOpen={setOpen} />
+      <TemplateBrowser onOpen={setOpen} featured={catalog.filter((c) => c.group === 'base')} />
       {effectGroups.length ? (
         <section className="tsection">
           <div className="thead">
@@ -3439,16 +3589,34 @@ const Search: React.FC<{ go: (h: string) => void }> = ({ go }) => {
 
 const STATUS_LABEL = { generating: tr("作成中"), ready: tr("編集できます"), rendering: tr("書き出し中"), done: tr("書き出し済み"), error: tr("エラー") } as const;
 
-/** One reel per screen, like Reels: the one in view plays. */
+/** A job's still: its exported reel, else its talking video, else its first photo (server: /api/jobs poster). */
+const jobPoster = (j: Job) => (j.poster ? media(j.poster) : j.video ? posterOf(j.video) : j.props ? propsPoster(j.props) : j.thumb ? media(j.thumb) : undefined);
+
+/**
+ * One reel per screen, like Reels. Only the reel in view is live (its exported MP4 when there is one, which
+ * is far lighter than a live composition); every other one is a still image. A list of live compositions
+ * here is what ran the iPhone out of memory and looped the app through reloads.
+ */
 const ReelsFeed: React.FC<{ go: (h: string) => void }> = ({ go }) => {
   const [jobs, setJobs] = useState<Job[] | null>(null);
+  const [active, setActive] = useState(0);
+  const box = useRef<HTMLDivElement>(null);
   useEffect(() => {
-    api<Job[]>('/api/jobs').then(async (list) => {
-      const full = await Promise.all(list.filter((j) => j.status !== 'error').map((j) => api<Job>(`/api/jobs/${j.id}`).catch(() => j)));
-      setJobs(full);
-    });
+    api<Job[]>('/api/jobs').then((list) => setJobs(list.filter((j) => j.status !== 'error')), () => setJobs([]));
   }, []);
-  if (!jobs) return <p className="sub">{tr("読み込み中…")}</p>;
+  useEffect(() => {
+    const el = box.current;
+    if (!el) return;
+    const io = new IntersectionObserver(
+      (es) => {
+        for (const e of es) if (e.isIntersecting && e.intersectionRatio >= 0.6) setActive(Number((e.target as HTMLElement).dataset.i));
+      },
+      { root: el, threshold: [0.6] },
+    );
+    [...el.children].forEach((c) => io.observe(c));
+    return () => io.disconnect();
+  }, [jobs]);
+  if (!jobs) return <div className="feed"><div className="feeditem"><div className="feedvideo skeleton" /></div></div>;
   if (!jobs.length)
     return (
       <div className="empty">
@@ -3460,33 +3628,43 @@ const ReelsFeed: React.FC<{ go: (h: string) => void }> = ({ go }) => {
       </div>
     );
   return (
-    <div className="feed">
-      {jobs.map((j) => (
-        <FeedItem key={j.id} job={j} onEdit={() => go(`#/job/${j.id}`)} />
+    <div className="feed" ref={box}>
+      {jobs.map((j, i) => (
+        <FeedItem key={j.id} i={i} job={j} live={i === active} onEdit={() => go(`#/job/${j.id}`)} />
       ))}
     </div>
   );
 };
 
-const FeedItem: React.FC<{ job: Job; onEdit: () => void }> = ({ job, onEdit }) => {
-  const box = useRef<HTMLDivElement>(null);
-  const [visible, setVisible] = useState(false);
+const FeedItem: React.FC<{ job: Job; i: number; live: boolean; onEdit: () => void }> = ({ job: row, i, live, onEdit }) => {
+  // The list has no props; a reel that has not been exported loads them when it comes into view.
+  const [full, setFull] = useState<Job | null>(null);
+  const [sound, setSound] = useState(false);
   useEffect(() => {
-    const io = new IntersectionObserver(([e]) => setVisible(e.intersectionRatio > 0.6), { threshold: [0, 0.6, 1] });
-    io.observe(box.current!);
-    return () => io.disconnect();
-  }, []);
+    if (live && !row.video && !full) api<Job>(`/api/jobs/${row.id}`).then(setFull, () => null);
+  }, [live]);
+  const job = full ? { ...row, ...full } : row;
   const t = TEMPLATES[job.template];
+  const poster = jobPoster(job);
   return (
-    <div className="feeditem" ref={box}>
+    <div className="feeditem" data-i={i}>
       <div className="feedvideo">
-        {job.props && visible ? (
-          <Player component={t.component} inputProps={job.props} durationInFrames={Math.max(1, t.frames(job.props))} fps={FPS} compositionWidth={1080} compositionHeight={1920} style={{ width: '100%', height: '100%' }} autoPlay loop initiallyMuted acknowledgeRemotionLicense />
-        ) : job.props ? (
-          <Thumbnail component={t.component} inputProps={job.props} durationInFrames={Math.max(1, t.frames(job.props))} fps={FPS} compositionWidth={1080} compositionHeight={1920} frameToDisplay={20} style={{ width: '100%', height: '100%' }} />
+        {live && job.video ? (
+          <video className="feedmedia" src={media(job.video)} poster={poster} autoPlay loop muted={!sound} playsInline preload="auto" onClick={() => setSound((x) => !x)} />
+        ) : live && job.props ? (
+          <LivePreview poster={poster}>
+            <Player component={t.component} inputProps={job.props} durationInFrames={Math.max(1, t.frames(job.props))} fps={FPS} compositionWidth={1080} compositionHeight={1920} style={{ width: '100%', height: '100%' }} autoPlay loop initiallyMuted errorFallback={playerError} acknowledgeRemotionLicense />
+          </LivePreview>
+        ) : poster ? (
+          <img className="feedmedia" src={poster} alt="" loading="lazy" />
         ) : (
           <div className="feedblank">{STATUS_LABEL[job.status]}</div>
         )}
+        {live && job.video ? (
+          <button className="feedsound" onClick={() => setSound((x) => !x)} aria-label={tr("音")} aria-pressed={sound}>
+            <Glyph d={sound ? G.sound : G.mute} size={18} />
+          </button>
+        ) : null}
         <div className="feedmeta">
           <div className="name">{job.title}</div>
           <div className="cost">
@@ -4370,9 +4548,18 @@ const App = () => {
   ] as const;
   // While picking, the reel takes the whole screen.
   const immersive = route === 'job';
+  // Pages sized to the screen (the feed) need the header's height, which includes the notch.
+  const top = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    const el = top.current;
+    if (!el) return;
+    const ro = new ResizeObserver(() => document.documentElement.style.setProperty('--toph', `${el.offsetHeight}px`));
+    ro.observe(el);
+    return () => ro.disconnect();
+  }, []);
   return (
     <SelContext.Provider value={{ sel, setSel }}>
-      <div className="top">
+      <div className={`top ${immersive ? 'away' : ''}`} ref={top}>
         <div className="logo" onClick={() => go('#/')}>
           <img className="mark" src="/icons/icon.svg" alt="" /> Edit<span>less</span>
         </div>

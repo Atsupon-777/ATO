@@ -30,8 +30,9 @@ await esbuild.build({
 
 let html = await readFile(path.join(web, 'index.html'), 'utf8');
 html = html
-  // Draw under the status bar; the CSS pads with env(safe-area-inset-*).
-  .replace('content="width=device-width, initial-scale=1"', 'content="width=device-width, initial-scale=1, viewport-fit=cover"')
+  // Draw under the status bar (the CSS pads with env(safe-area-inset-*)); an app screen never pinch-zooms
+  // or drifts sideways. The website keeps pinch zoom (Safari ignores user-scalable there anyway).
+  .replace('content="width=device-width, initial-scale=1, maximum-scale=1, viewport-fit=cover"', 'content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover"')
   // Fonts come from the server, like the rest of the media.
   .replace('href="/fonts/fonts.css"', `href="${API}/fonts/fonts.css"`)
   // No home-screen manifest or service worker inside the app.

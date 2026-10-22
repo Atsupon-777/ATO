@@ -785,5 +785,7 @@
  "{0} に {1} トークンを付与しました（残高 {2}）": "Gave {1} tokens to {0} (balance {2})",
  "トークンを付与": "Give tokens",
  "テストや審査用に、メールアドレスのアカウントへトークンを付けます。売上には入りません。": "Add tokens to an account by email, for testing or App Review. Not counted as sales.",
- "付与する": "Give"
+ "付与する": "Give",
+ "再生": "Play",
+ "プレビューを再生できませんでした": "Couldn't play the preview"
 }

@@ -23,6 +23,7 @@ import { buildProductReel, STYLES, type Style } from '../server/product.ts';
 import { renderTemplate } from '../server/render.ts';
 import { buildSaasProps } from '../server/saas.ts';
 import { buildTalkProps } from '../server/talk.ts';
+import { derived } from '../server/derived.ts';
 import { isLang, type Lang } from '../src/lang.ts';
 import { authEnabled, LOCAL_USER, verifyIdToken, webConfig, type User } from '../server/auth.ts';
 import { FreeClaimError, NotEnoughTokens, balance, charge, claimFree, getAccount, refund, removeAccount, update, allAccounts, PLAN_TOKENS, FREE_TOKENS, PAYG_UNIT, PAYG_UNIT_YEN, PAYG_MIN, PAYG_MAX } from '../server/accounts.ts';
@@ -631,7 +632,7 @@ const server = http.createServer(async (req, res) => {
     }
     if (p === '/api/jobs' && req.method === 'GET') {
       const list = [...jobs.values()].filter((j) => (j.owner ?? LOCAL_USER.uid) === user!.uid).sort((a, b) => b.createdAt.localeCompare(a.createdAt));
-      return json(res, 200, list.map(({ props, ...j }) => ({ ...j, thumb: thumbOf(j.template, props) })));
+      return json(res, 200, list.map(({ props, ...j }) => ({ ...j, thumb: thumbOf(j.template, props), poster: posterOfJob(j.video, props) })));
     }
     if (p === '/api/jobs' && req.method === 'POST') {
       const body = await readBody(req);
@@ -755,12 +756,37 @@ const server = http.createServer(async (req, res) => {
       const um = p.match(/^\/uploads\/([^/]+)\//);
       if (p.startsWith('/uploads/') && (!user || !um || um[1] !== userDir(user))) return res.writeHead(404).end();
     }
+    // Light copies the app's previews ask for, cut from a job video on first request (see derived()).
+    const dm = p.match(/^\/jobs\/[\w-]+\/[\w-]+\.(preview\.mp4|poster\.jpg)$/);
+    if (dm && !(await stat(file).catch(() => null))) {
+      const src = file.replace(/\.(preview\.mp4|poster\.jpg)$/, '.mp4');
+      if (!(await stat(src).catch(() => null))) return res.writeHead(404).end('not found');
+      const made = derived(src, dm[1] === 'poster.jpg' ? 'poster' : 'preview');
+      if (dm[1] === 'preview.mp4') {
+        // Not ready yet: play the full file this time (a redirect, so range requests stay on one file).
+        made.catch(() => null);
+        res.writeHead(302, { Location: `${p.replace(/\.preview\.mp4$/, '.mp4')}${url.search}`, 'Cache-Control': 'no-store', 'Access-Control-Allow-Origin': '*' });
+        return res.end();
+      }
+      try {
+        await made;
+      } catch (e) {
+        console.error('poster', e);
+        return res.writeHead(404).end('not found');
+      }
+    }
     return sendFile(req, res, file);
   } catch (e) {
     console.error(e);
     if (!res.headersSent) json(res, 500, { error: e instanceof Error ? e.message : String(e) });
   }
 });
+
+/** Still frame for the app's lists: cut from the exported reel, else from the talking video (derived()). */
+const posterOfJob = (video?: string, props?: Record<string, any>) => {
+  const v = video ?? (typeof props?.video === 'string' ? props.video : undefined);
+  return v && /^jobs\/[\w-]+\/[\w-]+\.mp4$/.test(v) ? v.replace(/\.mp4$/, '.poster.jpg') : undefined;
+};
 
 const thumbOf = (t: Template, props?: Record<string, any>) =>
   !props ? undefined : t === 'ProductShine' ? props.photo : t === 'SaaSPromo' ? props.desktop : t === 'ServiceReel' ? (props.desktop ?? props.phone ?? props.photos?.[0]) : t === 'PhotoReel' ? props.photos?.[0]?.src : undefined;

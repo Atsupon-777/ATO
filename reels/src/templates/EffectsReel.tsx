@@ -2,7 +2,7 @@ import React from 'react';
 import { AbsoluteFill, Audio, Sequence, useVideoConfig } from 'remotion';
 import type { EffectsReelProps } from '../schemas';
 import { effectIds } from '../schemas';
-import { asset } from '../lib/assets';
+import { alphaVideoOk, asset, usePreviewMode } from '../lib/assets';
 import { cjkVars, fonts } from '../lib/fonts';
 import { useFonts } from '../lib/useFonts';
 import { effects } from '../effects';
@@ -18,6 +18,8 @@ export const EffectsReel: React.FC<EffectsReelProps> = (p) => {
   useFonts(p);
   const { fps } = useVideoConfig();
   const total = effectsReelDuration(p, fps);
+  const { still } = usePreviewMode();
+  const matte = alphaVideoOk() ? p.matte : undefined;
   let at = 0;
   return (
     <AbsoluteFill lang={p.lang} style={{ background: '#000', ...cjkVars(p.lang) }}>
@@ -33,7 +35,7 @@ export const EffectsReel: React.FC<EffectsReelProps> = (p) => {
             <SourceContext.Provider
               value={{
                 video: p.video,
-                matte: p.matte,
+                matte,
                 focusX: p.focusX,
                 trimBefore,
                 ...p.palette,
@@ -53,14 +55,14 @@ export const EffectsReel: React.FC<EffectsReelProps> = (p) => {
                 </CameraMotion>
                 <TextureOverlay kind={style.texture} />
               </TransitionIn>
-              <Audio src={asset(p.video)} trimBefore={trimBefore} volume={p.voiceVolume ?? 1} />
+              {still ? null : <Audio src={asset(p.video)} trimBefore={trimBefore} volume={p.voiceVolume ?? 1} />}
               {p.counter ? <Counter n={effectIds.indexOf(seg.effect) + 1} /> : null}
             </SourceContext.Provider>
           </Sequence>
         );
       })}
       <Overlays items={p.overlays} accent={p.palette.accent} />
-      {p.music ? <Audio src={asset(p.music)} volume={(f) => musicLevel(p, f / fps, total / fps)} loop /> : null}
+      {p.music && !still ? <Audio src={asset(p.music)} volume={(f) => musicLevel(p, f / fps, total / fps)} loop /> : null}
     </AbsoluteFill>
   );
 };

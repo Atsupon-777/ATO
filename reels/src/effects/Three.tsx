@@ -4,11 +4,23 @@
 import { useThree } from '@react-three/fiber';
 import { ThreeCanvas } from '@remotion/three';
 import React, { useMemo } from 'react';
-import { AbsoluteFill, interpolate, useCurrentFrame, useVideoConfig } from 'remotion';
+import { AbsoluteFill, getRemotionEnvironment, interpolate, useCurrentFrame, useVideoConfig } from 'remotion';
+import { usePreviewMode } from '../lib/assets';
 import * as THREE from 'three';
 import { fonts } from '../lib/fonts';
 import { clamp, easeOutExpo, pop, progress } from '../lib/timing';
 import { Caption, FONT_FAMILY, Footage, Subject, rand, useSource, type EffectProps } from './layers';
+
+/**
+ * WebGL settings. Renders draw at full size; the app's live previews draw at half resolution without
+ * multisampling (a full 1080×1920 canvas at the phone's pixel ratio is over 100 MB of GPU memory, enough
+ * for iOS to kill the web view), and posters skip the 3D scene entirely.
+ */
+const useGl = () => {
+  const { still } = usePreviewMode();
+  const rendering = getRemotionEnvironment().isRendering;
+  return { skip: Boolean(still) && !rendering, dpr: rendering ? 1 : 0.5, gl: { antialias: rendering, alpha: true, powerPreference: rendering ? ('default' as const) : ('low-power' as const) } };
+};
 
 const W = 1080;
 const H = 1920;
@@ -73,6 +85,7 @@ const Satellites: React.FC<{ color: string }> = ({ color }) => {
  * Sits behind the speaker when there is a matte.
  */
 export const Object3D: React.FC<EffectProps> = ({ seg }) => {
+  const three = useGl();
   const frame = useCurrentFrame();
   const { fps } = useVideoConfig();
   const s = useSource();
@@ -86,14 +99,14 @@ export const Object3D: React.FC<EffectProps> = ({ seg }) => {
       <Footage />
       <AbsoluteFill style={{ background: `radial-gradient(ellipse at 50% 30%, ${s.accent}33, rgba(0,0,0,0.82) 62%)`, opacity: dim }} />
       <AbsoluteFill style={{ top: -300 }}>
-        <ThreeCanvas width={W} height={H} camera={{ position: [0, 0, 8.4], fov: 40 }} gl={{ antialias: true, alpha: true }}>
+        {three.skip ? null : (<ThreeCanvas width={W} height={H} dpr={three.dpr} camera={{ position: [0, 0, 8.4], fov: 40 }} gl={three.gl}>
           <ambientLight intensity={0.35} />
           <directionalLight position={[3, 4, 5]} intensity={2.2} />
           <pointLight position={[-4, -1, 2]} intensity={40} color={s.accent} />
           <pointLight position={[2, -3, -3]} intensity={25} color="#7aa8ff" />
           <Shape kind={kind} color={s.accent} />
           <Satellites color={s.accent} />
-        </ThreeCanvas>
+        </ThreeCanvas>)}
       </AbsoluteFill>
       {word ? (
         <div
@@ -180,6 +193,7 @@ const CamSetter: React.FC<{ set: (cam: THREE.Camera) => void }> = ({ set }) => {
  * camera flies into its core; the key word glows in the middle. Behind the speaker when there is a matte.
  */
 export const Particles3D: React.FC<EffectProps> = ({ seg }) => {
+  const three = useGl();
   const frame = useCurrentFrame();
   const { fps } = useVideoConfig();
   const s = useSource();
@@ -190,10 +204,10 @@ export const Particles3D: React.FC<EffectProps> = ({ seg }) => {
     <AbsoluteFill>
       <Footage />
       <AbsoluteFill style={{ background: '#05040a', opacity: progress(frame, 0, 8) * 0.88 }} />
-      <ThreeCanvas width={W} height={H} camera={{ position: [0, 2.8, 13], fov: 50 }} gl={{ antialias: true, alpha: true }}>
+      {three.skip ? null : (<ThreeCanvas width={W} height={H} dpr={three.dpr} camera={{ position: [0, 2.8, 13], fov: 50 }} gl={three.gl}>
         <CameraRig />
         <Galaxy color={s.accent} />
-      </ThreeCanvas>
+      </ThreeCanvas>)}
       {word ? (
         <div
           style={{

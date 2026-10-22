@@ -10,6 +10,7 @@ import { talkCaptionsSchema, type TalkCaptionsProps } from '../src/schemas.ts';
 import { LANG_NAMES, fit, isCJK, type Lang } from '../src/lang.ts';
 import { askJson } from './gemini.ts';
 import { Usage } from './usage.ts';
+import { derived } from './derived.ts';
 
 const run = promisify(execFile);
 const publicDir = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../public');
@@ -146,6 +147,8 @@ export async function buildTalkProps(brief: TalkBrief) {
     '-c:a', 'aac', '-b:a', '160k', '-movflags', '+faststart', video,
   ]);
   const info = await probe(video);
+  // The phone previews play a 720p copy; start it now so it is ready when the takes are.
+  derived(video, 'preview').catch((e) => console.error('preview copy', e));
   const audio = path.join(dir, 'audio.mp3');
   await run('ffmpeg', ['-y', '-hide_banner', '-loglevel', 'error', '-i', video, '-vn', '-ac', '1', '-ar', '16000', '-b:a', '48k', audio]);
   const speech = await speechRanges(audio, info.duration);
