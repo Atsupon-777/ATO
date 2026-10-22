@@ -81,9 +81,9 @@ for (const [n, v] of todo.entries()) {
   try {
     const props = await planEffectsReel({ ...talk, recipe: v.id, lang: 'en', usage, music: await musicFor(talk, recipe, `${v.style}-${v.tempo}`) });
     const inputProps = props as unknown as Record<string, unknown>;
-    const composition = await selectComposition({ serveUrl, id: 'EffectsReel', inputProps });
+    const composition = await selectComposition({ serveUrl, id: 'EffectsReel', inputProps, browserExecutable: process.env.REMOTION_BROWSER ?? null });
     const raw = path.join(tmp, `${v.id}.mp4`);
-    await renderMedia({ serveUrl, composition, inputProps, codec: 'h264', crf: 20, scale: 2 / 3, outputLocation: raw, chromiumOptions: { gl: 'angle' } });
+    await renderMedia({ serveUrl, composition, inputProps, codec: 'h264', crf: 20, scale: 2 / 3, outputLocation: raw, browserExecutable: process.env.REMOTION_BROWSER ?? null, chromiumOptions: { gl: 'angle' } });
     const out = path.join(showcaseDir, `tpl-${v.id}.mp4`);
     await run('ffmpeg', ['-y', '-loglevel', 'error', '-i', raw, '-c:v', 'libx264', '-preset', 'veryfast', '-crf', '27', '-pix_fmt', 'yuv420p', '-af', 'loudnorm=I=-14:TP=-1', '-c:a', 'aac', '-b:a', '96k', '-movflags', '+faststart', out]);
     await run('ffmpeg', ['-y', '-loglevel', 'error', '-ss', String(Math.min(3, composition.durationInFrames / 60)), '-i', out, '-frames:v', '1', '-q:v', '4', out.replace(/\.mp4$/, '.jpg')]);
