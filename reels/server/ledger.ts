@@ -3,14 +3,14 @@
 // deleted account never takes its money with it. Writes never throw into the caller: a ledger failure is logged.
 //   USD_JPY                  yen per US dollar for AI costs and store prices in USD (default 150)
 //   STRIPE_FEE_RATE          Stripe's fee when the actual one isn't known (default 0.036)
-//   IAP_COMMISSION_RATE      App Store / Google Play commission when RevenueCat doesn't say (default 0.15)
+//   IAP_COMMISSION_RATE      App Store / Google Play commission when RevenueCat doesn't say (default 0.30; 0.15 once enrolled in Apple Small Business Program)
 import { appendFile, mkdir, readFile } from 'node:fs/promises';
 import path from 'node:path';
 import { dataDir } from './paths.ts';
 
 export const USD_JPY = Number(process.env.USD_JPY ?? 150);
 export const STRIPE_FEE_RATE = Number(process.env.STRIPE_FEE_RATE ?? 0.036);
-export const IAP_COMMISSION_RATE = Number(process.env.IAP_COMMISSION_RATE ?? 0.15);
+export const IAP_COMMISSION_RATE = Number(process.env.IAP_COMMISSION_RATE ?? 0.3);
 
 export type Channel = 'stripe' | 'app_store' | 'play_store';
 
