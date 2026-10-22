@@ -32,7 +32,8 @@ import { LANG_NAMES, langs, type Lang } from '../../src/lang';
 import { lang, setLang, tr } from './i18n';
 import { authHeader, checkVerified, config as appConfig, confirmPhoneCode, deleteAccount, linkedPhone, registerPushToken, resendVerification, sendPhoneCode, resetPassword, signInApple, signInEmail, signInGoogle, signOut, signUpEmail, startAuth, useAuth } from './auth';
 import { apiUrl, enablePush, iapBuy, iapProducts, iapRestore, isNative, manageStoreSubscription, mediaQuery, pickFromLibrary, platform, saveToCameraRoll, shareVideo, type IapProduct } from './native';
-import { PreviewMode, posterOf } from '../../src/lib/assets';
+import { PreviewMode, asset, posterOf } from '../../src/lib/assets';
+import { FRAMING_LABEL, LAYOUT_LABEL, UNFRAMED_SCENES, directShots, framings, showsSpeaker, type Framing, type Shot } from '../../src/effects/shots';
 
 // ---------- live previews: light, few, and never able to take the app down ----------
 
@@ -1992,7 +1993,7 @@ type Edition = LookOpt & { kind: string };
 
 /** The cut as the AI made it, so "the first version" is always one tap away. */
 const sceneSnapshot = (orig: EffectsReelProps['segments'][number], i: number): Edition => {
-  const sig = (s: EffectsReelProps['segments'][number]) => s.effect + JSON.stringify(s.style ?? {}) + (s.text ?? '');
+  const sig = (s: EffectsReelProps['segments'][number]) => s.effect + JSON.stringify(s.style ?? {}) + (s.text ?? '') + JSON.stringify(s.shot ?? {});
   return {
     id: `orig-${i}`,
     kind: tr("AIの案"),
@@ -2002,22 +2003,61 @@ const sceneSnapshot = (orig: EffectsReelProps['segments'][number], i: number): E
       x.segments[i].effect = orig.effect;
       x.segments[i].style = structuredClone(orig.style);
       x.segments[i].text = orig.text;
+      x.segments[i].shot = structuredClone(orig.shot);
     },
     on: (x) => sig(x.segments[i]) === sig(orig),
   };
 };
 
+/** Pictures this reel already has (made for its cutaway beats), to offer on other scenes too. */
+const reelPictures = (p: EffectsReelProps) => [...new Set(p.segments.map((s) => s.shot?.image).filter((x): x is string => Boolean(x && !x.startsWith('prompt:'))))];
+
 /**
- * Other editions of one cut, each changing one thing the AI can vary: the scene's look, captions, camera,
- * the way in, the color, or pictures on top. Picks only touch this cut, and picks of different kinds add up.
+ * Other editions of one cut, each one visibly different in its thumbnail: how the speaker is framed
+ * (寄り / 引き / 三分割), a cutaway instead of the speaker (full-screen line, picture, split screen), the
+ * scene's look, the color, the captions. Picks only touch this cut, and picks of different kinds add up.
  */
 const sceneEditions = (p: EffectsReelProps, i: number, seed: number): Edition[] => {
   const r = rng(seed * 97 + i * 131 + 7);
   const seg = p.segments[i];
   const st = seg.style ?? {};
+  const sh: Shot = seg.shot ?? {};
+  const layout = sh.layout ?? 'speaker';
   const ax = recipeAxes(recipeById(p.recipe));
   const style = (patch: Partial<BeatStyle>) => (x: EffectsReelProps) => void (x.segments[i].style = { ...(x.segments[i].style ?? {}), ...patch });
+  const shot = (patch: Shot) => (x: EffectsReelProps) => void (x.segments[i].shot = { ...(x.segments[i].shot ?? {}), ...patch });
   const out: Edition[] = [];
+  // framing: the speaker tighter or wider than now (scenes that box the footage keep the recorded framing)
+  if (!UNFRAMED_SCENES.includes(seg.effect)) {
+    const cur: Framing | undefined = layout === 'speaker' ? (sh.framing ?? 'wide') : undefined;
+    const want: Framing[] = cur === 'close' ? ['wide', r() < 0.5 ? 'thirdsL' : 'thirdsR'] : cur === 'wide' ? ['close', r() < 0.5 ? 'thirdsL' : 'thirdsR'] : ['close', 'wide'];
+    for (const f of want.filter((f) => f !== cur && framings.includes(f))) {
+      out.push({
+        id: `fr-${i}-${f}`,
+        kind: tr("構図"),
+        name: tr(FRAMING_LABEL[f]),
+        seg: i,
+        apply: shot({ layout: 'speaker', framing: f, move: f === 'wide' ? 'pull' : 'push' }),
+        on: (x) => (x.segments[i].shot?.layout ?? 'speaker') === 'speaker' && x.segments[i].shot?.framing === f,
+      });
+    }
+  }
+  // cutaways: the line full-screen, a picture of what is said, the speaker over the picture; or back to the speaker
+  const pic = sh.image ?? reelPictures(p)[i % Math.max(1, reelPictures(p).length)];
+  const lays = (['text', 'broll', 'split'] as const).filter((l) => l !== layout && (l === 'text' || pic));
+  for (const l of pickN(lays, layout === 'speaker' ? 2 : 1, r)) {
+    out.push({
+      id: `ly-${i}-${l}`,
+      kind: l === 'text' ? tr("レイアウト") : tr("画像"),
+      name: tr(LAYOUT_LABEL[l]),
+      seg: i,
+      apply: shot({ layout: l, move: 'push', image: l === 'text' ? sh.image : pic }),
+      on: (x) => x.segments[i].shot?.layout === l,
+    });
+  }
+  if (layout !== 'speaker') {
+    out.push({ id: `ly-${i}-speaker`, kind: tr("レイアウト"), name: tr(LAYOUT_LABEL.speaker), seg: i, apply: shot({ layout: 'speaker', framing: 'medium' }), on: (x) => showsSpeaker(x.segments[i]) });
+  }
   const fxPool = [...new Set([...ax.scenes, ...HOOK_FX])].filter((fx) => fx !== seg.effect && (OWN_TYPE.has(fx) ? Boolean(seg.caption || seg.text) : true));
   const fxOpt = (fx: EffectId): Edition => ({
     id: `fx-${i}-${fx}`,
@@ -2026,43 +2066,57 @@ const sceneEditions = (p: EffectsReelProps, i: number, seed: number): Edition[] 
     seg: i,
     apply: (x) => {
       x.segments[i].effect = fx;
+      // a scene plays on the speaker, so a cutaway beat comes back to them
+      if (x.segments[i].shot?.layout && x.segments[i].shot!.layout !== 'speaker') x.segments[i].shot = { ...x.segments[i].shot, layout: 'speaker', framing: 'medium' };
       if (!x.segments[i].text) x.segments[i].text = (x.segments[i].caption ?? '').split(/[、。,.!?！？]/)[0].slice(0, 24) || undefined;
     },
-    on: (x) => x.segments[i].effect === fx,
+    on: (x) => x.segments[i].effect === fx && showsSpeaker(x.segments[i]),
   });
-  const fxs = pickN(fxPool, 3, r);
-  out.push(...fxs.slice(0, 2).map(fxOpt));
-  if (seg.caption) {
+  const fxs = pickN(fxPool, 2, r);
+  out.push(fxOpt(fxs[0]));
+  const g = pickN(grades.filter((v) => v !== st.grade && v !== 'natural'), 1, r)[0];
+  out.push({ id: `gr-${i}-${g}`, kind: tr("色"), name: lbl('grade', g), seg: i, apply: style({ grade: g }), on: (x) => x.segments[i].style?.grade === g });
+  if (seg.caption && layout !== 'text') {
     const c = pickN(captionStyles.filter((v) => v !== st.caption), 1, r)[0];
     out.push({ id: `cap-${i}-${c}`, kind: tr("字幕"), name: lbl('caption', c), seg: i, apply: style({ caption: c }), on: (x) => x.segments[i].style?.caption === c });
   }
-  const cam = pickN(ax.cameras.filter((v) => v !== st.camera), 1, r)[0] ?? pickN(cameraMoves.filter((v) => v !== st.camera), 1, r)[0];
-  out.push({ id: `cam-${i}-${cam}`, kind: tr("カメラ"), name: lbl('camera', cam), seg: i, apply: style({ camera: cam }), on: (x) => x.segments[i].style?.camera === cam });
-  if (i > 0) {
-    const t = pickN(ax.transitions.filter((v) => v !== st.transition), 1, r)[0] ?? pickN(transitions.filter((v) => v !== st.transition), 1, r)[0];
-    out.push({ id: `tr-${i}-${t}`, kind: tr("切り替え"), name: lbl('transition', t), seg: i, apply: style({ transition: t }), on: (x) => x.segments[i].style?.transition === t });
-  }
-  const g = pickN(grades.filter((v) => v !== st.grade), 1, r)[0];
-  out.push({ id: `gr-${i}-${g}`, kind: tr("色"), name: lbl('grade', g), seg: i, apply: style({ grade: g }), on: (x) => x.segments[i].style?.grade === g });
-  const pics = (['stickers', 'emoji', 'sparkles', 'arrows'] as const).filter((a) => !st.accents?.includes(a));
-  if (pics.length) {
-    const a = pickN(pics, 1, r)[0];
-    out.push({
-      id: `pic-${i}-${a}`,
-      kind: tr("画像"),
-      name: lbl('accent', a),
-      seg: i,
-      apply: (x) => void (x.segments[i].style = { ...(x.segments[i].style ?? {}), accents: [...new Set([...(x.segments[i].style?.accents ?? []), a])] as never }),
-      on: (x) => Boolean(x.segments[i].style?.accents?.includes(a)),
-    });
-  }
-  if (out.length < 7 && fxs[2]) out.push(fxOpt(fxs[2]));
-  return out;
+  if (out.length < 7 && fxs[1]) out.push(fxOpt(fxs[1]));
+  return out.slice(0, 7);
+};
+
+/**
+ * The whole reel cut another way: new framings on every speaker beat and other beats cut away to the
+ * line or to the reel's pictures (no new AI pictures are made).
+ */
+const recutOpt = (p: EffectsReelProps, seed: number): Edition => {
+  const pics = reelPictures(p);
+  const dir = directShots(
+    p.segments.map((s) => ({ effect: s.effect, start: s.start, end: s.end, caption: s.caption, emphasis: s.emphasis })),
+    [],
+    { seed: seed * 7 + 3, pictures: pics.length },
+  );
+  let k = 0;
+  const shots: Shot[] = dir.map((d, i) => {
+    const sh = { ...d.shot };
+    if (sh.layout === 'broll' || sh.layout === 'split') sh.image = pics[k++ % Math.max(1, pics.length)];
+    // keep the planner's punch-in on the key word when the beat stays on the speaker
+    if ((sh.layout ?? 'speaker') === 'speaker' && p.segments[i].shot?.punch !== undefined && sh.framing !== 'close') sh.punch = p.segments[i].shot!.punch;
+    return sh;
+  });
+  const sig = JSON.stringify(shots);
+  return {
+    id: `recut-${seed}`,
+    kind: tr("構図"),
+    name: tr("別のカット割り"),
+    seg: 0,
+    apply: (x) => x.segments.forEach((s, i) => (s.shot = structuredClone(shots[i]))),
+    on: (x) => JSON.stringify(x.segments.map((s) => s.shot ?? {})) === sig,
+  };
 };
 
 /** The whole reel as the AI first made it. */
 const reelSnapshot = (orig: EffectsReelProps): Edition => {
-  const sig = (x: EffectsReelProps) => x.segments.map((s) => s.effect + JSON.stringify(s.style ?? {})).join() + x.palette.accent;
+  const sig = (x: EffectsReelProps) => x.segments.map((s) => s.effect + JSON.stringify(s.style ?? {}) + JSON.stringify(s.shot ?? {})).join() + x.palette.accent;
   const want = sig(orig);
   return {
     id: 'orig',
@@ -2072,7 +2126,7 @@ const reelSnapshot = (orig: EffectsReelProps): Edition => {
     apply: (x) => {
       x.recipe = orig.recipe;
       x.palette = structuredClone(orig.palette);
-      x.segments.forEach((s, k) => ((s.effect = orig.segments[k].effect), (s.style = structuredClone(orig.segments[k].style)), (s.text = orig.segments[k].text)));
+      x.segments.forEach((s, k) => ((s.effect = orig.segments[k].effect), (s.style = structuredClone(orig.segments[k].style)), (s.text = orig.segments[k].text), (s.shot = structuredClone(orig.segments[k].shot))));
     },
     on: (x) => sig(x) === want,
   };
@@ -2107,7 +2161,7 @@ const PickBoard: React.FC<{ p: EffectsReelProps; update: PanelProps<EffectsReelP
   const editions = useMemo<Edition[]>(
     () =>
       sel === null
-        ? [reelSnapshot(orig), ...BUILD_STEPS[0].deal(live.current, seed).map((o) => ({ ...o, kind: '' }))]
+        ? [reelSnapshot(orig), ...(live.current.segments.some((s) => s.shot) ? [recutOpt(live.current, seed)] : []), ...BUILD_STEPS[0].deal(live.current, seed).map((o) => ({ ...o, kind: '' }))]
         : [sceneSnapshot(orig.segments[sel], sel), ...sceneEditions(live.current, sel, seed)],
     [sel, seed],
   );
@@ -2287,7 +2341,14 @@ const PickBoard: React.FC<{ p: EffectsReelProps; update: PanelProps<EffectsReelP
               {scenes.map((s, k) => {
                 const g = p.segments[k];
                 const st = g.style ?? {};
-                const pic = EFFECT_GROUP[g.effect] !== 'camera' ? effectLabel(g.effect) : (st.accents ?? []).filter((a) => PICTURE_ACCENTS.has(a)).map((a) => lbl('accent', a)).join(' · ');
+                const lay = g.shot?.layout ?? 'speaker';
+                const img = (lay === 'broll' || lay === 'split') && g.shot?.image && !g.shot.image.startsWith('prompt:') ? g.shot.image : undefined;
+                const pic =
+                  lay !== 'speaker'
+                    ? tr(LAYOUT_LABEL[lay])
+                    : EFFECT_GROUP[g.effect] !== 'camera'
+                      ? effectLabel(g.effect)
+                      : (st.accents ?? []).filter((a) => PICTURE_ACCENTS.has(a)).map((a) => lbl('accent', a)).join(' · ');
                 return (
                   <button key={k} className={`tlcol ${sel === k ? 'on' : ''}`} style={{ left: xs[k]?.x, width: xs[k]?.w }} onClick={() => choose(k)} aria-pressed={sel === k} aria-label={tr("シーン {0}", s.label)}>
                     <span className="tlruler">
@@ -2295,7 +2356,9 @@ const PickBoard: React.FC<{ p: EffectsReelProps; update: PanelProps<EffectsReelP
                       <small>{((g.end - g.start) || 0).toFixed(1)}s</small>
                     </span>
                     <span className="tlcell video" style={{ backgroundImage: posterOf(p.video, g.start + 0.4, true) ? `url("${posterOf(p.video, g.start + 0.4, true)}")` : undefined }} />
-                    <span className={`tlcell picture ${pic ? '' : 'empty'}`}>{pic ? <span className="tlclamp">{pic}</span> : null}</span>
+                    <span className={`tlcell picture ${pic ? '' : 'empty'} ${img ? 'img' : ''} ${lay === 'text' ? 'card' : ''}`} style={img ? { backgroundImage: `url("${asset(img)}")` } : undefined}>
+                      {pic ? <span className="tlclamp">{pic}</span> : null}
+                    </span>
                     <span className="tlcell audio">{p.music ? <i className="tlmusic" /> : null}</span>
                     <span className={`tlcell text ${g.caption || g.text ? '' : 'empty'}`}>{g.caption || g.text ? <span className="tlclamp">{g.caption || g.text}</span> : null}</span>
                   </button>

@@ -9,6 +9,8 @@ import { effects } from '../effects';
 import { SourceContext } from '../effects/layers';
 import { AccentOverlays, CameraMotion, TextureOverlay, TransitionIn } from '../effects/modifiers';
 import { Overlays } from '../effects/overlays';
+import { layoutBody } from '../effects/Cutaways';
+import { UNFRAMED_SCENES } from '../effects/shots';
 
 /** Segments play back to back; each one is a slice of the source with one effect on it. */
 export const effectsReelDuration = (p: EffectsReelProps, fps: number) =>
@@ -27,7 +29,9 @@ export const EffectsReel: React.FC<EffectsReelProps> = (p) => {
         const dur = Math.max(1, Math.round((seg.end - seg.start) * fps));
         const from = at;
         at += dur;
-        const Effect = effects[seg.effect];
+        // a beat may leave the speaker (full-screen text, a picture, a split screen); else its scene plays
+        const Effect = layoutBody(seg) ?? effects[seg.effect];
+        const framed = !layoutBody(seg) && !UNFRAMED_SCENES.includes(seg.effect);
         const trimBefore = Math.round(seg.start * fps);
         const style = seg.style ?? {};
         return (
@@ -45,6 +49,8 @@ export const EffectsReel: React.FC<EffectsReelProps> = (p) => {
                 reelTotal: total,
                 brightness: p.brightness,
                 captionY: p.captionY,
+                shot: framed ? seg.shot : undefined,
+                subject: p.subject,
               }}
             >
               {/* scene × camera × transition × grade/caption/font (read from context) × texture × accents */}

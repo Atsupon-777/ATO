@@ -4,6 +4,7 @@ import { z } from 'zod';
 import { zColor } from '@remotion/zod-types';
 import { accents, cameraMoves, captionStyles, fontChoices, grades, textures, transitions } from './effects/axes.ts';
 import { langs } from './lang.ts';
+import { framings, layouts, shotMoves } from './effects/shots.ts';
 
 const point = z.object({ x: z.number().min(0).max(1), y: z.number().min(0).max(1) });
 
@@ -251,6 +252,21 @@ export const effectSegmentSchema = z.object({
   /** Chart values (chart grow), 2–8 points. */
   values: z.array(z.number()).max(8).default([]),
   style: beatStyleSchema.optional(),
+  /**
+   * How the beat is shot (src/effects/shots.ts): framing of the speaker, its move, a punch-in on the key word
+   * (seconds into the beat), or a layout without the speaker (full-screen text, a picture, a split screen).
+   * Unset (older jobs): the recorded framing, as before.
+   */
+  shot: z
+    .object({
+      framing: z.enum(framings).optional(),
+      move: z.enum(shotMoves).optional(),
+      punch: z.number().min(0).optional(),
+      layout: z.enum(layouts).optional(),
+      /** The picture for broll / split beats (made once per job from the spoken keyword). */
+      image: z.string().optional(),
+    })
+    .optional(),
 });
 
 export const effectsReelSchema = z.object({
@@ -259,6 +275,8 @@ export const effectsReelSchema = z.object({
   /** Same footage with only the person kept, as a transparent WebM (server/matte.ts). Optional. */
   matte: z.string().optional(),
   focusX: z.number().min(0).max(1),
+  /** Where the speaker's face is in the 9:16 frame (measured from the matte), for framings and punch-ins. */
+  subject: z.object({ x: z.number().min(0).max(1), y: z.number().min(0).max(1), h: z.number().min(0).max(1) }).optional(),
   segments: z.array(effectSegmentSchema).min(1),
   /** Show the "01/17" counter pill in the corner. */
   counter: z.boolean().default(false),

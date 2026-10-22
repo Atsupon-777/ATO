@@ -801,5 +801,17 @@
  "シーン {0} の別バージョン": "Other versions of scene {0}",
  "別の案を出す": "Show more",
  "選び直す": "Choose again",
- "これで書き出す": "Export this"
+ "これで書き出す": "Export this",
+ "構図": "Framing",
+ "レイアウト": "Layout",
+ "引き": "Wide",
+ "ミディアム": "Medium",
+ "寄り": "Close-up",
+ "左に寄せる": "Left third",
+ "右に寄せる": "Right third",
+ "話す人": "Speaker",
+ "全画面テキスト": "Full-screen text",
+ "画像に切り替え": "Cut to picture",
+ "上下に分割": "Split screen",
+ "別のカット割り": "Another cut"
 }

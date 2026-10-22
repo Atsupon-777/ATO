@@ -6,6 +6,7 @@ import { pop, progress } from '../lib/timing';
 import type { BeatStyle, EffectSegment } from '../schemas';
 import type { CaptionStyle, Grade } from './axes';
 import { KeywordCaptions, chunkLine } from './Keyword';
+import { framingTransform, type Shot, type SubjectBox } from './shots';
 
 /**
  * Every effect is built from the same few layers:
@@ -31,6 +32,9 @@ export type Source = {
   /** Reel-level fine adjustments from the editor. */
   brightness?: number;
   captionY?: number;
+  /** How this beat frames the speaker (src/effects/shots.ts); unset keeps the recorded framing. */
+  shot?: Shot;
+  subject?: SubjectBox;
 };
 
 export const SourceContext = createContext<Source | null>(null);
@@ -73,6 +77,20 @@ export const splitWords = (text: string): string[] => {
  * the wall (bg) and the person (fg) shift by different amounts, which reads as real parallax.
  */
 export const DepthContext = createContext<{ bg?: string; fg?: string }>({});
+
+/** The speaker's framing at this frame (zoom and offset keyed on the face), applied to footage and cut-out alike. */
+const useFraming = () => {
+  const s = useSource();
+  const frame = useCurrentFrame();
+  const { fps, durationInFrames } = useVideoConfig();
+  return framingTransform(s.shot, s.subject, frame, durationInFrames, fps);
+};
+
+/** Wraps footage in the framing transform (top-left origin, so the math in shots.ts maps pixels 1:1). */
+const Framed: React.FC<{ children: React.ReactNode }> = ({ children }) => {
+  const t = useFraming();
+  return t ? <AbsoluteFill style={{ transform: t, transformOrigin: '0 0' }}>{children}</AbsoluteFill> : <>{children}</>;
+};
 
 const cover = (focusX: number): React.CSSProperties => ({
   width: '100%',
@@ -120,6 +138,7 @@ export const Footage: React.FC<{ style?: React.CSSProperties; muted?: boolean }>
   const poster = still ? posterOf(s.video, s.trimBefore / fps + 0.4) : undefined;
   return (
     <AbsoluteFill style={style}>
+      <Framed>
       <AbsoluteFill style={{ transform: bg }}>
         {still ? (
           // App posters: a still frame instead of a <video>, so a grid of them decodes nothing.
@@ -128,6 +147,7 @@ export const Footage: React.FC<{ style?: React.CSSProperties; muted?: boolean }>
           <OffthreadVideo src={media.url} onError={media.onError} trimBefore={s.trimBefore} muted style={{ ...cover(s.focusX), filter: grade || undefined }} />
         )}
       </AbsoluteFill>
+      </Framed>
       <GradeOverlay />
     </AbsoluteFill>
   );
@@ -148,6 +168,7 @@ export const Subject: React.FC<{ style?: React.CSSProperties; filter?: string }>
   const grade = plain ? [GRADES[s.style.grade ?? 'natural'].filter, bright(s)].filter(Boolean).join(' ') : '';
   return (
     <AbsoluteFill style={style}>
+      <Framed>
       <AbsoluteFill style={{ transform: fg }}>
       <OffthreadVideo
         src={asset(s.matte)}
@@ -158,6 +179,7 @@ export const Subject: React.FC<{ style?: React.CSSProperties; filter?: string }>
         style={{ ...cover(s.focusX), filter: [filter, grade, glow].filter(Boolean).join(' ') || undefined }}
       />
       </AbsoluteFill>
+      </Framed>
     </AbsoluteFill>
   );
 };

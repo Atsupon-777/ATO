@@ -801,5 +801,17 @@
  "シーン {0} の別バージョン": "Autres versions de la scène {0}",
  "別の案を出す": "Voir d’autres",
  "選び直す": "Rechoisir",
- "これで書き出す": "Exporter"
+ "これで書き出す": "Exporter",
+ "構図": "Cadrage",
+ "レイアウト": "Mise en page",
+ "引き": "Plan large",
+ "ミディアム": "Plan moyen",
+ "寄り": "Gros plan",
+ "左に寄せる": "Tiers gauche",
+ "右に寄せる": "Tiers droit",
+ "話す人": "Intervenant",
+ "全画面テキスト": "Texte plein écran",
+ "画像に切り替え": "Passer à l'image",
+ "上下に分割": "Écran partagé",
+ "別のカット割り": "Autre découpage"
 }

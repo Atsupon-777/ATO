@@ -801,5 +801,17 @@
  "シーン {0} の別バージョン": "Versi lain adegan {0}",
  "別の案を出す": "Tampilkan lainnya",
  "選び直す": "Pilih ulang",
- "これで書き出す": "Ekspor ini"
+ "これで書き出す": "Ekspor ini",
+ "構図": "Bingkai",
+ "レイアウト": "Tata letak",
+ "引き": "Lebar",
+ "ミディアム": "Sedang",
+ "寄り": "Close-up",
+ "左に寄せる": "Sepertiga kiri",
+ "右に寄せる": "Sepertiga kanan",
+ "話す人": "Pembicara",
+ "全画面テキスト": "Teks layar penuh",
+ "画像に切り替え": "Beralih ke gambar",
+ "上下に分割": "Layar terbagi",
+ "別のカット割り": "Potongan lain"
 }

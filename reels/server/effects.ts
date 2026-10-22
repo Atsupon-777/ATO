@@ -1,14 +1,17 @@
 // Talking video → EffectsReel props: transcribe (talk.ts), cut the person out (matte.ts), then let Gemini
 // split the talk into short beats and dress each with a scene effect plus a caption style, camera move,
 // transition and accents from the chosen mix (src/effects/recipes.ts), with the text it needs.
+import { createHash } from 'node:crypto';
+import { existsSync } from 'node:fs';
 import { writeFile } from 'node:fs/promises';
 import path from 'node:path';
 import { z } from 'zod';
 import { effectIds, effectsReelSchema, type EffectId, type EffectSegment, type EffectsReelProps } from '../src/schemas.ts';
 import { LANG_NAMES, fit, langs, type Lang } from '../src/lang.ts';
 import { recipeAxes, recipeById, rollStyles } from '../src/effects/recipes.ts';
-import { askJson, generateMusic } from './gemini.ts';
-import { matte } from './matte.ts';
+import { GRAPHIC_SCENES, directShots, framings, layouts, rhythm, type DirectInput } from '../src/effects/shots.ts';
+import { askJson, editImage, generateMusic } from './gemini.ts';
+import { matte, measureSubject } from './matte.ts';
 import { buildTalkProps } from './talk.ts';
 import { Usage } from './usage.ts';
 
@@ -45,6 +48,9 @@ export const EFFECT_GUIDE: Record<(typeof effectIds)[number], string> = {
   flatBoard: 'flat illustration board: four numbered coloured columns rise with people rows, hand-drawn plant, glasses and pencil, label underneath; text = 1-2 word label, items = up to 4 short column titles. Full-frame graphic with the speaker in a small circle. Good for a process, a team, a framework or steps.',
 };
 
+
+/** A stable number from a job id, so re-planning one job shoots it the same way. */
+const seedOf = (id: string) => [...id].reduce((h, c) => (Math.imul(h, 31) + c.charCodeAt(0)) | 0, 7) >>> 0;
 
 /** Cuts a caption to `n` characters at a word boundary when there is one. */
 const clip = (t: string, n: number) => {
@@ -92,32 +98,96 @@ const planSchemaFor = (ax: ReturnType<typeof recipeAxes>) =>
           camera: z.enum(ax.cameras as [string, ...string[]]),
           transition: z.enum(ax.transitions as [string, ...string[]]),
           accents: z.array(z.enum(ax.accents as [string, ...string[]])),
+          framing: z.enum(framings),
+          layout: z.enum(layouts),
+          picture: z.string().optional(),
         }),
       )
       .min(1),
   });
 
 /** Plain fallback when no plan is available: one beat per ~2 s of speech, effects in catalog order. */
-export function autoSegments(words: { text: string; start: number; end: number }[], duration: number, recipe = recipeById('all'), seed = 1): EffectSegment[] {
+export function autoSegments(words: { text: string; start: number; end: number }[], duration: number, recipe = recipeById('all'), seed = 1, pictures = 3): EffectSegment[] {
   const segs: EffectSegment[] = [];
   let cur: typeof words = [];
+  // cut lengths vary (quick punches between longer holds); a cut also lands early on a sentence end
+  const len = rhythm(seed);
   const flush = () => {
     if (!cur.length) return;
     const effect = effectIds[segs.length % effectIds.length];
-    segs.push({ effect, start: cur[0].start, end: cur[cur.length - 1].end, caption: cur.map((w) => w.text).join(' ').slice(0, 60), emphasis: [], items: [], images: [], values: [] });
+    const caption = cur.map((w) => w.text).join(' ').slice(0, 60);
+    segs.push({ effect, start: cur[0].start, end: cur[cur.length - 1].end, caption, emphasis: [], items: [], images: [], values: [] });
     cur = [];
   };
   for (const w of words) {
     cur.push(w);
-    if (w.end - cur[0].start >= 2) flush();
+    const span = w.end - cur[0].start;
+    const want = len(segs.length);
+    if (span >= want || (span >= want * 0.6 && /[.!?。！？]$/.test(w.text))) flush();
   }
   flush();
-  // give every beat a scene and a look from the mix
+  // give every beat a scene and a look from the mix, then shoot it (framing, punch-ins, cutaways)
   const looks = rollStyles(recipe, segs.length, seed, { hasMatte: true });
-  return closeGaps(
+  const styled = closeGaps(
     segs.map((sg, i) => ({ ...sg, effect: looks[i].scene, style: looks[i].style })),
     duration,
   );
+  return withShots(styled, words, seed, [], pictures);
+}
+
+/** Directs every beat (src/effects/shots.ts) and records what each picture beat should show. */
+function withShots(segs: EffectSegment[], words: { text: string; start: number; end: number }[], seed: number, hints: Partial<DirectInput>[] = [], pictures = 3) {
+  // the hook (first 2 s) keeps the speaker, and two graphics scenes never follow each other
+  let at = 0;
+  segs = segs.map((s, i) => {
+    const t = at;
+    at += s.end - s.start;
+    const g = GRAPHIC_SCENES.includes(s.effect);
+    return g && (t < 2 || (i > 0 && GRAPHIC_SCENES.includes(segs[i - 1].effect))) ? { ...s, effect: 'textReveal' as EffectId } : s;
+  });
+  const dir = directShots(
+    segs.map((s, i) => ({ effect: s.effect, start: s.start, end: s.end, caption: s.caption, emphasis: s.emphasis, ...hints[i] })),
+    words,
+    { seed, pictures },
+  );
+  return segs.map((s, i) => {
+    const d = dir[i];
+    const style = d.transition && i > 0 ? { ...(s.style ?? {}), transition: d.transition } : s.style;
+    // the picture prompt waits in `image` until makePictures() swaps it for the file
+    return { ...s, style, shot: { ...d.shot, image: d.picture ? `prompt:${d.picture}` : undefined } } as EffectSegment;
+  });
+}
+
+/**
+ * Makes the pictures the picture beats ask for, with Nano Banana, once per job: files are named by their
+ * prompt, so planning the same talk again (another mix, the gallery samples) reuses them. A beat whose
+ * picture fails falls back to the full-screen line.
+ */
+async function makePictures(segs: EffectSegment[], t: { jobId: string; dir: string; usage: Usage }) {
+  await Promise.all(
+    segs.map(async (s) => {
+      const want = s.shot?.image?.startsWith('prompt:') ? s.shot.image.slice(7) : undefined;
+      if (!want || !s.shot) return;
+      const split = s.shot.layout === 'split';
+      const prompt = [
+        `A ${split ? 'square' : 'vertical'} editorial b-roll photo for a short social video, illustrating: "${want}".`,
+        s.caption ? `What the speaker says over it: "${s.caption}".` : '',
+        'Photorealistic, cinematic natural light, shallow depth of field, rich colour, one clear subject, clean composition.',
+        'No text, no letters, no captions, no logos, no watermark, no person looking into the camera.',
+      ].filter(Boolean).join(' ');
+      const name = `pic-${createHash('sha1').update(prompt).digest('hex').slice(0, 10)}.png`;
+      const file = path.join(t.dir, name);
+      try {
+        if (!existsSync(file)) await editImage({ input: [], prompt, out: file, aspectRatio: split ? '1:1' : '9:16', imageSize: '1K', usage: t.usage, step: 'picture' });
+        s.shot.image = `jobs/${t.jobId}/${name}`;
+      } catch (e) {
+        console.warn(`picture "${want}": ${(e as Error).message}`);
+        s.shot.image = undefined;
+        if (s.shot.layout === 'broll') s.shot.layout = 'text';
+      }
+    }),
+  );
+  return segs;
 }
 
 /** Where words are spoken, on the reel's own clock (segments play back to back), merged across short gaps. */
@@ -209,6 +279,8 @@ export async function planEffectsReel(t: {
   usage: Usage;
   /** Reuse this music file instead of making one. */
   music?: string;
+  /** Cap on new AI pictures for cutaway beats (default 3); 0 turns picture beats into full-screen text. */
+  pictures?: number;
 }): Promise<EffectsReelProps> {
   const brief = t;
   const usage = t.usage;
@@ -246,6 +318,13 @@ export async function planEffectsReel(t: {
         'scene or the same transition twice in a row, put the strongest effects on the key moments (hook, numbers, punchline) and',
         'calmer ones (camera move + caption only, e.g. digitalZoom or vertigo) in between. Pick one look (grade, texture, font, colour)',
         'for the whole reel so it feels like one video.',
+        'Shoot it like a pro short-form editor: vary the beat lengths (quick 0.8-1.3 s punches between 2-3.5 s holds, never a',
+        'metronome), and give every beat a framing of the speaker (close = punch-in on the face, medium, wide, thirdsL/thirdsR =',
+        'speaker on a third with room for text) that differs from the beat before. About a quarter of the beats (never the',
+        'first 2 seconds, never two in a row) cut away from the speaker while the voice continues: layout text = the line as',
+        'full-screen kinetic type, broll = a picture of what is said, split = speaker on top and the picture below; all other',
+        'beats are layout speaker. For broll and split write picture = a concrete, visual English description of one photo',
+        '(an object, place or action, no text in it) that illustrates the beat. Put the key word of each beat in emphasis.',
         `Mix: ${recipe.name} — ${recipe.desc}`,
         'start/end are seconds from the transcript; beats must be in order and not overlap. caption = the words spoken in that beat',
         `(max ${fit(outLang, 60)} characters). ${langRule(talk.language, brief.lang)} Leave values empty unless the effect is chartGrow, infographic or sourceCard.`,
@@ -263,6 +342,9 @@ export async function planEffectsReel(t: {
       ].join('\n'),
     });
     const plan = planSchema.parse(raw);
+    const hints = [...plan.segments]
+      .sort((a, b) => a.start - b.start)
+      .map((s) => ({ framing: s.framing, layout: s.layout, picture: s.picture?.slice(0, 160) }) as Partial<DirectInput>);
     segments = closeGaps(
       plan.segments.map((s) => ({
         effect: s.effect as EffectId,
@@ -284,10 +366,13 @@ export async function planEffectsReel(t: {
       })) as EffectSegment[],
       duration,
     );
+    segments = withShots(segments, words, seedOf(talk.jobId), hints, brief.pictures ?? 3);
   } catch (e) {
     console.error('effect plan failed, using a random mix', e);
-    segments = autoSegments(words, duration, recipe, Date.now() % 100000);
+    segments = autoSegments(words, duration, recipe, Date.now() % 100000, brief.pictures ?? 3);
   }
+  await makePictures(segments, { jobId: talk.jobId, dir: talk.dir, usage }).catch((e) => console.warn(`pictures: ${(e as Error).message}`));
+  const subject = await measureSubject(path.join(talk.dir, 'matte.webm'));
 
   const props: EffectsReelProps = effectsReelSchema.parse({
     music: (await music) || undefined,
@@ -295,6 +380,7 @@ export async function planEffectsReel(t: {
     video: talk.props.video,
     matte: `jobs/${talk.jobId}/matte.webm`,
     focusX: 0.5,
+    subject,
     segments,
     counter: false,
     palette: { accent: segments[0]?.style?.color ?? '#E9F06B', ink: '#16161A', paper: '#F4F1E8' },
