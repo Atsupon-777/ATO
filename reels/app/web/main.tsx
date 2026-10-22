@@ -3861,7 +3861,7 @@ const PayAsYouGo: React.FC<{ payg: NonNullable<NonNullable<typeof appConfig>['pa
  */
 const StorePlans: React.FC<{ me: Me | null; onChanged: () => Promise<unknown> }> = ({ me, onChanged }) => {
   const auth = useAuth();
-  const [products, setProducts] = useState<Partial<Record<'topup' | 'starter' | 'standard' | 'pro', IapProduct>> | null>(null);
+  const [products, setProducts] = useState<Partial<Record<'topup' | 'small' | 'starter' | 'standard' | 'pro', IapProduct>> | null>(null);
   const [busy, setBusy] = useState('');
   const [msg, setMsg] = useState('');
   const iap = appConfig?.iap;
@@ -3878,7 +3878,7 @@ const StorePlans: React.FC<{ me: Me | null; onChanged: () => Promise<unknown> }>
     }
     await onChanged();
   };
-  const buy = (key: 'topup' | 'starter' | 'standard' | 'pro') => async () => {
+  const buy = (key: 'topup' | 'small' | 'starter' | 'standard' | 'pro') => async () => {
     const p = products?.[key];
     if (!p) return;
     setBusy(key);
@@ -3887,7 +3887,7 @@ const StorePlans: React.FC<{ me: Me | null; onChanged: () => Promise<unknown> }>
       const before = me?.balance ?? 0;
       if (await iapBuy(p)) {
         setMsg(tr("お支払いありがとうございます。トークンは数秒で反映されます。"));
-        await waitForTokens(before, key === 'topup' ? undefined : key);
+        await waitForTokens(before, key === 'topup' || key === 'small' ? undefined : key);
       }
     } catch (e: any) {
       setMsg(e?.message ?? String(e));
@@ -3938,6 +3938,11 @@ const StorePlans: React.FC<{ me: Me | null; onChanged: () => Promise<unknown> }>
       {webPlan ? <p className="cost">{tr("このプランはアプリ以外で契約しています。")}</p> : null}
       <p className="cost">{tr("消費トークン: 自分の素材だけ 2 ／ AI写真・エフェクト 5 ／ AI動画あり 12 ／ 書き出し 1")}</p>
       <div className="row" style={{ flexWrap: 'wrap', gap: 8, marginTop: 8 }}>
+        {products?.small ? (
+          <button className="btn ghost small" disabled={!!busy} onClick={buy('small')}>
+            {busy === 'small' ? tr("処理中…") : tr("トークンを{0}追加する", fmtN(iap.smallTokens ?? 3))} ({products.small.price})
+          </button>
+        ) : null}
         <button className="btn ghost small" disabled={!products?.topup || !!busy} onClick={buy('topup')}>
           {busy === 'topup' ? tr("処理中…") : tr("トークンを{0}追加する", fmtN(iap.topupTokens ?? 10))}
           {products?.topup ? ` (${products.topup.price})` : ''}

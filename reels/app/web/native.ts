@@ -162,7 +162,7 @@ export const pushAllowed = async () => isNative && (await FirebaseMessaging.chec
 
 // ---------- in-app purchases (RevenueCat → App Store / Google Play) ----------
 
-export type IapConfig = { ios: string; android: string; products: { topup: string; starter: string; standard: string; pro: string }; topupTokens?: number };
+export type IapConfig = { ios: string; android: string; products: { topup: string; small?: string; starter: string; standard: string; pro: string }; topupTokens?: number; smallTokens?: number };
 export type IapProduct = { id: string; price: string; product: PurchasesStoreProduct };
 
 let iapUser = '';
@@ -179,12 +179,12 @@ export async function iapProducts(cfg: IapConfig, uid: string) {
   await iapReady(cfg, uid);
   const ids = cfg.products;
   const [one, subs] = await Promise.all([
-    Purchases.getProducts({ productIdentifiers: [ids.topup], type: PRODUCT_CATEGORY.NON_SUBSCRIPTION }),
+    Purchases.getProducts({ productIdentifiers: [ids.topup, ...(ids.small ? [ids.small] : [])], type: PRODUCT_CATEGORY.NON_SUBSCRIPTION }),
     Purchases.getProducts({ productIdentifiers: [ids.starter, ids.standard, ids.pro], type: PRODUCT_CATEGORY.SUBSCRIPTION }),
   ]);
   const all = [...one.products, ...subs.products];
   const out: Partial<Record<keyof IapConfig['products'], IapProduct>> = {};
-  for (const [k, id] of Object.entries(ids) as [keyof IapConfig['products'], string][]) {
+  for (const [k, id] of Object.entries(ids).filter(([, id]) => id) as [keyof IapConfig['products'], string][]) {
     const product = all.find((p) => p.identifier === id || p.identifier.startsWith(`${id}:`));
     if (product) out[k] = { id, price: product.priceString, product };
   }

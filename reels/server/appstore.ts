@@ -4,14 +4,18 @@
 //   REVENUECAT_IOS_KEY           RevenueCat public SDK key for iOS (appl_...), handed to the app by /api/config
 //   REVENUECAT_ANDROID_KEY       the same for Android (goog_...), for later
 //   IAP_PRODUCT_TOPUP            consumable token pack (default reels_tokens_10)
-//   IAP_TOPUP_TOKENS             tokens in that pack (default 10); the App Store can't sell any amount, so the app sells a fixed pack
+//   IAP_TOPUP_TOKENS             tokens in that pack (default 10); the App Store can't sell any amount, so the app sells fixed packs
+//   IAP_PRODUCT_SMALL            the smallest pack: enough for one reel and its export (default reels_tokens_3)
+//   IAP_SMALL_TOKENS             tokens in it (default 3)
 //   IAP_PRODUCT_STARTER / _STANDARD / _PRO   monthly auto-renewing subscriptions (default reels_<plan>_monthly)
 import { timingSafeEqual } from 'node:crypto';
 import { PLAN_TOKENS, getAccount, update, type PlanId } from './accounts.ts';
 
 export const IAP_TOPUP_TOKENS = Number(process.env.IAP_TOPUP_TOKENS ?? 10);
+export const IAP_SMALL_TOKENS = Number(process.env.IAP_SMALL_TOKENS ?? 3);
 export const IAP_PRODUCTS = {
   topup: process.env.IAP_PRODUCT_TOPUP || 'reels_tokens_10',
+  small: process.env.IAP_PRODUCT_SMALL || 'reels_tokens_3',
   starter: process.env.IAP_PRODUCT_STARTER || 'reels_starter_monthly',
   standard: process.env.IAP_PRODUCT_STANDARD || 'reels_standard_monthly',
   pro: process.env.IAP_PRODUCT_PRO || 'reels_pro_monthly',
@@ -20,7 +24,7 @@ export const IAP_PRODUCTS = {
 /** What the app needs to sell in-app. Public values only; null until RevenueCat is set up. */
 export const iapConfig = () =>
   process.env.REVENUECAT_IOS_KEY || process.env.REVENUECAT_ANDROID_KEY
-    ? { ios: process.env.REVENUECAT_IOS_KEY || '', android: process.env.REVENUECAT_ANDROID_KEY || '', products: IAP_PRODUCTS, topupTokens: IAP_TOPUP_TOKENS }
+    ? { ios: process.env.REVENUECAT_IOS_KEY || '', android: process.env.REVENUECAT_ANDROID_KEY || '', products: IAP_PRODUCTS, topupTokens: IAP_TOPUP_TOKENS, smallTokens: IAP_SMALL_TOKENS }
     : null;
 
 const planOfProduct = (id?: string): PlanId | undefined =>
@@ -52,6 +56,7 @@ export async function revenuecatWebhook(body: any, auth: string | undefined) {
     switch (ev.type) {
       case 'NON_RENEWING_PURCHASE':
         if (ev.product_id === IAP_PRODUCTS.topup) a.extra += IAP_TOPUP_TOKENS;
+        if (ev.product_id === IAP_PRODUCTS.small) a.extra += IAP_SMALL_TOKENS;
         break;
       // First month and each renewal refill the monthly allowance, the same as a paid Stripe invoice.
       case 'INITIAL_PURCHASE':
