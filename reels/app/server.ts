@@ -757,11 +757,12 @@ const server = http.createServer(async (req, res) => {
       if (p.startsWith('/uploads/') && (!user || !um || um[1] !== userDir(user))) return res.writeHead(404).end();
     }
     // Light copies the app's previews ask for, cut from a job video on first request (see derived()).
-    const dm = p.match(/^\/jobs\/[\w-]+\/[\w-]+\.(preview\.mp4|poster\.jpg)$/);
+    // <name>.t<deciseconds>[s].jpg is a still from that moment (the pick screen's scene thumbnails; s = small).
+    const dm = p.match(/^\/jobs\/[\w-]+\/[\w-]+\.(preview\.mp4|poster\.jpg|t(\d{1,5})(s?)\.jpg)$/);
     if (dm && !(await stat(file).catch(() => null))) {
-      const src = file.replace(/\.(preview\.mp4|poster\.jpg)$/, '.mp4');
+      const src = file.replace(/\.(preview\.mp4|poster\.jpg|t\d{1,5}s?\.jpg)$/, '.mp4');
       if (!(await stat(src).catch(() => null))) return res.writeHead(404).end('not found');
-      const made = derived(src, dm[1] === 'poster.jpg' ? 'poster' : 'preview');
+      const made = derived(src, dm[1] === 'preview.mp4' ? 'preview' : 'poster', dm[2] ? Number(dm[2]) / 10 : undefined, dm[3] === 's');
       if (dm[1] === 'preview.mp4') {
         // Not ready yet: play the full file this time (a redirect, so range requests stay on one file).
         made.catch(() => null);

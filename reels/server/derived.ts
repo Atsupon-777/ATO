@@ -7,20 +7,23 @@ import { promisify } from 'node:util';
  * Derived media for the app's live previews, next to the job video they come from:
  *   <name>.preview.mp4  720p, small keyframe interval: what phones decode in the editor instead of the full source
  *   <name>.poster.jpg   one frame, for the My videos feed and posters in grids
+ *   <name>.t<ds>.jpg    one frame at <ds> tenths of a second, for the pick screen's scene thumbnails
+ *   <name>.t<ds>s.jpg   the same, 180px wide, for its timeline
  * Made once (concurrent requests share the work), written atomically.
  */
 const runFile = promisify(execFile);
 const deriving = new Map<string, Promise<void>>();
-export function derived(src: string, kind: 'preview' | 'poster') {
-  const out = src.replace(/\.mp4$/, kind === 'poster' ? '.poster.jpg' : '.preview.mp4');
+export function derived(src: string, kind: 'preview' | 'poster', at?: number, small = false) {
+  const out = src.replace(/\.mp4$/, kind === 'preview' ? '.preview.mp4' : at === undefined ? '.poster.jpg' : `.t${Math.round(at * 10)}${small ? 's' : ''}.jpg`);
   let job = deriving.get(out);
   if (job) return job;
   const tmp = `${out}.${process.pid}.tmp${kind === 'poster' ? '.jpg' : '.mp4'}`;
   const ff = (args: string[]) => runFile('ffmpeg', ['-y', '-hide_banner', '-loglevel', 'error', ...args], { timeout: 10 * 60_000 });
+  const scale = small ? "scale='min(180,iw)':-2" : "scale='min(720,iw)':-2";
   job = (async () => {
     if (kind === 'poster') {
-      await ff(['-ss', '0.8', '-i', src, '-frames:v', '1', '-vf', "scale='min(720,iw)':-2", '-q:v', '4', tmp]).catch(() => null);
-      if (!(await stat(tmp).catch(() => null))) await ff(['-i', src, '-frames:v', '1', '-vf', "scale='min(720,iw)':-2", '-q:v', '4', tmp]);
+      await ff(['-ss', String(at ?? 0.8), '-i', src, '-frames:v', '1', '-vf', scale, '-q:v', '4', tmp]).catch(() => null);
+      if (!(await stat(tmp).catch(() => null))) await ff(['-i', src, '-frames:v', '1', '-vf', scale, '-q:v', '4', tmp]);
     } else {
       await ff([
         '-i', src,

@@ -37,10 +37,14 @@ export const asset = (src: string) => {
 /** The full-quality address, for when the preview copy fails to load. */
 export const assetFull = (src: string) => (/^(https?:|data:|blob:)/.test(src) ? src : staticFile(src) + mediaKey(src));
 
-/** A still frame of a job video (the server cuts it on first request), for posters and cheap thumbnails. */
-export const posterOf = (src?: string) =>
+/**
+ * A still frame of a job video (the server cuts it on first request), for posters and cheap thumbnails.
+ * `at` (seconds into the source) asks for that moment, rounded to half a second so a reel's cuts share files;
+ * `small` a 180px-wide copy (timeline strips).
+ */
+export const posterOf = (src?: string, at?: number, small?: boolean) =>
   src && /^\/?jobs\/[\w-]+\/[\w.-]+\.mp4$/.test(src) && !/^(https?:|data:|blob:)/.test(src) ? (() => {
-    const p = src.replace(/\.mp4$/, '.poster.jpg');
+    const p = src.replace(/\.mp4$/, at === undefined ? '.poster.jpg' : `.t${Math.max(0, Math.round(at * 2) * 5)}${small ? 's' : ''}.jpg`);
     return staticFile(p) + mediaKey(p);
   })() : undefined;
 

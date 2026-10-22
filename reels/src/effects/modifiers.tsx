@@ -355,7 +355,10 @@ export const AccentOverlays: React.FC = () => {
         <AbsoluteFill
           style={{
             background: '#fff',
-            opacity: interpolate(frame % Math.max(8, Math.round(durationInFrames / 2)), [0, 3], [0.7, 0], clamp),
+            // One soft pulse as the cut lands. It used to strobe every half cut (as often as every 8 frames,
+            // ~4 flashes a second at 70% white): the screen visibly flickered, and it broke the 3-flashes-a-second
+            // safety line for photosensitive viewers.
+            opacity: interpolate(frame, [0, 5], [0.35, 0], clamp),
             mixBlendMode: 'screen',
           }}
         />

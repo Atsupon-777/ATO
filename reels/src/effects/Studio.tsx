@@ -41,7 +41,7 @@ const SpeakerBubble: React.FC<{ x?: number; y?: number; size?: number; ring?: st
       }}
     >
       {still ? (
-        <img src={posterOf(s.video)} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover', objectPosition: `${s.focusX * 100}% 30%` }} />
+        <img src={posterOf(s.video, s.trimBefore / fps + 0.4)} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover', objectPosition: `${s.focusX * 100}% 30%` }} />
       ) : (
         <OffthreadVideo
           src={media.url}

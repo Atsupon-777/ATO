@@ -787,5 +787,19 @@
  "テストや審査用に、メールアドレスのアカウントへトークンを付けます。売上には入りません。": "Tambahkan token ke akun lewat email, untuk pengujian atau peninjauan. Tidak dihitung sebagai penjualan.",
  "付与する": "Berikan",
  "再生": "Putar",
- "プレビューを再生できませんでした": "Pratinjau tidak dapat diputar"
+ "プレビューを再生できませんでした": "Pratinjau tidak dapat diputar",
+ "AIの案": "Pilihan AI",
+ "動画全体の案": "Versi seluruh video",
+ "どれにしますか？": "Pilih yang mana?",
+ "音声": "Audio",
+ "一時停止": "Jeda",
+ "シーンをタップして選べます": "Ketuk adegan untuk memilihnya",
+ "全体": "Semua",
+ "画像": "Gambar",
+ "シーン": "Adegan",
+ "シーン {0}": "Adegan {0}",
+ "シーン {0} の別バージョン": "Versi lain adegan {0}",
+ "別の案を出す": "Tampilkan lainnya",
+ "選び直す": "Pilih ulang",
+ "これで書き出す": "Ekspor ini"
 }

@@ -114,8 +114,10 @@ export const Footage: React.FC<{ style?: React.CSSProperties; muted?: boolean }>
   const grade = [GRADES[s.style.grade ?? 'natural'].filter, bright(s)].filter(Boolean).join(' ');
   const { bg } = useContext(DepthContext);
   const { still } = usePreviewMode();
+  const { fps } = useVideoConfig();
   const media = useMediaSrc(s.video);
-  const poster = still ? posterOf(s.video) : undefined;
+  // the moment this cut starts from (plus a beat, past any blink at the cut), not the reel's one poster
+  const poster = still ? posterOf(s.video, s.trimBefore / fps + 0.4) : undefined;
   return (
     <AbsoluteFill style={style}>
       <AbsoluteFill style={{ transform: bg }}>

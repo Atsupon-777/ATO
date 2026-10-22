@@ -787,5 +787,19 @@
  "テストや審査用に、メールアドレスのアカウントへトークンを付けます。売上には入りません。": "Añade tokens a una cuenta por correo, para pruebas o revisión. No cuenta como venta.",
  "付与する": "Dar",
  "再生": "Reproducir",
- "プレビューを再生できませんでした": "No se pudo reproducir la vista previa"
+ "プレビューを再生できませんでした": "No se pudo reproducir la vista previa",
+ "AIの案": "Propuesta IA",
+ "動画全体の案": "Versiones del video completo",
+ "どれにしますか？": "¿Cuál prefieres?",
+ "音声": "Audio",
+ "一時停止": "Pausa",
+ "シーンをタップして選べます": "Toca una escena para elegirla",
+ "全体": "Todo",
+ "画像": "Imagen",
+ "シーン": "Escenas",
+ "シーン {0}": "Escena {0}",
+ "シーン {0} の別バージョン": "Otras versiones de la escena {0}",
+ "別の案を出す": "Ver más",
+ "選び直す": "Volver a elegir",
+ "これで書き出す": "Exportar así"
 }

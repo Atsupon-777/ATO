@@ -3,7 +3,7 @@ import { createPortal } from 'react-dom';
 import { createRoot } from 'react-dom/client';
 import { Player, Thumbnail, type PlayerRef } from '@remotion/player';
 import { accentColors, accents, cameraMoves, captionStyles, combinationCount, fontChoices, grades, textures, transitions } from '../../src/effects/axes';
-import { recipeById, recipes, rollStyles } from '../../src/effects/recipes';
+import { recipeAxes, recipeById, recipes, rollStyles } from '../../src/effects/recipes';
 import { videoCategories, videoTemplates } from '../../src/effects/video-catalog';
 import { serviceIndustries, serviceLayouts, serviceStyles, serviceTemplates } from '../../src/templates/servicereel-catalog';
 import type { ServiceReelProps } from '../../src/servicereel';
@@ -98,13 +98,71 @@ const PreviewFallback: React.FC<{ poster?: string; note?: string; onPlay?: () =>
 const playerError = () => <PreviewFallback note={tr("プレビューを再生できませんでした")} />;
 
 /**
- * Wraps every live <Player>: catches its errors, and while the crash-loop guard is on, waits for a tap
- * before mounting it.
+ * One live preview in the whole app at a time. Starting one stops whichever was playing, so a screen
+ * never holds two players' videos in memory (the crash loop on iPhone) and never plays two sounds.
  */
-const LivePreview: React.FC<{ poster?: string; children: React.ReactNode }> = ({ poster, children }) => {
-  const [go, setGo] = useState(!SAFE_MODE);
-  if (!go) return <PreviewFallback poster={poster} onPlay={() => setGo(true)} />;
-  return <PreviewBoundary fallback={<PreviewFallback poster={poster} note={tr("プレビューを再生できませんでした")} />}>{children}</PreviewBoundary>;
+let soloSeq = 0;
+let soloNow = 0;
+const soloListeners = new Set<() => void>();
+const useSolo = () => {
+  const id = useMemo(() => ++soloSeq, []);
+  const [on, setOn] = useState(false);
+  useEffect(() => {
+    const f = () => soloNow !== id && setOn(false);
+    soloListeners.add(f);
+    return () => void soloListeners.delete(f);
+  }, [id]);
+  const start = useCallback(() => {
+    soloNow = id;
+    soloListeners.forEach((f) => f());
+    setOn(true);
+  }, [id]);
+  const stop = useCallback(() => {
+    if (soloNow === id) soloNow = 0;
+    setOn(false);
+  }, [id]);
+  return [on, start, stop] as const;
+};
+type Solo = ReturnType<typeof useSolo>;
+
+const PlayDisc: React.FC<{ size?: number }> = ({ size = 26 }) => (
+  <span className="pvplay" aria-hidden>
+    <svg viewBox="0 0 24 24" width={size} height={size} fill="currentColor">
+      <path d="M8 5v14l11-7z" />
+    </svg>
+  </span>
+);
+
+/**
+ * Every live <Player> or <video> sits in one of these. Nothing plays by itself: a still (an image, or a
+ * one-frame composition) with a play button until the user taps it, like CapCut. The still stays under the
+ * player, so a cut or a seek never flashes black. Scrolled out of view it goes back to the still (which
+ * also frees its video memory), and starting another preview stops this one. Errors show the still.
+ */
+const LivePreview: React.FC<{ poster?: string | React.ReactNode; solo?: Solo; label?: string; children: React.ReactNode }> = ({ poster, solo, label, children }) => {
+  const own = useSolo();
+  const [on, start, stop] = solo ?? own;
+  const box = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    const el = box.current;
+    if (!on || !el) return;
+    const io = new IntersectionObserver(([e]) => e.intersectionRatio < 0.3 && stop(), { threshold: [0, 0.3] });
+    io.observe(el);
+    return () => io.disconnect();
+  }, [on]);
+  const still = typeof poster === 'string' ? <img src={poster} alt="" draggable={false} /> : poster;
+  return (
+    <div className={`live ${on ? 'on' : ''}`} ref={box}>
+      <div className="livestill">{still}</div>
+      {on ? (
+        <PreviewBoundary fallback={<PreviewFallback poster={typeof poster === 'string' ? poster : undefined} note={tr("プレビューを再生できませんでした")} />}>{children}</PreviewBoundary>
+      ) : (
+        <button className="liveplay" onClick={(e) => (e.stopPropagation(), start())} aria-label={label ?? tr("再生")}>
+          <PlayDisc />
+        </button>
+      )}
+    </div>
+  );
 };
 
 /** A still frame for a job's props: the talking video's first frames, else its first photo or screenshot. */
@@ -380,11 +438,11 @@ const Colors: React.FC<{ value: Record<string, string>; labels: Record<string, s
   </div>
 );
 
-const Preview: React.FC<{ template: TemplateId; props: any; playerRef?: React.RefObject<PlayerRef | null>; autoPlay?: boolean; controls?: boolean; children?: React.ReactNode }> = ({
+/** The editor's preview: a still until tapped, then the composition with controls. */
+const Preview: React.FC<{ template: TemplateId; props: any; playerRef?: React.RefObject<PlayerRef | null>; controls?: boolean; children?: React.ReactNode }> = ({
   template,
   props,
   playerRef,
-  autoPlay,
   controls = true,
   children,
 }) => {
@@ -404,8 +462,8 @@ const Preview: React.FC<{ template: TemplateId; props: any; playerRef?: React.Re
         style={{ width: '100%', aspectRatio: '9 / 16' }}
         controls={controls}
         loop
-        autoPlay={autoPlay}
-        initiallyMuted={autoPlay}
+        autoPlay
+        initiallyMuted
         errorFallback={playerError}
         acknowledgeRemotionLicense
       />
@@ -1279,7 +1337,7 @@ const LookOption: React.FC<{ k: string; name: string; on: boolean; onPick: () =>
     if (x < row.scrollLeft || x + el.offsetWidth > row.scrollLeft + row.clientWidth) row.scrollTo({ left: x - 8, behavior: 'smooth' });
   }, [on]);
   return (
-    <button ref={ref} className={`lookopt ${on ? 'on' : ''}`} onClick={onPick} onMouseEnter={() => setHover(true)} onMouseLeave={() => setHover(false)}>
+    <button ref={ref} className={`lookopt ${on ? 'on' : ''}`} onClick={onPick} onPointerEnter={(e) => e.pointerType === 'mouse' && setHover(true)} onPointerLeave={() => setHover(false)}>
       <div className="lookthumb">{has ? hover ? <ShowVideo k={k} /> : <img src={showcase(k).poster} alt="" loading="lazy" /> : <span>{name}</span>}</div>
       <span>{name}</span>
     </button>
@@ -1613,23 +1671,14 @@ const LiveCard: React.FC<{ base: EffectsReelProps; opt: LookOpt; n: number; mult
   const frames = Math.max(1, effectsReelDuration(props, FPS));
   const still = Math.min(frames - 1, Math.round(frames * 0.6));
   const on = opt.on(base);
-  // A still until asked to play: a grid of live players is what runs a phone out of memory.
-  const [live, setLive] = useState(false);
-  const play = () => (live ? ref.current?.play() : setLive(true));
-  const stop = () => (ref.current?.pause(), ref.current?.seekTo(still));
   return (
     <div className={`livecard ${on ? 'on' : ''}`}>
       <div className="livehead">
         <span>{n}</span>
         {on ? <b>{multi ? '✓' : tr("選択中")}</b> : null}
       </div>
-      <div className="livethumb" onPointerEnter={(e) => e.pointerType === 'mouse' && play()} onPointerLeave={(e) => e.pointerType === 'mouse' && stop()} onClick={() => (ref.current?.isPlaying() ? stop() : play())}>
-        {!live ? (
-          <div style={{ aspectRatio: '9 / 16' }}>
-            <ReelStill props={props} at={still / frames} />
-          </div>
-        ) : (
-        <LivePreview poster={posterOf(props.video)}>
+      <div className="livethumb">
+        <LivePreview poster={<ReelStill props={props} at={still / frames} />}>
         <Player
           ref={ref}
           component={EffectsReel}
@@ -1647,7 +1696,6 @@ const LiveCard: React.FC<{ base: EffectsReelProps; opt: LookOpt; n: number; mult
           acknowledgeRemotionLicense
         />
         </LivePreview>
-        )}
       </div>
       <div className="livename">
         <b>
@@ -1803,10 +1851,9 @@ const FinishStep: React.FC<PanelProps<EffectsReelProps> & { onBack: () => void; 
 
 // ---------- pick flow: whole takes in a feed, two-way picks, finger tuning, then post ----------
 
-type PickStage = 'feed' | 'duel' | 'tune' | 'post';
+type PickStage = 'feed' | 'tune' | 'post';
 const PICK_STAGES: [PickStage, string][] = [
   ['feed', tr("選ぶ")],
-  ['duel', tr("比べる")],
   ['tune', tr("整える")],
   ['post', tr("投稿")],
 ];
@@ -1818,10 +1865,13 @@ const withOpt = (base: EffectsReelProps, opt?: LookOpt, oneBeat?: boolean) => {
   return { ...x, segments: [x.segments[Math.min(opt?.seg ?? talkingSeg(x), x.segments.length - 1)]], music: undefined };
 };
 
-/** The reel (or one beat of it) playing on a loop, sized by its box. */
-const ReelPlayer: React.FC<{ props: EffectsReelProps; playerRef?: React.RefObject<PlayerRef | null> }> = ({ props, playerRef }) => (
+/**
+ * The reel (or a stretch of it) sized by its box: a still with a play button until tapped (see LivePreview).
+ * inFrame/outFrame loop one scene of the reel.
+ */
+const ReelPlayer: React.FC<{ props: EffectsReelProps; playerRef?: React.RefObject<PlayerRef | null>; solo?: Solo; inFrame?: number; outFrame?: number; at?: number }> = ({ props, playerRef, solo, inFrame, outFrame, at }) => (
   <div className="wmwrap">
-    <LivePreview poster={posterOf(props.video)}>
+    <LivePreview poster={<ReelStill props={props} at={at} bare />} solo={solo}>
     <Player
       ref={playerRef}
       component={EffectsReel}
@@ -1831,6 +1881,9 @@ const ReelPlayer: React.FC<{ props: EffectsReelProps; playerRef?: React.RefObjec
       compositionWidth={1080}
       compositionHeight={1920}
       style={{ width: '100%', height: '100%' }}
+      inFrame={inFrame}
+      outFrame={outFrame}
+      initialFrame={inFrame}
       autoPlay
       loop
       initiallyMuted
@@ -1868,17 +1921,25 @@ const Watermark: React.FC<{ small?: boolean }> = ({ small }) => (
 );
 
 const STILL = { still: true };
-/** A one-frame poster of a take, for grids and option strips (cheap: a still image under the graphics, no video decoded). */
-const ReelStill: React.FC<{ props: EffectsReelProps; at?: number }> = ({ props, at = 0.45 }) => {
+/**
+ * A one-frame poster of a take, for grids and option strips (cheap: a still image under the graphics, no
+ * video decoded). In crash-guard mode it is just the server's still image. `bare` leaves out the watermark
+ * (the box around it has one).
+ */
+const ReelStill: React.FC<{ props: EffectsReelProps; at?: number; bare?: boolean }> = ({ props, at = 0.45, bare }) => {
   const frames = Math.max(1, effectsReelDuration(props, FPS));
   return (
     <div className="wmwrap">
-      <PreviewMode.Provider value={STILL}>
-        <PreviewBoundary fallback={<PreviewFallback poster={posterOf(props.video)} />}>
-          <Thumbnail component={EffectsReel} inputProps={props} durationInFrames={frames} fps={FPS} compositionWidth={1080} compositionHeight={1920} frameToDisplay={Math.min(frames - 1, Math.round(frames * at))} style={{ width: '100%', height: '100%' }} />
-        </PreviewBoundary>
-      </PreviewMode.Provider>
-      <Watermark small />
+      {SAFE_MODE ? (
+        <PreviewFallback poster={posterOf(props.video)} />
+      ) : (
+        <PreviewMode.Provider value={STILL}>
+          <PreviewBoundary fallback={<PreviewFallback poster={posterOf(props.video)} />}>
+            <Thumbnail component={EffectsReel} inputProps={props} durationInFrames={frames} fps={FPS} compositionWidth={1080} compositionHeight={1920} frameToDisplay={Math.min(frames - 1, Math.round(frames * at))} style={{ width: '100%', height: '100%' }} />
+          </PreviewBoundary>
+        </PreviewMode.Provider>
+      )}
+      {bare ? null : <Watermark small />}
     </div>
   );
 };
@@ -1907,253 +1968,350 @@ const G = {
   trash: 'M5 7h14M10 7V4h4v3M7 7l1 13h8l1-13',
 };
 
-/** A feed of whole takes of the user's reel: swipe through, keep the ones you like, pick one. Never runs out. */
-const PickFeed: React.FC<{ p: EffectsReelProps; onPick: (o: LookOpt) => void; onCompare: (kept: LookOpt[]) => void }> = ({ p, onPick, onCompare }) => {
-  const [seed, setSeed] = useState(() => 1 + Math.floor(Math.random() * 1e5));
-  const [like, setLike] = useState<LookOpt | undefined>();
-  const [i, setI] = useState(0);
-  const [kept, setKept] = useState<LookOpt[]>([]);
-  const [muted, setMuted] = useState(true);
-  const ref = useRef<PlayerRef | null>(null);
-  const takes = useMemo(() => BUILD_STEPS[0].deal(p, seed, like), [seed, like, p.segments.length, !!p.matte]);
-  const cur = takes[i];
-  const props = useMemo(() => withOpt(p, cur), [cur]);
-  const next = () => (i + 1 < takes.length ? setI(i + 1) : (setSeed((s) => s + 1), setI(0)));
-  const prev = () => setI(Math.max(0, i - 1));
-  const isKept = kept.some((k) => k.id === cur.id);
-  const keep = () => setKept((ks) => (isKept ? ks.filter((k) => k.id !== cur.id) : [...ks, cur]));
-  const similar = () => (setLike(cur), setSeed((s) => s + 1), setI(0));
-  useEffect(() => {
-    const f = (e: KeyboardEvent) => (e.key === 'ArrowDown' ? next() : e.key === 'ArrowUp' ? prev() : undefined);
-    addEventListener('keydown', f);
-    return () => removeEventListener('keydown', f);
+// ---------- the pick screen: a small preview, the versions to choose from, and the reel's scenes ----------
+
+/** One cut of an AI-made reel, lettered A, B, C… with its place on the reel's clock (frames). */
+type Scene = { i: number; label: string; from: number; dur: number };
+const sceneLabel = (i: number) => (i < 26 ? String.fromCharCode(65 + i) : `${String.fromCharCode(65 + (i % 26))}${Math.floor(i / 26) + 1}`);
+const scenesOf = (p: EffectsReelProps): Scene[] => {
+  let at = 0;
+  return p.segments.map((s, i) => {
+    const dur = Math.max(1, Math.round((s.end - s.start) * FPS));
+    const sc = { i, label: sceneLabel(i), from: at, dur };
+    at += dur;
+    return sc;
   });
-  useEffect(() => (muted ? ref.current?.mute() : ref.current?.unmute()), [muted, cur]);
-  const touch = useRef(0);
-  const [grid, setGrid] = useState(false);
+};
+const clock = (frames: number) => {
+  const s = Math.max(0, frames / FPS);
+  return `${Math.floor(s / 60)}:${String(Math.floor(s % 60)).padStart(2, '0')}`;
+};
+
+/** A version on the pick screen: what it changes (`kind`, e.g. 字幕) and how. */
+type Edition = LookOpt & { kind: string };
+
+/** The cut as the AI made it, so "the first version" is always one tap away. */
+const sceneSnapshot = (orig: EffectsReelProps['segments'][number], i: number): Edition => {
+  const sig = (s: EffectsReelProps['segments'][number]) => s.effect + JSON.stringify(s.style ?? {}) + (s.text ?? '');
+  return {
+    id: `orig-${i}`,
+    kind: tr("AIの案"),
+    name: tr("最初の案"),
+    seg: i,
+    apply: (x) => {
+      x.segments[i].effect = orig.effect;
+      x.segments[i].style = structuredClone(orig.style);
+      x.segments[i].text = orig.text;
+    },
+    on: (x) => sig(x.segments[i]) === sig(orig),
+  };
+};
+
+/**
+ * Other editions of one cut, each changing one thing the AI can vary: the scene's look, captions, camera,
+ * the way in, the color, or pictures on top. Picks only touch this cut, and picks of different kinds add up.
+ */
+const sceneEditions = (p: EffectsReelProps, i: number, seed: number): Edition[] => {
+  const r = rng(seed * 97 + i * 131 + 7);
+  const seg = p.segments[i];
+  const st = seg.style ?? {};
+  const ax = recipeAxes(recipeById(p.recipe));
+  const style = (patch: Partial<BeatStyle>) => (x: EffectsReelProps) => void (x.segments[i].style = { ...(x.segments[i].style ?? {}), ...patch });
+  const out: Edition[] = [];
+  const fxPool = [...new Set([...ax.scenes, ...HOOK_FX])].filter((fx) => fx !== seg.effect && (OWN_TYPE.has(fx) ? Boolean(seg.caption || seg.text) : true));
+  const fxOpt = (fx: EffectId): Edition => ({
+    id: `fx-${i}-${fx}`,
+    kind: tr("演出"),
+    name: effectLabel(fx),
+    seg: i,
+    apply: (x) => {
+      x.segments[i].effect = fx;
+      if (!x.segments[i].text) x.segments[i].text = (x.segments[i].caption ?? '').split(/[、。,.!?！？]/)[0].slice(0, 24) || undefined;
+    },
+    on: (x) => x.segments[i].effect === fx,
+  });
+  const fxs = pickN(fxPool, 3, r);
+  out.push(...fxs.slice(0, 2).map(fxOpt));
+  if (seg.caption) {
+    const c = pickN(captionStyles.filter((v) => v !== st.caption), 1, r)[0];
+    out.push({ id: `cap-${i}-${c}`, kind: tr("字幕"), name: lbl('caption', c), seg: i, apply: style({ caption: c }), on: (x) => x.segments[i].style?.caption === c });
+  }
+  const cam = pickN(ax.cameras.filter((v) => v !== st.camera), 1, r)[0] ?? pickN(cameraMoves.filter((v) => v !== st.camera), 1, r)[0];
+  out.push({ id: `cam-${i}-${cam}`, kind: tr("カメラ"), name: lbl('camera', cam), seg: i, apply: style({ camera: cam }), on: (x) => x.segments[i].style?.camera === cam });
+  if (i > 0) {
+    const t = pickN(ax.transitions.filter((v) => v !== st.transition), 1, r)[0] ?? pickN(transitions.filter((v) => v !== st.transition), 1, r)[0];
+    out.push({ id: `tr-${i}-${t}`, kind: tr("切り替え"), name: lbl('transition', t), seg: i, apply: style({ transition: t }), on: (x) => x.segments[i].style?.transition === t });
+  }
+  const g = pickN(grades.filter((v) => v !== st.grade), 1, r)[0];
+  out.push({ id: `gr-${i}-${g}`, kind: tr("色"), name: lbl('grade', g), seg: i, apply: style({ grade: g }), on: (x) => x.segments[i].style?.grade === g });
+  const pics = (['stickers', 'emoji', 'sparkles', 'arrows'] as const).filter((a) => !st.accents?.includes(a));
+  if (pics.length) {
+    const a = pickN(pics, 1, r)[0];
+    out.push({
+      id: `pic-${i}-${a}`,
+      kind: tr("画像"),
+      name: lbl('accent', a),
+      seg: i,
+      apply: (x) => void (x.segments[i].style = { ...(x.segments[i].style ?? {}), accents: [...new Set([...(x.segments[i].style?.accents ?? []), a])] as never }),
+      on: (x) => Boolean(x.segments[i].style?.accents?.includes(a)),
+    });
+  }
+  if (out.length < 7 && fxs[2]) out.push(fxOpt(fxs[2]));
+  return out;
+};
+
+/** The whole reel as the AI first made it. */
+const reelSnapshot = (orig: EffectsReelProps): Edition => {
+  const sig = (x: EffectsReelProps) => x.segments.map((s) => s.effect + JSON.stringify(s.style ?? {})).join() + x.palette.accent;
+  const want = sig(orig);
+  return {
+    id: 'orig',
+    kind: tr("AIの案"),
+    name: tr("最初の案"),
+    seg: 0,
+    apply: (x) => {
+      x.recipe = orig.recipe;
+      x.palette = structuredClone(orig.palette);
+      x.segments.forEach((s, k) => ((s.effect = orig.segments[k].effect), (s.style = structuredClone(orig.segments[k].style)), (s.text = orig.segments[k].text)));
+    },
+    on: (x) => sig(x) === want,
+  };
+};
+
+/** Track rows under the preview. Read-only: they show what is in each scene, they are not for editing. */
+const TRACKS: { id: 'video' | 'picture' | 'audio' | 'text'; name: string }[] = [
+  { id: 'video', name: tr("動画") },
+  { id: 'picture', name: tr("画像") },
+  { id: 'audio', name: tr("音声") },
+  { id: 'text', name: tr("テキスト") },
+];
+const PICTURE_ACCENTS = new Set(['stickers', 'emoji', 'sparkles', 'arrows']);
+
+/**
+ * The pick screen (owner's sketch): a small preview on the left, the versions to choose from on the right
+ * ("どれにしますか？"), and under them the reel as scenes on a timeline. Tap a scene and the preview shows
+ * that scene and the grid shows other editions of it; with no scene chosen, the grid holds whole-reel
+ * versions. Nothing here is edited by hand: every change is a tap on a version the AI made.
+ */
+const PickBoard: React.FC<{ p: EffectsReelProps; update: PanelProps<EffectsReelProps>['update']; onDone: () => void }> = ({ p, update, onDone }) => {
+  const [sel, setSel] = useState<number | null>(null);
+  const [seed, setSeed] = useState(() => 1 + Math.floor(Math.random() * 1e5));
+  // what the AI made, as it was when this screen opened
+  const orig = useRef(structuredClone(p)).current;
+  const live = useRef(p);
+  live.current = p;
+  const scenes = useMemo(() => scenesOf(p), [p.segments]);
+  const total = scenes.length ? scenes[scenes.length - 1].from + scenes[scenes.length - 1].dur : 1;
+  const sc = sel === null ? null : scenes[Math.min(sel, scenes.length - 1)];
+  // dealt once per scene / reshuffle, so taking one does not reshuffle the rest
+  const editions = useMemo<Edition[]>(
+    () =>
+      sel === null
+        ? [reelSnapshot(orig), ...BUILD_STEPS[0].deal(live.current, seed).map((o) => ({ ...o, kind: '' }))]
+        : [sceneSnapshot(orig.segments[sel], sel), ...sceneEditions(live.current, sel, seed)],
+    [sel, seed],
+  );
+  const take = (o: Edition) => update((x) => (o.apply(x), x));
+
+  // preview: one player, a still until tapped
+  const solo = useSolo();
+  const [playing, , stopPlaying] = solo;
+  const ref = useRef<PlayerRef | null>(null);
+  const [muted, setMuted] = useState(true);
+  const [paused, setPaused] = useState(false);
+  useEffect(() => {
+    if (!playing) return;
+    const pl = ref.current;
+    if (sc && pl) pl.seekTo(sc.from);
+  }, [sel]);
+  useEffect(() => void (muted ? ref.current?.mute() : ref.current?.unmute()), [muted, playing]);
+
+  // timeline geometry: scene widths follow their length, never narrower than a finger
+  const LABEL_W = 64;
+  const MIN_W = 46;
+  const scroller = useRef<HTMLDivElement>(null);
+  const [avail, setAvail] = useState(300);
+  useEffect(() => {
+    const el = scroller.current;
+    if (!el) return;
+    const ro = new ResizeObserver(() => setAvail(el.clientWidth));
+    ro.observe(el);
+    return () => ro.disconnect();
+  }, []);
+  const xs = useMemo(() => {
+    const k = avail / total;
+    let x = 0;
+    return scenes.map((s) => {
+      const w = Math.max(MIN_W, s.dur * k);
+      const at = x;
+      x += w;
+      return { x: at, w };
+    });
+  }, [scenes, avail, total]);
+  const width = xs.length ? xs[xs.length - 1].x + xs[xs.length - 1].w : avail;
+  const xAt = (f: number) => {
+    const k = scenes.findIndex((s) => f < s.from + s.dur);
+    const j = k < 0 ? scenes.length - 1 : k;
+    if (j < 0) return 0;
+    return xs[j].x + (Math.min(scenes[j].dur, Math.max(0, f - scenes[j].from)) / scenes[j].dur) * xs[j].w;
+  };
+  // playhead and clock follow the player without re-rendering the screen
+  const head = useRef<HTMLDivElement>(null);
+  const time = useRef<HTMLSpanElement>(null);
+  const restFrame = sc ? sc.from : 0;
+  useEffect(() => {
+    const put = (f: number) => {
+      if (head.current) head.current.style.transform = `translateX(${xAt(f)}px)`;
+      if (time.current) time.current.textContent = `${clock(f)} / ${clock(total)}`;
+    };
+    if (!playing) return put(restFrame);
+    let raf = 0;
+    let wasPaused: boolean | null = null;
+    const tick = () => {
+      const pl = ref.current;
+      if (pl) {
+        put(pl.getCurrentFrame());
+        const now = !pl.isPlaying();
+        if (now !== wasPaused) setPaused((wasPaused = now));
+      }
+      raf = requestAnimationFrame(tick);
+    };
+    raf = requestAnimationFrame(tick);
+    return () => cancelAnimationFrame(raf);
+  }, [playing, restFrame, xs, total]);
+  // keep the chosen scene in view
+  useEffect(() => {
+    const el = scroller.current;
+    if (!el || sel === null || !xs[sel]) return;
+    const { x, w } = xs[sel];
+    if (x < el.scrollLeft || x + w > el.scrollLeft + el.clientWidth) el.scrollTo({ left: Math.max(0, x - 24), behavior: reduceMotion() ? 'auto' : 'smooth' });
+  }, [sel]);
+
+  const toggle = () => {
+    if (!playing) return solo[1]();
+    const pl = ref.current;
+    if (!pl) return;
+    pl.isPlaying() ? pl.pause() : pl.play();
+  };
+  const choose = (k: number | null) => {
+    setSel(k === sel ? null : k);
+    setSeed((s) => s + 1);
+  };
+  const seg = sc ? p.segments[sc.i] : null;
   return (
-    <>
-      {grid ? (
-        <div className="pickgrid" role="dialog" aria-label={tr("案の一覧")}>
-          <div className="pickgridhead">
-            <b>{tr("案の一覧")}</b>
-            <button className="iconround" onClick={() => setGrid(false)} aria-label={tr("閉じる")}>
-              <Glyph d={G.close} />
+    <div className="board">
+      <div className="boardtop">
+        <div className="boardpv">
+          <ReelPlayer
+            props={p}
+            playerRef={ref}
+            solo={solo}
+            inFrame={sc ? sc.from : undefined}
+            outFrame={sc ? sc.from + sc.dur - 1 : undefined}
+            at={sc ? (sc.from + sc.dur * 0.5) / total : 0.3}
+          />
+          {sc ? <span className="boardbadge">{tr("シーン {0}", sc.label)}</span> : null}
+          {playing ? (
+            <button className="boardsound" onClick={() => setMuted((m) => !m)} aria-label={tr("音")} aria-pressed={!muted}>
+              <Glyph d={muted ? G.mute : G.sound} size={16} />
             </button>
-          </div>
-          <div className="pickgridlist">
-            {takes.map((t, k) => (
-              <button key={t.id} className={k === i ? 'on' : ''} onClick={() => (setI(k), setGrid(false))}>
-                <div className="pickgridthumb">
-                  <ReelStill props={withOpt(p, t)} />
-                  {kept.some((x) => x.id === t.id) ? <span className="pickgridkept"><Glyph d={G.heart} fill size={16} /></span> : null}
+          ) : null}
+        </div>
+        <div className="boardopts">
+          <div className="boardoptsin">
+            <div className="boardq">
+              <b>{tr("どれにしますか？")}</b>
+              <small>{sc ? tr("シーン {0} の別バージョン", sc.label) : tr("動画全体の案")}</small>
+            </div>
+            <div className="boardgrid" role="listbox" aria-label={tr("どれにしますか？")}>
+              {editions.map((o) => {
+                const on = o.on(p);
+                return (
+                  <button key={o.id} role="option" aria-selected={on} className={`ed ${on ? 'on' : ''}`} onClick={() => take(o)}>
+                    <div className="edthumb">
+                      <ReelStill props={sc ? withOpt(p, o, true) : withOpt(p, o)} at={sc ? 0.6 : 0.3} bare />
+                      {o.kind ? <span className="edkind">{o.kind}</span> : null}
+                      {on ? (
+                        <span className="edcheck" aria-hidden>
+                          <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
+                            <path d="M5 12.5l4.5 4.5L19 7.5" />
+                          </svg>
+                        </span>
+                      ) : null}
+                      <b className="edname">{o.name}</b>
+                    </div>
+                  </button>
+                );
+              })}
+              <button className="ed more" onClick={() => setSeed((s) => s + 1)}>
+                <div className="edthumb">
+                  <Glyph d={G.similar} size={22} />
+                  <span>{tr("別の案を出す")}</span>
                 </div>
-                <b>{t.name}</b>
-                {t.note ? <small>{t.note}</small> : null}
               </button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div className="tl" aria-label={tr("シーン")}>
+        <div className="tlbar">
+          <button className="tlplay" onClick={toggle} aria-label={playing && !paused ? tr("一時停止") : tr("再生")}>
+            {playing && !paused ? (
+              <svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor" aria-hidden>
+                <path d="M7 5h3.5v14H7zM13.5 5H17v14h-3.5z" />
+              </svg>
+            ) : (
+              <svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor" aria-hidden>
+                <path d="M8 5v14l11-7z" />
+              </svg>
+            )}
+          </button>
+          <span className="tltime" ref={time}>
+            {clock(restFrame)} / {clock(total)}
+          </span>
+          <span className="tlhint">{sc ? (seg?.caption ? `“${seg.caption}”` : '') : tr("シーンをタップして選べます")}</span>
+          <button className={`tlall ${sel === null ? 'on' : ''}`} onClick={() => (setSel(null), setSeed((s) => s + 1), playing && stopPlaying())}>
+            {tr("全体")}
+          </button>
+        </div>
+        <div className="tlbody">
+          <div className="tllabels" style={{ width: LABEL_W }}>
+            <span className="tlrulerpad" />
+            {TRACKS.map((t) => (
+              <span key={t.id}>{t.name}</span>
             ))}
           </div>
-          <button className="btn ghost" onClick={() => (setSeed((x) => x + 1), setI(0))}>
-            <Glyph d={G.similar} size={18} /> {tr("別の案をもっと出す")}
-          </button>
-        </div>
-      ) : null}
-      <div className="pickstage">
-      <div
-        className="pickreel"
-        onTouchStart={(e) => (touch.current = e.touches[0].clientY)}
-        onTouchEnd={(e) => {
-          const dy = e.changedTouches[0].clientY - touch.current;
-          if (dy < -50) next();
-          else if (dy > 50) prev();
-        }}
-        onWheel={(e) => {
-          if (Math.abs(e.deltaY) < 30) return;
-          const now = Date.now();
-          if (now - Number((e.currentTarget as any).dataset.t ?? 0) < 600) return;
-          (e.currentTarget as any).dataset.t = String(now);
-          e.deltaY > 0 ? next() : prev();
-        }}
-      >
-        <div className="pickplayer" key={cur.id}>
-          {grid ? <ReelStill props={props} /> : <ReelPlayer props={props} playerRef={ref} />}
-        </div>
-        <div className="pickbars" aria-hidden>
-          {takes.map((t, k) => (
-            <span key={t.id} className={k <= i ? 'on' : ''} />
-          ))}
-        </div>
-        <div className="pickrail">
-          <button className={isKept ? 'on' : ''} onClick={keep} aria-pressed={isKept}>
-            <span>
-              <Glyph d={G.heart} fill={isKept} />
-            </span>
-            {tr("残す")}
-          </button>
-          <button onClick={similar}>
-            <span>
-              <Glyph d={G.similar} />
-            </span>
-            {tr("似た案")}
-          </button>
-          <button onClick={() => setGrid(true)}>
-            <span>
-              <Glyph d={G.grid} />
-            </span>
-            {tr("一覧")}
-          </button>
-          <button onClick={() => setMuted((m) => !m)} aria-pressed={!muted}>
-            <span>
-              <Glyph d={muted ? G.mute : G.sound} />
-            </span>
-            {tr("音")}
-          </button>
-        </div>
-        <div className="pickmeta">
-          <small>{like ? tr("「{0}」に近い案", like.name) : tr("案 {0}", i + 1)}</small>
-          <b>{cur.name}</b>
-          {cur.note ? <span>{cur.note}</span> : null}
-        </div>
-        <div className="picknav">
-          <button onClick={prev} disabled={i === 0} aria-label={tr("前の案")}>
-            <Glyph d={G.up} />
-          </button>
-          <button onClick={next} aria-label={tr("次の案")}>
-            <Glyph d={G.down} />
-          </button>
-        </div>
-      </div>
-      </div>
-      <div className="pickcta">
-        {kept.length >= 2 ? (
-          <button className="btn ghost" onClick={() => onCompare(kept)}>
-            {tr("残した{0}案を比べる", kept.length)}
-          </button>
-        ) : null}
-        <button className="btn" onClick={() => onPick(cur)}>
-          {tr("これにする")}
-        </button>
-      </div>
-      <p className="pickhint">{tr("上にスワイプで次の案。気に入ったら「残す」、似た雰囲気は「似た案」、全部見比べるなら「一覧」。")}</p>
-    </>
-  );
-};
-
-/** Two versions side by side; tap the one you like. */
-const PickPair: React.FC<{ base: EffectsReelProps; a: LookOpt; b: LookOpt; whole?: boolean; onPick: (o: LookOpt) => void }> = ({ base, a, b, whole, onPick }) => {
-  const pa = useMemo(() => withOpt(base, a, !whole), [base, a]);
-  const pb = useMemo(() => withOpt(base, b, !whole), [base, b]);
-  return (
-    <div className="pickpair">
-      {[
-        [a, pa],
-        [b, pb],
-      ].map(([o, props]) => (
-        <button key={(o as LookOpt).id} onClick={() => onPick(o as LookOpt)}>
-          <div className="pickmini">
-            <ReelPlayer props={props as EffectsReelProps} />
-          </div>
-          <b>
-            {(o as LookOpt).swatch ? <i className="liveswatch" style={{ background: (o as LookOpt).swatch }} /> : null}
-            {(o as LookOpt).name}
-          </b>
-          {(o as LookOpt).note ? <small>{(o as LookOpt).note}</small> : null}
-        </button>
-      ))}
-    </div>
-  );
-};
-
-/** Seven versions of one aspect: the big preview plays the one you tap, the strip shows them all. */
-const PickMany: React.FC<{ base: EffectsReelProps; opts: LookOpt[]; onPick: (o: LookOpt) => void }> = ({ base, opts, onPick }) => {
-  const [sel, setSel] = useState(0);
-  const cur = opts[sel];
-  const props = useMemo(() => withOpt(base, cur, true), [base, cur]);
-  return (
-    <div className="pickmany">
-      <div className="pickmanyplayer" key={cur.id}>
-        <ReelPlayer props={props} />
-      </div>
-      <div className="pickstrip" role="listbox" aria-label={tr("選択肢")}>
-        {opts.map((o, k) => (
-          <button key={o.id} role="option" aria-selected={k === sel} className={k === sel ? 'on' : ''} onClick={() => setSel(k)}>
-            <div className="pickstripthumb">
-              <ReelStill props={withOpt(base, o, true)} />
+          <div className="tlscroll" ref={scroller}>
+            <div className="tlinner" style={{ width }}>
+              {scenes.map((s, k) => {
+                const g = p.segments[k];
+                const st = g.style ?? {};
+                const pic = EFFECT_GROUP[g.effect] !== 'camera' ? effectLabel(g.effect) : (st.accents ?? []).filter((a) => PICTURE_ACCENTS.has(a)).map((a) => lbl('accent', a)).join(' · ');
+                return (
+                  <button key={k} className={`tlcol ${sel === k ? 'on' : ''}`} style={{ left: xs[k]?.x, width: xs[k]?.w }} onClick={() => choose(k)} aria-pressed={sel === k} aria-label={tr("シーン {0}", s.label)}>
+                    <span className="tlruler">
+                      <b>{s.label}</b>
+                      <small>{((g.end - g.start) || 0).toFixed(1)}s</small>
+                    </span>
+                    <span className="tlcell video" style={{ backgroundImage: posterOf(p.video, g.start + 0.4, true) ? `url("${posterOf(p.video, g.start + 0.4, true)}")` : undefined }} />
+                    <span className={`tlcell picture ${pic ? '' : 'empty'}`}>{pic ? <span className="tlclamp">{pic}</span> : null}</span>
+                    <span className="tlcell audio">{p.music ? <i className="tlmusic" /> : null}</span>
+                    <span className={`tlcell text ${g.caption || g.text ? '' : 'empty'}`}>{g.caption || g.text ? <span className="tlclamp">{g.caption || g.text}</span> : null}</span>
+                  </button>
+                );
+              })}
+              <div className="tlhead" ref={head} aria-hidden>
+                <i />
+              </div>
             </div>
-            <span>
-              {o.swatch ? <i className="liveswatch" style={{ background: o.swatch }} /> : null}
-              {o.name}
-            </span>
-          </button>
-        ))}
+          </div>
+        </div>
       </div>
-      <div className="pickcta">
-        <button className="btn" onClick={() => onPick(cur)}>
-          {tr("これにする")}
-        </button>
-      </div>
-    </div>
-  );
-};
 
-/** Kept takes play off two at a time (the winner stays), then three quick either-or picks: colors, captions, motion. */
-const PickDuel: React.FC<{ p: EffectsReelProps; kept: LookOpt[]; take: (o: LookOpt) => void; onDone: () => void }> = ({ p, kept, take, onDone }) => {
-  const [seed] = useState(() => 1 + Math.floor(Math.random() * 1e5));
-  const [champ, setChamp] = useState(0);
-  const [next, setNext] = useState(1);
-  const [round, setRound] = useState(0);
-  const aspects: [string, number][] = [
-    [tr("色を選ぶ"), 1],
-    [tr("字幕を選ぶ"), 4],
-    [tr("動きを選ぶ"), 6],
-  ];
-  const inFinal = next < kept.length;
-  // each round is dealt from the reel as it is now, so the caption pair already wears the chosen colors
-  const choices = useMemo(() => {
-    if (inFinal || round >= aspects.length) return null;
-    const r = rng(seed + round * 101);
-    const step = BUILD_STEPS[aspects[round][1]];
-    // two deals give enough variety to fill seven, the current look first so "keep as is" is one tap
-    const all = [...step.deal(p, seed + round), ...step.deal(p, seed + round + 7)];
-    const seen = new Set<string>();
-    const uniq = all.filter((o) => !seen.has(o.id) && (seen.add(o.id), true));
-    const cur = uniq.filter((o) => o.on(p));
-    return [...cur.slice(0, 1), ...pickN(uniq.filter((o) => !o.on(p)), 7 - Math.min(1, cur.length), r)];
-  }, [inFinal, round]);
-  useEffect(() => {
-    if (!inFinal && round >= aspects.length) onDone();
-  }, [inFinal, round]);
-  const total = Math.max(0, kept.length - 1) + aspects.length;
-  const done = (inFinal ? next - 1 : Math.max(0, kept.length - 1) + round) as number;
-  return (
-    <div className="pickduel">
-      <div className="pickdots" aria-label={tr("{0}/{1}", done + 1, total)}>
-        {Array.from({ length: total }, (_, k) => (
-          <span key={k} className={k < done ? 'done' : k === done ? 'on' : ''} />
-        ))}
-      </div>
-      <h1>{inFinal ? tr("どっちが好き？") : choices ? aspects[round][0] : ''}</h1>
-      <p className="sub">{inFinal ? tr("好きな方をタップするだけ。") : tr("タップすると上で再生されます。")}</p>
-      {inFinal ? (
-        <PickPair
-          key={`${champ}-${next}`}
-          base={p}
-          a={kept[champ]}
-          b={kept[next]}
-          whole
-          onPick={(o) => {
-            const w = o.id === kept[champ].id ? champ : next;
-            setChamp(w);
-            setNext(next + 1);
-            if (next + 1 >= kept.length) take(kept[w]);
-          }}
-        />
-      ) : choices ? (
-        <PickMany key={round} base={p} opts={choices} onPick={(o) => (take(o), setRound(round + 1))} />
-      ) : null}
       <div className="pickcta">
-        <button className="btn ghost" onClick={() => (inFinal ? take(kept[champ]) : null, onDone())}>
-          {tr("おまかせで次へ")}
+        <button className="btn" onClick={onDone}>
+          {tr("これで書き出す")}
         </button>
       </div>
     </div>
@@ -2179,6 +2337,7 @@ const PickTune: React.FC<{ jobId: string; p: EffectsReelProps; update: PanelProp
   };
   const set = (fn: (x: EffectsReelProps) => void) => update((x) => (fn(x), x));
   const ref = useRef<PlayerRef | null>(null);
+  const solo = useSolo();
   const drag = useRef<{ x: number; y: number; moved: boolean; layer: number | null } | null>(null);
   const [dragging, setDragging] = useState(false);
   const [sel, setSel] = useState<number | null>(null);
@@ -2204,7 +2363,7 @@ const PickTune: React.FC<{ jobId: string; p: EffectsReelProps; update: PanelProp
     <>
       <div className="pickreel tune">
         <div className="pickplayer">
-          <ReelPlayer props={p} playerRef={ref} />
+          <ReelPlayer props={p} playerRef={ref} solo={solo} />
         </div>
         <div
           className={`capdrag ${dragging ? 'on' : ''}`}
@@ -2227,7 +2386,7 @@ const PickTune: React.FC<{ jobId: string; p: EffectsReelProps; update: PanelProp
             else set((x) => void (x.captionY = Math.min(0.9, Math.round(pt.y * 100) / 100)));
           }}
           onPointerUp={() => {
-            if (drag.current && !drag.current.moved && drag.current.layer === null) ref.current?.isPlaying() ? ref.current.pause() : ref.current?.play();
+            if (drag.current && !drag.current.moved && drag.current.layer === null) !solo[0] ? solo[1]() : ref.current?.isPlaying() ? ref.current.pause() : ref.current?.play();
             drag.current = null;
             setDragging(false);
           }}
@@ -2353,8 +2512,6 @@ const PickFlow: React.FC<{
   onAdvanced: () => void;
 }> = ({ job, p, update, saved, err, onRender, onAdvanced }) => {
   const [stage, setStage] = useState<PickStage>(job.status === 'done' || job.status === 'rendering' ? 'post' : 'feed');
-  const [kept, setKept] = useState<LookOpt[]>([]);
-  const take = (o: LookOpt) => update((x) => (o.apply(x), x));
   const at = PICK_STAGES.findIndex(([s]) => s === stage);
   const back = () => (at > 0 ? setStage(PICK_STAGES[at - 1][0]) : goBack('#/reels'));
   return (
@@ -2366,7 +2523,7 @@ const PickFlow: React.FC<{
         <ol className="pickstages">
           {PICK_STAGES.map(([s, name], k) => (
             <li key={s} className={k < at ? 'done' : k === at ? 'on' : ''}>
-              <button onClick={() => k < at && setStage(s)} disabled={k > at}>
+              <button onClick={() => setStage(s)} aria-current={k === at ? 'step' : undefined}>
                 {name}
               </button>
             </li>
@@ -2377,9 +2534,7 @@ const PickFlow: React.FC<{
         </button>
       </div>
       {stage === 'feed' ? (
-        <PickFeed p={p} onPick={(o) => (take(o), setKept([]), setStage('duel'))} onCompare={(ks) => (setKept(ks), setStage('duel'))} />
-      ) : stage === 'duel' ? (
-        <PickDuel p={p} kept={kept} take={take} onDone={() => setStage('tune')} />
+        <PickBoard p={p} update={update} onDone={() => setStage('post')} />
       ) : stage === 'tune' ? (
         <PickTune jobId={job.id} p={p} update={update} onNext={() => setStage('post')} />
       ) : (
@@ -3106,7 +3261,10 @@ const localized = (key: string) => {
   return key;
 };
 
-/** A sample render. `controls` = a quiet sound toggle (no system controls over the picture). */
+/**
+ * A sample render. Plain (`hover`): plays at once, for a desktop mouse resting on a card. With `controls`:
+ * the poster and a play button until tapped (nothing starts by itself), then a quiet sound toggle.
+ */
 const ShowVideo: React.FC<{ k: string; controls?: boolean }> = ({ k, controls }) => {
   const s = showcase(k);
   const [sound, setSound] = useState(false);
@@ -3114,10 +3272,12 @@ const ShowVideo: React.FC<{ k: string; controls?: boolean }> = ({ k, controls })
   if (!controls) return v;
   return (
     <div className="showvideo">
-      {v}
-      <button className="feedsound" onClick={(e) => (e.stopPropagation(), setSound((x) => !x))} aria-label={tr("音")} aria-pressed={sound}>
-        <Glyph d={sound ? G.sound : G.mute} size={18} />
-      </button>
+      <LivePreview poster={s.poster}>
+        {v}
+        <button className="feedsound" onClick={(e) => (e.stopPropagation(), setSound((x) => !x))} aria-label={tr("音")} aria-pressed={sound}>
+          <Glyph d={sound ? G.sound : G.mute} size={18} />
+        </button>
+      </LivePreview>
     </div>
   );
 };
@@ -3126,7 +3286,7 @@ const ShowVideo: React.FC<{ k: string; controls?: boolean }> = ({ k, controls })
 const TemplateCard: React.FC<{ it: CatalogItem; onOpen: () => void; i?: number }> = ({ it, onOpen, i = 0 }) => {
   const [hover, setHover] = useState(false);
   return (
-    <button className="tcard" style={{ "--i": Math.min(i, 11) } as React.CSSProperties} onClick={onOpen} onMouseEnter={() => setHover(true)} onMouseLeave={() => setHover(false)}>
+    <button className="tcard" style={{ "--i": Math.min(i, 11) } as React.CSSProperties} onClick={onOpen} onPointerEnter={(e) => e.pointerType === 'mouse' && setHover(true)} onPointerLeave={() => setHover(false)}>
       <div className="tthumb">
         {hover ? <ShowVideo k={it.key} /> : <img src={showcase(it.key).poster} alt="" loading="lazy" onLoad={(e) => e.currentTarget.classList.add("loaded")} />}
         <span className="tplay" aria-hidden>
@@ -3379,7 +3539,7 @@ const UploadTile: React.FC<{ value?: { file: string; url: string; name: string }
         onDragLeave={() => setOver(false)}
         onDrop={(e) => (e.preventDefault(), setOver(false), take(e.dataTransfer.files[0]))}
       >
-        {value ? <video src={media(value.url)} muted playsInline autoPlay loop /> : null}
+        {value ? <video src={`${media(value.url)}#t=0.5`} muted playsInline preload="metadata" /> : null}
         <span className="upplus">{busy ? <span className="spin" /> : <Glyph d={value ? G.similar : 'M12 5v14M5 12h14'} size={28} />}</span>
         <b>{busy ? tr("アップロード中…") : value ? tr("別の動画にする") : tr("動画を載せる")}</b>
         {value ? null : <small>{tr("話している動画、お店や商品の動画。3分以内のMP4 / MOV")}</small>}
@@ -3593,30 +3753,17 @@ const STATUS_LABEL = { generating: tr("作成中"), ready: tr("編集できま�
 const jobPoster = (j: Job) => (j.poster ? media(j.poster) : j.video ? posterOf(j.video) : j.props ? propsPoster(j.props) : j.thumb ? media(j.thumb) : undefined);
 
 /**
- * One reel per screen, like Reels. Only the reel in view is live (its exported MP4 when there is one, which
- * is far lighter than a live composition); every other one is a still image. A list of live compositions
- * here is what ran the iPhone out of memory and looped the app through reloads.
+ * One reel per screen, as a card with room around it (not edge to edge). Every reel is a still image with a
+ * play button; a tap plays it (its exported MP4 when there is one, which is far lighter than a live
+ * composition), scrolling on or starting another stops it. A list of live compositions here is what ran
+ * the iPhone out of memory and looped the app through reloads.
  */
 const ReelsFeed: React.FC<{ go: (h: string) => void }> = ({ go }) => {
   const [jobs, setJobs] = useState<Job[] | null>(null);
-  const [active, setActive] = useState(0);
-  const box = useRef<HTMLDivElement>(null);
   useEffect(() => {
     api<Job[]>('/api/jobs').then((list) => setJobs(list.filter((j) => j.status !== 'error')), () => setJobs([]));
   }, []);
-  useEffect(() => {
-    const el = box.current;
-    if (!el) return;
-    const io = new IntersectionObserver(
-      (es) => {
-        for (const e of es) if (e.isIntersecting && e.intersectionRatio >= 0.6) setActive(Number((e.target as HTMLElement).dataset.i));
-      },
-      { root: el, threshold: [0.6] },
-    );
-    [...el.children].forEach((c) => io.observe(c));
-    return () => io.disconnect();
-  }, [jobs]);
-  if (!jobs) return <div className="feed"><div className="feeditem"><div className="feedvideo skeleton" /></div></div>;
+  if (!jobs) return <div className="feed"><div className="feeditem"><div className="feedcard"><div className="feedvideo skeleton" /></div></div></div>;
   if (!jobs.length)
     return (
       <div className="empty">
@@ -3628,56 +3775,65 @@ const ReelsFeed: React.FC<{ go: (h: string) => void }> = ({ go }) => {
       </div>
     );
   return (
-    <div className="feed" ref={box}>
-      {jobs.map((j, i) => (
-        <FeedItem key={j.id} i={i} job={j} live={i === active} onEdit={() => go(`#/job/${j.id}`)} />
+    <div className="feed">
+      {jobs.map((j) => (
+        <FeedItem key={j.id} job={j} onEdit={() => go(`#/job/${j.id}`)} />
       ))}
     </div>
   );
 };
 
-const FeedItem: React.FC<{ job: Job; i: number; live: boolean; onEdit: () => void }> = ({ job: row, i, live, onEdit }) => {
-  // The list has no props; a reel that has not been exported loads them when it comes into view.
+const FeedItem: React.FC<{ job: Job; onEdit: () => void }> = ({ job: row, onEdit }) => {
+  // The list has no props; a reel that has not been exported loads them when it is played.
   const [full, setFull] = useState<Job | null>(null);
   const [sound, setSound] = useState(false);
+  const solo = useSolo();
+  const [playing] = solo;
   useEffect(() => {
-    if (live && !row.video && !full) api<Job>(`/api/jobs/${row.id}`).then(setFull, () => null);
-  }, [live]);
+    if (playing && !row.video && !full) api<Job>(`/api/jobs/${row.id}`).then(setFull, () => null);
+  }, [playing]);
   const job = full ? { ...row, ...full } : row;
   const t = TEMPLATES[job.template];
   const poster = jobPoster(job);
+  const playable = Boolean(job.video || job.props || (!row.video && job.status !== 'generating'));
   return (
-    <div className="feeditem" data-i={i}>
-      <div className="feedvideo">
-        {live && job.video ? (
-          <video className="feedmedia" src={media(job.video)} poster={poster} autoPlay loop muted={!sound} playsInline preload="auto" onClick={() => setSound((x) => !x)} />
-        ) : live && job.props ? (
-          <LivePreview poster={poster}>
-            <Player component={t.component} inputProps={job.props} durationInFrames={Math.max(1, t.frames(job.props))} fps={FPS} compositionWidth={1080} compositionHeight={1920} style={{ width: '100%', height: '100%' }} autoPlay loop initiallyMuted errorFallback={playerError} acknowledgeRemotionLicense />
-          </LivePreview>
-        ) : poster ? (
-          <img className="feedmedia" src={poster} alt="" loading="lazy" />
-        ) : (
-          <div className="feedblank">{STATUS_LABEL[job.status]}</div>
-        )}
-        {live && job.video ? (
-          <button className="feedsound" onClick={() => setSound((x) => !x)} aria-label={tr("音")} aria-pressed={sound}>
-            <Glyph d={sound ? G.sound : G.mute} size={18} />
-          </button>
-        ) : null}
-        <div className="feedmeta">
-          <div className="name">{job.title}</div>
-          <div className="cost">
-            {t.name} · {STATUS_LABEL[job.status]}
-          </div>
-        </div>
-        <div className="feedactions">
-          <button onClick={onEdit} aria-label={tr("編集")}>
-            <span>✎</span>{tr("編集")}
-          </button>
-          {job.video ? (
-            <ShareButton job={job} compact />
+    <div className="feeditem">
+      <div className="feedcard">
+        <div className="feedvideo">
+          {playable ? (
+            <LivePreview poster={poster ?? <div className="feedblank">{STATUS_LABEL[job.status]}</div>} solo={solo} label={tr("再生")}>
+              {job.video ? (
+                <video className="feedmedia" src={media(job.video)} poster={poster} autoPlay loop muted={!sound} playsInline preload="auto" />
+              ) : job.props ? (
+                <Player component={t.component} inputProps={job.props} durationInFrames={Math.max(1, t.frames(job.props))} fps={FPS} compositionWidth={1080} compositionHeight={1920} style={{ width: '100%', height: '100%' }} autoPlay loop initiallyMuted errorFallback={playerError} acknowledgeRemotionLicense />
+              ) : (
+                <img className="feedmedia" src={poster} alt="" />
+              )}
+            </LivePreview>
+          ) : poster ? (
+            <img className="feedmedia" src={poster} alt="" loading="lazy" />
+          ) : (
+            <div className="feedblank">{STATUS_LABEL[job.status]}</div>
+          )}
+          {playing && job.video ? (
+            <button className="feedsound" onClick={() => setSound((x) => !x)} aria-label={tr("音")} aria-pressed={sound}>
+              <Glyph d={sound ? G.sound : G.mute} size={18} />
+            </button>
           ) : null}
+        </div>
+        <div className="feedinfo">
+          <div className="feedmeta">
+            <div className="name">{job.title}</div>
+            <div className="cost">
+              {t.name} · {STATUS_LABEL[job.status]}
+            </div>
+          </div>
+          <div className="feedactions">
+            <button className="btn small ghost" onClick={onEdit}>
+              {tr("選び直す")}
+            </button>
+            {job.video ? <ShareButton job={job} compact /> : null}
+          </div>
         </div>
       </div>
     </div>
@@ -4694,7 +4850,12 @@ const SignInStage = () => {
       </div>
       {f ? (
         <div className="phone">
-          <video key={f.key} src={showcase(f.key).video} poster={showcase(f.key).poster} autoPlay muted playsInline onEnded={() => setCur((i) => i + 1)} />
+          {LITE ? (
+            // phones: nothing plays by itself; the samples change as stills
+            <img key={f.key} src={showcase(f.key).poster} alt="" onLoad={() => setTimeout(() => setCur((i) => i + 1), 4000)} />
+          ) : (
+            <video key={f.key} src={showcase(f.key).video} poster={showcase(f.key).poster} autoPlay muted playsInline onEnded={() => setCur((i) => i + 1)} />
+          )}
           <span key={`l${cur}`} className="phonetag">
             {f.name()}
           </span>

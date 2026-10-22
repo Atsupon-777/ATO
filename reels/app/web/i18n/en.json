@@ -787,5 +787,19 @@
  "テストや審査用に、メールアドレスのアカウントへトークンを付けます。売上には入りません。": "Add tokens to an account by email, for testing or App Review. Not counted as sales.",
  "付与する": "Give",
  "再生": "Play",
- "プレビューを再生できませんでした": "Couldn't play the preview"
+ "プレビューを再生できませんでした": "Couldn't play the preview",
+ "AIの案": "AI pick",
+ "動画全体の案": "Versions of the whole video",
+ "どれにしますか？": "Which one?",
+ "音声": "Audio",
+ "一時停止": "Pause",
+ "シーンをタップして選べます": "Tap a scene to choose it",
+ "全体": "Whole",
+ "画像": "Picture",
+ "シーン": "Scenes",
+ "シーン {0}": "Scene {0}",
+ "シーン {0} の別バージョン": "Other versions of scene {0}",
+ "別の案を出す": "Show more",
+ "選び直す": "Choose again",
+ "これで書き出す": "Export this"
 }

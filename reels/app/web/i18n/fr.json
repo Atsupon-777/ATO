@@ -787,5 +787,19 @@
  "テストや審査用に、メールアドレスのアカウントへトークンを付けます。売上には入りません。": "Ajoute des jetons à un compte par e-mail, pour des tests ou la vérification. Non compté dans les ventes.",
  "付与する": "Offrir",
  "再生": "Lire",
- "プレビューを再生できませんでした": "Impossible de lire l'aperçu"
+ "プレビューを再生できませんでした": "Impossible de lire l'aperçu",
+ "AIの案": "Choix IA",
+ "動画全体の案": "Versions de toute la vidéo",
+ "どれにしますか？": "Laquelle ?",
+ "音声": "Audio",
+ "一時停止": "Pause",
+ "シーンをタップして選べます": "Touchez une scène pour la choisir",
+ "全体": "Tout",
+ "画像": "Image",
+ "シーン": "Scènes",
+ "シーン {0}": "Scène {0}",
+ "シーン {0} の別バージョン": "Autres versions de la scène {0}",
+ "別の案を出す": "Voir d’autres",
+ "選び直す": "Rechoisir",
+ "これで書き出す": "Exporter"
 }
