@@ -8,8 +8,10 @@ export const models = {
   text: env('REELS_TEXT_MODEL', 'gemini-3.8-flash'),
   /** Product photo editing. Nano Banana 2.1. */
   image: env('REELS_IMAGE_MODEL', 'gemini-nano-banana-2.1'),
-  /** Image-to-video. */
-  video: env('REELS_VIDEO_MODEL', 'veo-3.1-fast-generate-preview'),
+  /** Image-to-video. The Veo 3.1 previews were retired on the Gemini API (Oct 2026); a veo-* id still uses the Veo path. */
+  video: env('REELS_VIDEO_MODEL', 'gemini-omni-1.1-flash'),
+  /** Instrumental music beds for product films. */
+  music: env('REELS_MUSIC_MODEL', 'lyria-3-clip-preview'),
 };
 
 export const prices = {
@@ -21,6 +23,10 @@ export const prices = {
     lite: { '720p': 0.03, '1080p': 0.05 },
     standard: { '720p': 0.2, '1080p': 0.2 },
   } as Record<string, Record<string, number>>,
+  /** Gemini Omni video: per million tokens (video output ≈ 5,792 tokens per second of 720p), and per second as a fallback */
+  omni: { input: 1.5, videoOut: 17.5, perSecond: { '720p': 0.1014, '1080p': 0.152 } as Record<string, number> },
+  /** per music clip (estimate) */
+  music: Number(env('REELS_MUSIC_PRICE', '0.04')),
   /** per million tokens, input / output (estimate for the default text model) */
   text: { input: Number(env('REELS_TEXT_PRICE_IN', '0.5')), output: Number(env('REELS_TEXT_PRICE_OUT', '3')) },
 };

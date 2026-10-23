@@ -1,0 +1,18 @@
+# What `gcloud builds submit` leaves out of the image upload. Same as .gitignore, except the gallery
+# previews (public/showcase, built by scripts/make-showcase.py) are shipped so the deployed home page has them.
+.gcloudignore
+.git
+node_modules
+out
+public/fonts
+public/jobs
+public/uploads
+public/samples/talk-matte.webm
+public/samples/black-long.mp4
+deploy/env.yaml
+data
+.ca.crt
+.env
+ios
+android
+app/native

@@ -1,0 +1,36 @@
+{
+  "photos": [
+    {
+      "src": "samples/photos/interior.jpg",
+      "caption": "Light all afternoon"
+    },
+    {
+      "src": "samples/photos/florist.jpg",
+      "caption": "Fresh on Fridays"
+    },
+    {
+      "src": "samples/photos/cafe.jpg",
+      "caption": "Coffee bar downstairs"
+    },
+    {
+      "src": "samples/photos/matcha.jpg",
+      "caption": "Weekend escapes nearby"
+    },
+    {
+      "src": "samples/photos/creator.jpg",
+      "caption": "Meet the host"
+    }
+  ],
+  "title": "The Corner Studio",
+  "subtitle": "Open house this weekend",
+  "cta": "Book a viewing",
+  "handle": "@corner.studio",
+  "motion": "collage",
+  "style": "minimal",
+  "palette": {
+    "bg": "#F4F1EC",
+    "ink": "#1C1B19",
+    "accent": "#B08D6A"
+  },
+  "bpm": 112
+}

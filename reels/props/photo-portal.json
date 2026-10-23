@@ -1,0 +1,36 @@
+{
+  "photos": [
+    {
+      "src": "samples/photos/ramen.jpg",
+      "caption": "Midnight tonkotsu"
+    },
+    {
+      "src": "samples/photos/sushi.jpg",
+      "caption": "Counter omakase"
+    },
+    {
+      "src": "samples/photos/matcha-story-1.jpg",
+      "caption": "Ceremonial matcha"
+    },
+    {
+      "src": "samples/photos/cafe.jpg",
+      "caption": "Third-wave pour"
+    },
+    {
+      "src": "samples/photos/matcha.jpg",
+      "caption": "Tea fields at dawn"
+    }
+  ],
+  "title": "Tokyo, Bite by Bite",
+  "subtitle": "Five stops worth the trip",
+  "cta": "Full map in bio",
+  "handle": "@eat.tokyo",
+  "motion": "portal",
+  "style": "minimal",
+  "palette": {
+    "bg": "#101012",
+    "ink": "#F4F2EE",
+    "accent": "#E8B36A"
+  },
+  "bpm": 110
+}

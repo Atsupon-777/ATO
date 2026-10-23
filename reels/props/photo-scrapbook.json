@@ -1,0 +1,36 @@
+{
+  "photos": [
+    {
+      "src": "samples/photos/puppy.jpg",
+      "caption": "his first beach day"
+    },
+    {
+      "src": "samples/photos/travel.jpg",
+      "caption": "the white dress"
+    },
+    {
+      "src": "samples/photos/cat.jpg",
+      "caption": "sunday naps"
+    },
+    {
+      "src": "samples/photos/cafe.jpg",
+      "caption": "our usual table"
+    },
+    {
+      "src": "samples/photos/florist.jpg",
+      "caption": "peonies, again"
+    }
+  ],
+  "title": "Summer Notes",
+  "subtitle": "Little things worth keeping",
+  "cta": "Save your summer",
+  "handle": "@summer.notes",
+  "motion": "scrapbook",
+  "style": "editorial",
+  "palette": {
+    "bg": "#EFE8DC",
+    "ink": "#2B241D",
+    "accent": "#C8644A"
+  },
+  "bpm": 100
+}

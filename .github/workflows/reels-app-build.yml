@@ -1,0 +1,59 @@
+# Checks that the Reels Studio iPhone and Android apps still compile (no signing, no upload).
+# Signed builds for TestFlight are made in Xcode on the Mac; see reels/app/native/README.md.
+name: Reels app build
+
+on:
+  workflow_dispatch:
+  pull_request:
+    paths:
+      - 'reels/ios/**'
+      - 'reels/android/**'
+      - 'reels/capacitor.config.ts'
+      - 'reels/package.json'
+      - 'reels/package-lock.json'
+      - 'reels/app/web/native.ts'
+      - 'reels/scripts/build-native.mjs'
+      - '.github/workflows/reels-app-build.yml'
+
+defaults:
+  run:
+    working-directory: reels
+
+jobs:
+  ios:
+    runs-on: macos-15
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: reels/package-lock.json
+      # Fonts are not needed to compile the app.
+      - run: npm ci --ignore-scripts
+      - run: node scripts/build-native.mjs && npx cap sync ios
+      - name: Build for the simulator (unsigned)
+        run: |
+          xcodebuild -project ios/App/App.xcodeproj -scheme App -configuration Debug \
+            -sdk iphonesimulator -destination 'generic/platform=iOS Simulator' \
+            CODE_SIGNING_ALLOWED=NO build | tail -n 40
+
+  android:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: reels/package-lock.json
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 21
+      - run: npm ci --ignore-scripts
+      - run: node scripts/build-native.mjs && npx cap sync android
+      - run: ./gradlew assembleDebug --no-daemon
+        working-directory: reels/android

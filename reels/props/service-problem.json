@@ -1,0 +1,23 @@
+{
+  "layout": "problem",
+  "screen": "none",
+  "style": "vivid",
+  "name": "Northstar Studio",
+  "tagline": "A design studio that ships work you're proud of.",
+  "category": "We're hiring · Designers",
+  "photos": ["samples/photos/creator.jpg"],
+  "hook": ["Tired of design", "by committee?"],
+  "hookEmphasis": "committee?",
+  "pains": ["Endless rounds of feedback", "Your best ideas never ship", "No time to actually grow"],
+  "features": [
+    { "title": "Small teams, real ownership" },
+    { "title": "4-day week, full pay" },
+    { "title": "Mentors who ship daily" }
+  ],
+  "offer": "Hiring now",
+  "cta": "Apply in 2 minutes",
+  "ctaNote": "Open roles in our profile",
+  "accent": "#2F5BFF",
+  "accent2": "#FFE45C",
+  "bpm": 118
+}

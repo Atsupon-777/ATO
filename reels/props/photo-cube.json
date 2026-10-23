@@ -1,0 +1,36 @@
+{
+  "photos": [
+    {
+      "src": "samples/photos/ramen.jpg",
+      "caption": "Tonkotsu at 1am"
+    },
+    {
+      "src": "samples/photos/sushi.jpg",
+      "caption": "Ten-seat omakase"
+    },
+    {
+      "src": "samples/photos/cafe.jpg",
+      "caption": "Last pour of the night"
+    },
+    {
+      "src": "samples/photos/matcha-story-1.jpg",
+      "caption": "Ceremonial matcha"
+    },
+    {
+      "src": "samples/photos/sushi-story-1.jpg",
+      "caption": "The final nigiri"
+    }
+  ],
+  "title": "Late Night Tokyo",
+  "subtitle": "Five counters after dark",
+  "cta": "Full list in bio",
+  "handle": "@tokyo.after.dark",
+  "motion": "cube",
+  "style": "editorial",
+  "palette": {
+    "bg": "#0E0C0A",
+    "ink": "#F6EFE4",
+    "accent": "#D9A35B"
+  },
+  "bpm": 112
+}

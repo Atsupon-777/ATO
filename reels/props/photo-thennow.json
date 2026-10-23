@@ -1,0 +1,36 @@
+{
+  "photos": [
+    {
+      "src": "samples/photos/interior.jpg",
+      "caption": "The new lounge"
+    },
+    {
+      "src": "samples/photos/cafe.jpg",
+      "caption": "Espresso bar"
+    },
+    {
+      "src": "samples/photos/florist.jpg",
+      "caption": "Flower counter"
+    },
+    {
+      "src": "samples/photos/matcha-story-1.jpg",
+      "caption": "Tea corner"
+    },
+    {
+      "src": "samples/photos/creator.jpg",
+      "caption": "Meet the owner"
+    }
+  ],
+  "title": "The Corner Shop, Reimagined",
+  "subtitle": "Five rooms, one renovation",
+  "cta": "Visit this weekend",
+  "handle": "@corner.shop",
+  "motion": "thennow",
+  "style": "minimal",
+  "palette": {
+    "bg": "#F2EEE8",
+    "ink": "#1E1C1A",
+    "accent": "#8C6A4F"
+  },
+  "bpm": 104
+}

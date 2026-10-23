@@ -12,5 +12,5 @@
     "noEmit": true,
     "lib": ["DOM", "ES2022"]
   },
-  "include": ["src", "server", "remotion.config.ts"]
+  "include": ["src", "server", "app", "remotion.config.ts"]
 }

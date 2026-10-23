@@ -1,0 +1,23 @@
+{
+  "layout": "pricing",
+  "screen": "none",
+  "style": "noir",
+  "name": "Daily Grind",
+  "tagline": "Your coffee, every day, for less.",
+  "category": "Coffee subscription",
+  "photos": ["samples/photos/cafe.jpg"],
+  "hook": ["Great coffee", "shouldn't cost", "a fortune."],
+  "hookEmphasis": "a fortune.",
+  "features": [{ "title": "Any drink, any size" }, { "title": "Skip the queue" }, { "title": "Cancel any time" }],
+  "plans": [
+    { "name": "Lite", "price": "$19", "period": "/ month", "perks": ["10 drinks a month", "Any size"] },
+    { "name": "Daily", "price": "$39", "period": "/ month", "perks": ["One drink every day", "Skip the queue"], "featured": true },
+    { "name": "Duo", "price": "$69", "period": "/ month", "perks": ["Two drinks a day", "Share with a friend"] }
+  ],
+  "offer": "First week free",
+  "cta": "Start your pass",
+  "ctaNote": "Details in our profile",
+  "accent": "#D9965B",
+  "accent2": "#F2D3A0",
+  "bpm": 116
+}

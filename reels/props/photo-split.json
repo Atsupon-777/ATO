@@ -1,0 +1,36 @@
+{
+  "photos": [
+    {
+      "src": "samples/photos/sneaker.jpg",
+      "caption": "Run the city"
+    },
+    {
+      "src": "samples/photos/fashion.jpg",
+      "caption": "Layer up"
+    },
+    {
+      "src": "samples/photos/fitness.jpg",
+      "caption": "Train hard"
+    },
+    {
+      "src": "samples/photos/beauty.jpg",
+      "caption": "Glow on"
+    },
+    {
+      "src": "samples/photos/creator.jpg",
+      "caption": "Own it"
+    }
+  ],
+  "title": "Built Different",
+  "subtitle": "Spring capsule",
+  "cta": "Shop the capsule",
+  "handle": "@built.different",
+  "motion": "split",
+  "style": "bold",
+  "palette": {
+    "bg": "#08090C",
+    "ink": "#FFFFFF",
+    "accent": "#5B8CFF"
+  },
+  "bpm": 126
+}

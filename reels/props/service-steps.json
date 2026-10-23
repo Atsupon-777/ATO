@@ -1,0 +1,23 @@
+{
+  "layout": "steps",
+  "screen": "none",
+  "style": "vivid",
+  "name": "Petal Post",
+  "tagline": "Fresh flowers at your door, every week.",
+  "category": "Flower subscription",
+  "photos": ["samples/photos/florist.jpg"],
+  "hook": ["Fresh flowers,", "zero effort."],
+  "hookEmphasis": "zero effort.",
+  "features": [{ "title": "Seasonal stems" }, { "title": "Hand-arranged" }, { "title": "Free delivery" }],
+  "steps": [
+    { "title": "Pick your style", "body": "Soft, bold or seasonal. Change it whenever you like." },
+    { "title": "We arrange it fresh", "body": "Our florists build each bouquet the morning it ships." },
+    { "title": "Enjoy every week", "body": "Delivered free. Skip or pause in one tap." }
+  ],
+  "offer": "First bouquet 50% off",
+  "cta": "Choose your bouquet",
+  "ctaNote": "Details in our profile",
+  "accent": "#1F4D3A",
+  "accent2": "#F7C6D0",
+  "bpm": 110
+}
