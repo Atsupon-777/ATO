@@ -26,7 +26,7 @@ import { Reflection, ShinyProduct } from '../components/Shine';
  */
 
 /** Frames two neighbouring shots overlap while they dissolve. */
-const OVERLAP = 14;
+export const OVERLAP = 14;
 const END_SECONDS = 4;
 
 const shotFrames = (s: FilmShot, fps: number) => Math.round(s.seconds * fps);
@@ -44,9 +44,9 @@ export const filmTimeline = (p: Pick<ProductFilmProps, 'shots'>, fps: number) =>
 
 export const productFilmDuration = (p: Pick<ProductFilmProps, 'shots'>, fps: number) => filmTimeline(p, fps).total;
 
-const isVideo = (src: string) => /\.(mp4|webm|mov|m4v)(\?|$)/i.test(src);
+export const isVideo = (src: string) => /\.(mp4|webm|mov|m4v)(\?|$)/i.test(src);
 
-const GRADES: Record<ProductFilmProps['grade'], { filter: string; tint: string }> = {
+export const GRADES: Record<ProductFilmProps['grade'], { filter: string; tint: string }> = {
   warm: {
     filter: 'contrast(1.07) saturate(1.04) sepia(0.12)',
     tint: 'linear-gradient(180deg, rgba(255,196,120,0.10), rgba(40,20,0,0.18))',
@@ -109,7 +109,7 @@ export const ProductFilm: React.FC<ProductFilmProps> = (p) => {
   );
 };
 
-const Shot: React.FC<{ shot: FilmShot; index: number; first: boolean; grade: { filter: string; tint: string } }> = ({
+export const Shot: React.FC<{ shot: FilmShot; index: number; first: boolean; grade: { filter: string; tint: string } }> = ({
   shot,
   index,
   first,
@@ -171,12 +171,13 @@ const phrases = (line: string) =>
  * One quiet line of copy: characters surface one by one out of a soft blur, hold, then dissolve upward.
  * Vertical (tategaki) for Japanese / Chinese on the right edge, otherwise a centred lower third.
  */
-const Whisper: React.FC<{ line: string; kicker: string; vertical: boolean; accent: string; lead: boolean }> = ({
+export const Whisper: React.FC<{ line: string; kicker: string; vertical: boolean; accent: string; lead: boolean; font?: string }> = ({
   line,
   kicker,
   vertical,
   accent,
   lead,
+  font = fonts.minchoJP,
 }) => {
   const frame = useCurrentFrame();
   const { durationInFrames } = useVideoConfig();
@@ -238,7 +239,7 @@ const Whisper: React.FC<{ line: string; kicker: string; vertical: boolean; accen
               key={ci}
               style={{
                 writingMode: 'vertical-rl',
-                fontFamily: fonts.minchoJP,
+                fontFamily: font,
                 fontWeight: 500,
                 fontSize: lead ? 86 : 76,
                 lineHeight: 1,
@@ -271,7 +272,7 @@ const Whisper: React.FC<{ line: string; kicker: string; vertical: boolean; accen
         ) : null}
         <div
           style={{
-            fontFamily: fonts.minchoJP,
+            fontFamily: font,
             fontWeight: 500,
             fontSize: lead ? 70 : 62,
             lineHeight: 1.35,
@@ -435,7 +436,7 @@ const BRISTLES = new Array(26).fill(0).map((_, i) => {
   };
 });
 
-const hexToRgb = (hex: string) => {
+export const hexToRgb = (hex: string) => {
   const m = hex.replace('#', '');
   const v = m.length === 3 ? m.split('').map((c) => c + c).join('') : m.slice(0, 6);
   const n = parseInt(v, 16);

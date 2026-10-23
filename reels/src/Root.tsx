@@ -25,6 +25,9 @@ import { FivePass, fivePassDuration } from './templates/FivePass';
 import fivePassDemo from '../props/fivepass-demo.json';
 import { ProductFilm, productFilmDuration } from './templates/ProductFilm';
 import filmDemo from '../props/film-demo.json';
+import { ExperienceFilm, experienceFilmDuration } from './templates/ExperienceFilm';
+import { experienceFilmSchema, type ExperienceFilmProps } from './schemas';
+import experienceDemo from '../props/experience-demo.json';
 import { PhotoReel, photoReelDuration } from './templates/PhotoReel';
 import { photoReelSchema, type PhotoReelProps } from './photoreel';
 import photoCinematic from '../props/photo-cinematic.json';
@@ -129,6 +132,17 @@ export const RemotionRoot: React.FC = () => (
       height={1920}
       durationInFrames={productFilmDuration(filmDemo as ProductFilmProps, FPS)}
       calculateMetadata={({ props }) => ({ durationInFrames: productFilmDuration(props, FPS) })}
+    />
+    <Composition
+      id="ExperienceFilm"
+      component={ExperienceFilm}
+      schema={experienceFilmSchema}
+      defaultProps={experienceDemo as ExperienceFilmProps}
+      fps={FPS}
+      width={1080}
+      height={1920}
+      durationInFrames={experienceFilmDuration(experienceDemo as ExperienceFilmProps, FPS)}
+      calculateMetadata={({ props }) => ({ durationInFrames: experienceFilmDuration(props, FPS) })}
     />
     <Composition
       id="PhotoReel"

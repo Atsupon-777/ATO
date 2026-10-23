@@ -3,6 +3,8 @@
 //   node server/cli.ts product --photo path.jpg (or --concept "otoro nigiri by a master chef") --brand ATO --name "ÉCLAT DE TEMPS" \
 //     --facts "18K rose gold case, sapphire crystal" [--style luxury|clean|cosmetic|natural] \
 //     [--video] [--on-skin] [--cta "詳しくはプロフィールへ"] [--handle @ato] [--lang ja] [--no-render]
+//   node server/cli.ts experience --brand "Rinrin Cycling Kyoto" --description "早朝の京都を巡るガイド付きサイクリング" --place "京都・嵐山" \
+//     [--facts "約3時間、1名12,000円、英語ガイド"] [--photo a.jpg --photo b.jpg] [--video c.mp4] [--url rinrin.jp] [--cta ...] [--handle @x] [--lang ja] [--job id] [--no-render]
 //   node server/cli.ts matte --video talk.mp4 --out public/uploads/talk-matte.webm [--model u2net_human_seg]
 //   node server/cli.ts fivepass --pass 1 --video talk.mp4 [--lang ja]        (prints the job id)
 //   node server/cli.ts fivepass --pass 2..5 --job <id> [--note "白い縁取りが偽物っぽい"]
@@ -11,6 +13,7 @@ import { parseArgs } from 'node:util';
 import { listModels } from './gemini.ts';
 import { models } from './config.ts';
 import { buildProductReel, STYLES, type Style } from './product.ts';
+import { buildExperienceFilm } from './experience.ts';
 import { matte } from './matte.ts';
 import { pass1, restoreVersion, runPass } from './fivepass.ts';
 import { isLang } from '../src/lang.ts';
@@ -61,6 +64,41 @@ if (cmd === 'models') {
     render: !values['no-render'],
   });
   console.log(JSON.stringify({ jobId: res.jobId, out: res.out, usage: res.usage }, null, 2));
+} else if (cmd === 'experience') {
+  const { values } = parseArgs({
+    args: rest,
+    options: {
+      brand: { type: 'string' },
+      description: { type: 'string' },
+      place: { type: 'string', default: '' },
+      facts: { type: 'string', default: '' },
+      photo: { type: 'string', multiple: true, default: [] },
+      video: { type: 'string', multiple: true, default: [] },
+      url: { type: 'string', default: '' },
+      cta: { type: 'string', default: '' },
+      handle: { type: 'string', default: '' },
+      lang: { type: 'string', default: 'ja' },
+      job: { type: 'string' },
+      'no-render': { type: 'boolean', default: false },
+    },
+  });
+  if (!isLang(values.lang)) throw new Error('--lang must be one of ja, en, fr, id, zh, es, ta');
+  if (!values.brand || !values.description) throw new Error('--brand and --description are required');
+  const res = await buildExperienceFilm({
+    brand: values.brand,
+    description: values.description,
+    place: values.place!,
+    facts: values.facts,
+    photos: values.photo,
+    videos: values.video,
+    url: values.url,
+    cta: values.cta,
+    handle: values.handle,
+    lang: values.lang,
+    jobId: values.job,
+    render: !values['no-render'],
+  });
+  console.log(JSON.stringify({ jobId: res.jobId, out: res.out, usage: res.usage }, null, 2));
 } else if (cmd === 'matte') {
   const { values } = parseArgs({
     args: rest,
@@ -92,6 +130,6 @@ if (cmd === 'models') {
     }
   }
 } else {
-  console.error('commands: models | product | matte | fivepass');
+  console.error('commands: models | product | experience | matte | fivepass');
   process.exit(1);
 }

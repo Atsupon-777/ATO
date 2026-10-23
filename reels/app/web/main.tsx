@@ -12,10 +12,11 @@ import { SaaSPromo, saasPromoBeats } from '../../src/templates/SaaSPromo';
 import { TalkCaptions, talkCaptionsDuration } from '../../src/templates/TalkCaptions';
 import { EffectsReel, MUSIC_DEFAULT, effectsReelDuration } from '../../src/templates/EffectsReel';
 import { FivePass, fivePassDuration } from '../../src/templates/FivePass';
+import { ExperienceFilm, experienceFilmDuration, experienceTimeline } from '../../src/templates/ExperienceFilm';
 import { FPS, beatFrames } from '../../src/lib/timing';
 import { keepSegments, paginate, placeWords } from '../../src/lib/edit';
 import { STICKER_PATHS } from '../../src/effects/overlays';
-import { effectIds, stickerIds, type Overlay, type BeatStyle, type EffectId, type EffectsReelProps, type FivePassProps, type ProductShineProps, type SaaSPromoProps, type TalkCaptionsProps } from '../../src/schemas';
+import { effectIds, stickerIds, type Overlay, type BeatStyle, type EffectId, type EffectsReelProps, type ExperienceFilmProps, type FivePassProps, type ProductShineProps, type SaaSPromoProps, type TalkCaptionsProps } from '../../src/schemas';
 import productSample from '../../props/product-watch.json';
 import saasSample from '../../props/saas-sample.json';
 import talkSample from '../../props/talk-sample.json';
@@ -23,6 +24,7 @@ import effectsSample from '../../props/effects-demo.json';
 import fivePassSample from '../../props/fivepass-demo.json';
 import serviceSample from '../../props/service-features.json';
 import photoSample from '../../props/photo-cinematic.json';
+import experienceSample from '../../props/experience-demo.json';
 import { PhotoReel, photoReelDuration } from '../../src/templates/PhotoReel';
 import { photoCategories, photoMotions, photoStyles, photoTemplates } from '../../src/templates/photoreel-catalog';
 import type { PhotoReelProps } from '../../src/photoreel';
@@ -168,7 +170,7 @@ const LivePreview: React.FC<{ poster?: string | React.ReactNode; solo?: Solo; la
 
 /** A still frame for a job's props: the talking video's first frames, else its first photo or screenshot. */
 const propsPoster = (props: any): string | undefined =>
-  !props ? undefined : typeof props.video === 'string' ? posterOf(props.video) : (props.photo ?? props.photos?.[0]?.src ?? props.photos?.[0] ?? props.desktop ?? props.phone) ? media(String(props.photo ?? props.photos?.[0]?.src ?? props.photos?.[0] ?? props.desktop ?? props.phone)) : undefined;
+  !props ? undefined : Array.isArray(props.shots) && typeof props.shots[0]?.src === 'string' ? (posterOf(props.shots[0].src) ?? media(props.shots[0].src)) : typeof props.video === 'string' ? posterOf(props.video) : (props.photo ?? props.photos?.[0]?.src ?? props.photos?.[0] ?? props.desktop ?? props.phone) ? media(String(props.photo ?? props.photos?.[0]?.src ?? props.photos?.[0] ?? props.desktop ?? props.phone)) : undefined;
 
 // 億 only reads naturally in Japanese and Chinese; other languages get a compact number ("96.3B").
 function mixCount() {
@@ -178,7 +180,7 @@ function mixCount() {
     : tr("約{0}通り", new Intl.NumberFormat(lang, { notation: 'compact', maximumFractionDigits: 1 }).format(n));
 }
 
-type TemplateId = 'ProductShine' | 'SaaSPromo' | 'TalkCaptions' | 'EffectsReel' | 'FivePass' | 'ServiceReel' | 'PhotoReel';
+type TemplateId = 'ProductShine' | 'SaaSPromo' | 'TalkCaptions' | 'EffectsReel' | 'FivePass' | 'ServiceReel' | 'PhotoReel' | 'ExperienceFilm';
 
 const TEMPLATES: Record<
   TemplateId,
@@ -239,6 +241,14 @@ const TEMPLATES: Record<
     component: PhotoReel,
     frames: (p) => photoReelDuration(p, FPS),
     sample: photoSample,
+  },
+  ExperienceFilm: {
+    name: tr("体験を映画のように"),
+    tag: tr("言葉なしの短編映画"),
+    desc: tr("ツアー・体験・宿・ワークショップを、話さない短編映画に。到着、体験の瞬間、五感のディテール、いちばんの景色までAIが撮り下ろし、音楽もAIが作ります。写真や動画があれば実際の場所として使います。"),
+    component: ExperienceFilm,
+    frames: (p) => experienceFilmDuration(p, FPS),
+    sample: experienceSample,
   },
 };
 
@@ -339,7 +349,7 @@ const uploadFile = async (f: File) => {
 
 // Tokens per reel, the same table as the server (A: own material 2, B: AI photo or effects 5, C: AI video 12).
 const tokensFor = (t: TemplateId, input: Record<string, any>) =>
-  t === 'ProductShine' ? (input.video ? 12 : 5) : t === 'EffectsReel' || t === 'FivePass' || t === 'SaaSPromo' || t === 'ServiceReel' ? 5 : 2;
+  t === 'ExperienceFilm' ? 12 : t === 'ProductShine' ? (input.video ? 12 : 5) : t === 'EffectsReel' || t === 'FivePass' || t === 'SaaSPromo' || t === 'ServiceReel' ? 5 : 2;
 /** Tokens to export a finished reel (each time), and extra for the premium edit (stickers, captions added by hand). */
 const EXPORT_TOKENS = 1;
 const PREMIUM_TOKENS = 2;
@@ -360,6 +370,7 @@ const STEP_LABELS: Record<string, string> = {
   transcribe: tr("文字起こし"),
   matte: tr("人物を切り抜き（数分かかります）"),
   'plan effects': tr("話に合わせてエフェクトを選ぶ"),
+  'scene stills': tr("各シーンの絵を作成"),
 };
 
 // ---------- small UI pieces ----------
@@ -514,13 +525,13 @@ const VideoLang: React.FC<{ template: TemplateId; value: string; onChange: (v: s
 const NewJob: React.FC<{ template: TemplateId; fx?: EffectId; mixArg?: string; tplArg?: string; onStarted: (job: Job) => void; onBack: () => void }> = ({ template, fx, mixArg, tplArg, onStarted, onBack }) => {
   // tplArg is a catalog template ("tpl-<id>"), which is also the key of its sample render.
   const tplId = tplArg?.slice(4);
-  const [input, setInput] = useState<Record<string, any>>({ lang: template === 'TalkCaptions' || template === 'EffectsReel' || template === 'FivePass' ? '' : lang, style: 'luxury', cta: tr("詳しくはプロフィールへ"), effects: fx ? [fx] : [], recipe: (template === 'EffectsReel' && tplId) || mixArg || 'all', templateId: tplId });
+  const [input, setInput] = useState<Record<string, any>>({ lang: template === 'TalkCaptions' || template === 'EffectsReel' || template === 'FivePass' ? '' : lang, style: 'luxury', cta: template === 'ExperienceFilm' ? '' : tr("詳しくはプロフィールへ"), effects: fx ? [fx] : [], recipe: (template === 'EffectsReel' && tplId) || mixArg || 'all', templateId: tplId });
   const [err, setErr] = useState('');
   const [busy, setBusy] = useState(false);
   const set = (k: string) => (v: any) => setInput((s) => ({ ...s, [k]: v }));
   const t = TEMPLATES[template];
   const ready =
-    template === 'ProductShine' ? input.photo && input.brand && input.name : template === 'SaaSPromo' ? input.desktop && input.name : template === 'ServiceReel' ? input.name && input.description : template === 'PhotoReel' ? input.photo1 : input.video;
+    template === 'ExperienceFilm' ? input.name && input.description : template === 'ProductShine' ? input.photo && input.brand && input.name : template === 'SaaSPromo' ? input.desktop && input.name : template === 'ServiceReel' ? input.name && input.description : template === 'PhotoReel' ? input.photo1 : input.video;
   const submit = async () => {
     setBusy(true);
     setErr('');
@@ -595,6 +606,39 @@ const NewJob: React.FC<{ template: TemplateId; fx?: EffectId; mixArg?: string; t
                 <Field label={tr("最後のひとこと（CTA）")} max={16} value={input.cta ?? ''} onChange={set('cta')} />
                 <Field label={tr("アカウント名")} max={30} value={input.handle ?? ''} onChange={set('handle')} placeholder="@your_brand" />
               </div>
+            </>
+          ) : template === 'ExperienceFilm' ? (
+            <>
+              <div className="grid2">
+                <Field label={tr("お店・ブランドの名前")} max={24} value={input.name ?? ''} onChange={set('name')} placeholder="Rinrin Cycling Kyoto" />
+                <Field label={tr("場所")} max={40} value={input.place ?? ''} onChange={set('place')} placeholder={tr("例: 京都・嵐山")} />
+              </div>
+              <Field
+                label={tr("どんな体験か")}
+                multiline
+                value={input.description ?? ''}
+                onChange={set('description')}
+                placeholder={tr("例: 早朝の京都を少人数で巡るガイド付きサイクリング。路地、鴨川、竹林を走り、最後は高台から街を見渡す")}
+              />
+              <Field
+                label={tr("所要時間・料金・人数など（最後の画面ではここに書いたことだけを使います）")}
+                multiline
+                value={input.facts ?? ''}
+                onChange={set('facts')}
+                placeholder={tr("例: 約3時間、1名12,000円、英語ガイド、最大6名")}
+              />
+              <div className="photodrops">
+                {Array.from({ length: Math.min(6, Object.keys(input).filter((k) => /^photo\d+$/.test(k) && input[k]).length + 1) }, (_, i) => (
+                  <Drop key={i} label={tr("写真・動画{0}（任意）", i + 1)} hint={tr("実際の場所や体験の様子")} accept="image/*,video/*" value={input[`photo${i + 1}`]} onChange={set(`photo${i + 1}`)} />
+                ))}
+              </div>
+              <p className="cost">{tr("写真や動画がなくても作れます。あれば実際の場所・人として映像に使い、足りない場面をAIが同じ雰囲気で撮り下ろします。")}</p>
+              <div className="grid2">
+                <Field label={tr("予約先（URL・電話など、任意）")} max={40} value={input.url ?? ''} onChange={set('url')} placeholder="rinrin-cycling.jp" />
+                <Field label={tr("最後のひとこと（CTA、任意）")} max={16} value={input.cta ?? ''} onChange={set('cta')} placeholder={tr("空き枠を見る")} />
+              </div>
+              <Field label={tr("アカウント名（任意）")} max={30} value={input.handle ?? ''} onChange={set('handle')} placeholder="@your_account" />
+              <p className="cost">{tr("AIが5つの場面（つかみ・到着・体験・五感・いちばんの景色）を映像にし、音楽を作って短編映画に仕上げます。生成に3〜6分ほどかかります。")}</p>
             </>
           ) : template === 'PhotoReel' ? (
             <>
@@ -719,6 +763,7 @@ const STEP_SECONDS: Record<string, number> = {
   transcribe: 30,
   matte: 150,
   'plan effects': 20,
+  'scene stills': 45,
 };
 
 /** Re-renders every second while something is running, so bars and countdowns move. */
@@ -754,7 +799,9 @@ const ProgressBar: React.FC<{ fraction: number; label: string; left: number }> =
 
 const Generating: React.FC<{ job: Job }> = ({ job }) => {
   const steps =
-    job.template === 'ProductShine'
+    job.template === 'ExperienceFilm'
+      ? ['plan and copy', 'scene stills', 'motion clip (Veo)', 'build props']
+      : job.template === 'ProductShine'
       ? ['cut-out', 'studio shot', 'plan and copy', ...(jobTokens(job) >= 12 ? ['motion clip (Veo)'] : []), 'build props']
       : job.template === 'SaaSPromo'
         ? ['copy and layout', 'build props']
@@ -977,6 +1024,8 @@ const Editor: React.FC<{ id: string }> = ({ id }) => {
     }
   };
 
+  if (job.template === 'ExperienceFilm' && !advanced)
+    return <FilmPick job={job} p={props} update={update} saved={saved} err={saveErr || job.error} onRender={render} onAdvanced={() => setAdvanced(true)} />;
   if (job.template === 'EffectsReel' && !advanced)
     return <PickFlow job={job} p={props} update={update} saved={saved} err={saveErr || job.error} onRender={render} onAdvanced={() => setAdvanced(true)} />;
 
@@ -1014,7 +1063,7 @@ const Editor: React.FC<{ id: string }> = ({ id }) => {
           <span className={`pill save ${saved ? '' : 'busy'}`}>{saved ? tr("保存済み") : tr("保存中…")}</span>
         </div>
         <Cost job={job} />
-        {job.template === 'EffectsReel' ? (
+        {job.template === 'EffectsReel' || job.template === 'ExperienceFilm' ? (
           <button className="btn small ghost" style={{ marginTop: 8 }} onClick={() => setAdvanced(false)}>
             {tr("かんたんに選ぶ画面に戻る")}
           </button>
@@ -1022,6 +1071,8 @@ const Editor: React.FC<{ id: string }> = ({ id }) => {
         <div style={{ height: 16 }} />
         {job.template === 'ProductShine' ? (
           <ProductPanel p={props} update={update} />
+        ) : job.template === 'ExperienceFilm' ? (
+          <ExperiencePanel p={props} update={update} />
         ) : job.template === 'SaaSPromo' ? (
           <SaasPanel p={props} update={update} />
         ) : job.template === 'ServiceReel' ? (
@@ -1226,6 +1277,225 @@ const ProductPanel: React.FC<PanelProps<ProductShineProps>> = ({ p, update }) =>
             <span>{tr("AI動画クリップを使う")}</span>
           </label>
         ) : null}
+      </div>
+    </>
+  );
+};
+
+// ---------- experience film: whole-film takes to pick from, then the text ----------
+
+type FilmOpt = { id: string; name: string; note?: string; swatch?: string; apply: (x: ExperienceFilmProps) => void };
+
+/** Colour worlds, the same as the server's LOOKS (server/experience.ts). */
+const FILM_LOOKS: { id: string; name: string; grade: ExperienceFilmProps['grade']; palette: ExperienceFilmProps['palette'] }[] = [
+  { id: 'golden', name: tr("金色の朝"), grade: 'warm', palette: { accent: '#E2B66E', glow: '#FFD49A', base: '#0B0907', ink: '#F7F0E4' } },
+  { id: 'verdant', name: tr("緑と木漏れ日"), grade: 'verdant', palette: { accent: '#C9B27C', glow: '#FFE7B0', base: '#0B110C', ink: '#F3F0E6' } },
+  { id: 'ocean', name: tr("海と空"), grade: 'cool', palette: { accent: '#8FD3E8', glow: '#CFF4FF', base: '#06121A', ink: '#EEF7FA' } },
+  { id: 'night', name: tr("夜と灯り"), grade: 'noir', palette: { accent: '#D9A55B', glow: '#FFC07A', base: '#08070A', ink: '#F4EEE6' } },
+  { id: 'airy', name: tr("明るく軽やか"), grade: 'neutral', palette: { accent: '#B8925A', glow: '#FFFFFF', base: '#14110E', ink: '#FBF8F2' } },
+];
+const FILM_TYPES: { id: ExperienceFilmProps['type']; name: string }[] = [
+  { id: 'mincho', name: tr("明朝") },
+  { id: 'serif', name: tr("セリフ") },
+  { id: 'sans', name: tr("ゴシック") },
+];
+/** Pace: how long each shot holds and how slow it plays. */
+const FILM_PACES: { id: string; name: string; k: number; rate: number }[] = [
+  { id: 'calm', name: tr("ゆったり"), k: 1.15, rate: 0.9 },
+  { id: 'normal', name: tr("ふつう"), k: 1, rate: 1 },
+  { id: 'brisk', name: tr("テンポよく"), k: 0.82, rate: 1.12 },
+];
+
+/** A whole-film take: a colour world, a typeface, the copy's direction and a pace, applied to the film as the AI made it. */
+const filmTake = (orig: ExperienceFilmProps, seed: number, k: number): FilmOpt => {
+  const r = rng(seed * 7919 + k * 104729 + 1);
+  const look = FILM_LOOKS[Math.floor(r() * FILM_LOOKS.length)];
+  const type = FILM_TYPES[Math.floor(r() * FILM_TYPES.length)];
+  const pace = FILM_PACES[Math.floor(r() * FILM_PACES.length)];
+  const cjk = orig.lang === 'ja' || orig.lang === 'zh' || orig.lang === undefined;
+  const vertical = cjk ? r() < 0.5 : false;
+  return {
+    id: `take-${seed}-${k}`,
+    name: `${look.name} · ${type.name}`,
+    note: `${pace.name}${cjk ? ` · ${vertical ? tr("縦書き") : tr("横書き")}` : ''}`,
+    swatch: look.palette.accent,
+    apply: (x) => {
+      x.grade = look.grade;
+      x.palette = { ...look.palette };
+      x.type = type.id;
+      x.vertical = vertical;
+      x.shots = orig.shots.map((s) => ({ ...s, seconds: Math.min(8, Math.max(1.5, Math.round(s.seconds * pace.k * 10) / 10)), rate: Math.min(2, Math.max(0.25, Math.round(s.rate * pace.rate * 100) / 100)) }));
+    },
+  };
+};
+
+/** The film for a thumbnail: each clip replaced by a still the server cuts from it, so a grid decodes no video. */
+const filmStill = (p: ExperienceFilmProps): ExperienceFilmProps => ({
+  ...p,
+  music: undefined,
+  shots: p.shots.map((s) => (/^jobs\/[\w-]+\/[\w.-]+\.mp4$/.test(s.src) ? { ...s, src: s.src.replace(/\.mp4$/, `.t${Math.max(0, Math.round((s.trimStart + s.seconds * s.rate * 0.9) * 2) * 5)}.jpg`) } : s)),
+});
+
+const FilmThumb: React.FC<{ p: ExperienceFilmProps }> = ({ p }) => {
+  const still = filmStill(p);
+  const { end, total } = experienceTimeline(still, FPS);
+  return (
+    <div className="wmwrap">
+      <PreviewMode.Provider value={STILL}>
+        <PreviewBoundary fallback={<PreviewFallback poster={propsPoster(p)} />}>
+          <Thumbnail component={ExperienceFilm} inputProps={still} durationInFrames={total} fps={FPS} compositionWidth={1080} compositionHeight={1920} frameToDisplay={Math.min(total - 1, end + 56)} style={{ width: '100%', height: '100%' }} />
+        </PreviewBoundary>
+      </PreviewMode.Provider>
+      <Watermark small />
+    </div>
+  );
+};
+
+/**
+ * The pick screen of an experience film: the film, then whole-film takes made from the same shots (colour world,
+ * typeface, vertical or horizontal copy, pace). A tap takes one; 「別の案」 deals new ones; the text is one tap away.
+ */
+const FilmPick: React.FC<{ job: Job; p: ExperienceFilmProps; update: PanelProps<ExperienceFilmProps>['update']; saved: boolean; err?: string; onRender: () => void; onAdvanced: () => void }> = ({
+  job,
+  p,
+  update,
+  saved,
+  err,
+  onRender,
+  onAdvanced,
+}) => {
+  const orig = useMemo(() => structuredClone(job.props as ExperienceFilmProps), [job.id]);
+  const [seed, setSeed] = useState(1);
+  const [chosen, setChosen] = useState('orig');
+  const takes = useMemo(
+    () => [
+      { id: 'orig', name: tr("最初の案"), note: tr("AIの案"), swatch: orig.palette.accent, apply: (x: ExperienceFilmProps) => Object.assign(x, structuredClone(orig), { title: x.title, tagline: x.tagline, place: x.place, chips: x.chips, cta: x.cta, url: x.url, handle: x.handle, shots: orig.shots.map((s, i) => ({ ...s, line: x.shots[i]?.line ?? s.line, kicker: x.shots[i]?.kicker ?? s.kicker })) }) } as FilmOpt,
+      ...[0, 1, 2, 3, 4].map((k) => filmTake(orig, seed, k)),
+    ],
+    [seed, orig],
+  );
+  const preview = (o: FilmOpt) => {
+    const x = structuredClone(p);
+    o.apply(x);
+    // copy edits the user made stay with every take
+    x.shots = x.shots.map((s, i) => ({ ...s, line: p.shots[i]?.line ?? s.line, kicker: p.shots[i]?.kicker ?? s.kicker }));
+    return x;
+  };
+  return (
+    <div className="editor" style={{ gridTemplateColumns: 'minmax(0, 1fr)' }}>
+      <div className="stage" style={{ position: 'static', width: '100%', maxWidth: 360, margin: '0 auto' }}>
+        <Preview template="ExperienceFilm" props={p} />
+        <div className="actions" style={{ justifyContent: 'center' }}>
+          {job.status === 'rendering' ? (
+            <div style={{ width: '100%' }}>
+              <RenderProgress job={job} />
+            </div>
+          ) : (
+            <>
+              <button className={`btn ${job.status === 'done' && job.video ? 'ghost' : ''}`} disabled={!saved || !!DEMO} onClick={onRender} title={DEMO ? DEMO_BLOCKED : undefined}>
+                {tr("動画を書き出す")} <small className="tokcost">{tr("{0}トークン", exportCost(job, {}))}</small>
+              </button>
+              {job.status === 'done' && job.video ? <ShareButton job={job} /> : null}
+            </>
+          )}
+        </div>
+        {job.status === 'done' && job.video ? <p className="cost ok" style={{ textAlign: 'center' }}>{tr("書き出し完了。編集すると再書き出しできます。")}</p> : null}
+        {err ? <p className="err">{err}</p> : null}
+      </div>
+      <div>
+        <Crumbs items={[{ label: tr("リール"), href: '#/reels' }, { label: TEMPLATES.ExperienceFilm.name, href: '#/reels' }, { label: job.title }]} />
+        <h1 style={{ marginTop: 12 }}>{job.title}</h1>
+        <Cost job={job} />
+        <div className="panel" style={{ marginTop: 16 }}>
+          <div className="row" style={{ justifyContent: 'space-between' }}>
+            <h2>{tr("全体の案")}</h2>
+            <button className="btn small ghost" onClick={() => setSeed((n) => n + 1)}>
+              {tr("別の案")}
+            </button>
+          </div>
+          <p className="cost">{tr("同じ映像のまま、色・書体・文字の向き・テンポを変えた案です。タップすると全体が切り替わります。")}</p>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, minmax(0, 1fr))', gap: 10, marginTop: 10 }}>
+            {takes.map((o) => (
+              <button
+                key={o.id}
+                onClick={() => (setChosen(o.id), update((x) => preview(o)))}
+                aria-pressed={chosen === o.id}
+                style={{ all: 'unset', cursor: 'pointer', display: 'grid', gap: 6, borderRadius: 12, padding: 4, outline: chosen === o.id ? '2px solid var(--accent)' : '1px solid var(--line, rgba(127,127,127,.25))' }}
+              >
+                <div style={{ aspectRatio: '9 / 16', borderRadius: 9, overflow: 'hidden', background: '#000' }}>
+                  <FilmThumb p={preview(o)} />
+                </div>
+                <div style={{ fontSize: 12, lineHeight: 1.3, padding: '0 4px 4px' }}>
+                  <span style={{ display: 'inline-block', width: 9, height: 9, borderRadius: 9, background: o.swatch, marginRight: 6 }} />
+                  <b>{o.name}</b>
+                  {o.note ? <div className="cost" style={{ margin: 0 }}>{o.note}</div> : null}
+                </div>
+              </button>
+            ))}
+          </div>
+        </div>
+        <span className={`pill save ${saved ? '' : 'busy'}`}>{saved ? tr("保存済み") : tr("保存中…")}</span>
+        <button className="btn small ghost" style={{ marginTop: 12, marginLeft: 8 }} onClick={onAdvanced}>
+          {tr("文字を直す")}
+        </button>
+      </div>
+    </div>
+  );
+};
+
+const ExperiencePanel: React.FC<PanelProps<ExperienceFilmProps>> = ({ p, update }) => {
+  const set = (fn: (p: ExperienceFilmProps) => void) => mut(update, fn)();
+  const BEAT: Record<string, string> = { hook: tr("つかみ"), arrival: tr("到着"), activity: tr("体験"), sensory: tr("五感"), peak: tr("いちばんの景色") };
+  return (
+    <>
+      <div className="panel">
+        <h2>{tr("最後の画面")}</h2>
+        <div className="form" style={{ maxWidth: 'none' }}>
+          <div className="grid2">
+            <Field label={tr("お店・ブランドの名前")} max={24} value={p.brand} onChange={(v) => set((x) => void (x.brand = v))} />
+            <Field label={tr("場所（英字）")} max={32} value={p.place} onChange={(v) => set((x) => void (x.place = v))} />
+          </div>
+          <Field label={tr("体験の名前")} max={28} value={p.title} onChange={(v) => set((x) => void (x.title = v))} />
+          <Field label={tr("キャッチコピー")} max={40} value={p.tagline} onChange={(v) => set((x) => void (x.tagline = v))} />
+          <div className="grid2">
+            {[0, 1, 2].map((i) => (
+              <Field
+                key={i}
+                label={tr("情報{0}（任意）", i + 1)}
+                max={16}
+                value={p.chips[i] ?? ''}
+                onChange={(v) => set((x) => void (x.chips = [0, 1, 2].map((k) => (k === i ? v : (x.chips[k] ?? ''))).filter(Boolean)))}
+              />
+            ))}
+          </div>
+          <div className="grid2">
+            <Field label="CTA" max={30} value={p.cta} onChange={(v) => set((x) => void (x.cta = v))} />
+            <Field label={tr("予約先（URL・電話など、任意）")} max={40} value={p.url} onChange={(v) => set((x) => void (x.url = v))} />
+          </div>
+          <Field label={tr("アカウント名")} max={30} value={p.handle} onChange={(v) => set((x) => void (x.handle = v))} />
+        </div>
+      </div>
+      <div className="panel">
+        <h2>{tr("場面ごとのひとこと")}</h2>
+        <div style={{ display: 'grid', gap: 12 }}>
+          {p.shots.map((s, i) => (
+            <div key={i} className="grid2">
+              <Field label={`${i + 1}. ${BEAT[s.beat] ?? s.beat}`} max={40} value={s.line} onChange={(v) => set((x) => void (x.shots[i].line = v))} />
+              <Field label={tr("{0}. 英字ラベル", i + 1)} max={28} value={s.kicker} onChange={(v) => set((x) => void (x.shots[i].kicker = v))} />
+            </div>
+          ))}
+        </div>
+      </div>
+      <div className="panel">
+        <h2>{tr("色と音")}</h2>
+        <Colors value={p.palette} labels={{ accent: tr("アクセント"), glow: tr("光"), base: tr("背景"), ink: tr("文字") }} onChange={(v) => set((x) => void (x.palette = v as ExperienceFilmProps['palette']))} />
+        <div className="field" style={{ marginTop: 14 }}>
+          <label>
+            <span>{tr("音楽の音量")}</span>
+            <span>{Math.round(p.musicVolume * 100)}%</span>
+          </label>
+          <input type="range" min={0} max={100} value={Math.round(p.musicVolume * 100)} onChange={(e) => set((x) => void (x.musicVolume = Number(e.target.value) / 100))} />
+        </div>
       </div>
     </>
   );
@@ -3560,7 +3830,7 @@ const HREF: Record<CatalogKind, (id: string) => string> = {
   video: (id) => `#/new/EffectsReel/tpl-${id}`,
   photo: (id) => `#/new/PhotoReel/tpl-${id}`,
   service: (id) => `#/new/ServiceReel/tpl-${id}`,
-  product: () => '#/new/ProductShine',
+  product: (id) => (id === 'experience-film' ? '#/new/ExperienceFilm/tpl-experience-film' : '#/new/ProductShine'),
 };
 /** The app's own starting points (each its own generator), filed under the same kinds as the catalog. */
 const FEATURED_KIND: Partial<Record<TemplateId, CatalogKind>> = { TalkCaptions: 'video', EffectsReel: 'video', FivePass: 'video', SaaSPromo: 'service', ProductShine: 'product' };
@@ -3574,8 +3844,9 @@ const loadCatalog = () =>
       ...videoTemplates.map((v) => ({ id: v.id, kind: 'video' as const, ja: v.ja, en: v.en, categories: v.categories as string[], premium: v.premium, uses: 0, added: '', sample: `tpl-${v.id}` })),
       ...photoTemplates.map((t) => ({ id: t.id, kind: 'photo' as const, ja: t.nameJa, en: t.nameEn, categories: t.categories as string[], count: t.count, uses: 0, added: '', sample: `tpl-${t.id}` })),
       ...serviceTemplates.map((t) => ({ id: t.id, kind: 'service' as const, ja: t.nameJa, en: t.nameEn, categories: t.industries as string[], uses: 0, added: '', sample: `tpl-${t.id}` })),
+      { id: 'experience-film', kind: 'product' as const, ja: '体験を映画のように', en: 'Experience film', categories: ['experience'], uses: 0, added: '', sample: 'tpl-experience-film' },
     ],
-    categories: { video: videoCategories, photo: photoCategories, service: serviceIndustries, product: [] },
+    categories: { video: videoCategories, photo: photoCategories, service: serviceIndustries, product: [{ id: 'experience', ja: '体験・ツアー', en: 'Experiences & tours' }] },
   })));
 
 /** Same order for everyone on a given day, different the next: "おすすめ" keeps changing without being random per tap. */
@@ -4056,7 +4327,7 @@ const FAQ = [
   { q: tr("解約はいつでもできますか？"), a: tr("できます。アカウントの「お支払い・解約の管理」から、いつでも手続きできます。") },
 ];
 
-const jobTokens = (j: Job) => j.tokens ?? (j.template === 'ProductShine' ? (j.props?.clip ? 12 : 5) : j.template === 'EffectsReel' || j.template === 'FivePass' || j.template === 'SaaSPromo' ? 5 : 2);
+const jobTokens = (j: Job) => j.tokens ?? (j.template === 'ExperienceFilm' ? 12 : j.template === 'ProductShine' ? (j.props?.clip ? 12 : 5) : j.template === 'EffectsReel' || j.template === 'FivePass' || j.template === 'SaaSPromo' ? 5 : 2);
 
 type Me = { admin?: boolean; email?: string; plan: 'free' | 'starter' | 'standard' | 'pro'; tokens: number; extra: number; balance: number; billing: boolean; subscribed: boolean; store?: 'stripe' | 'app_store' | 'play_store'; pastDue?: boolean; freePending?: boolean; displayName?: string; avatar?: string; auth: boolean };
 const PLAN_NAMES: Record<Me['plan'], string> = { free: tr("無料"), starter: tr("スターター"), standard: tr("スタンダード"), pro: tr("プロ") };

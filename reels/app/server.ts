@@ -10,7 +10,7 @@ import path from 'node:path';
 import { pipeline } from 'node:stream/promises';
 import { fileURLToPath } from 'node:url';
 import * as esbuild from 'esbuild';
-import { effectIds, effectsReelSchema, productShineSchema, saasPromoSchema, talkCaptionsSchema, fivePassSchema, type EffectsReelProps } from '../src/schemas.ts';
+import { effectIds, effectsReelSchema, experienceFilmSchema, productShineSchema, saasPromoSchema, talkCaptionsSchema, fivePassSchema, type EffectsReelProps } from '../src/schemas.ts';
 import { pass1, restoreVersion, runPass } from '../server/fivepass.ts';
 import { loudnorm } from '../server/loudnorm.ts';
 import { catalog, countUse } from '../server/catalog.ts';
@@ -20,6 +20,7 @@ import { photoReelSchema } from '../src/photoreel.ts';
 import { serviceReelSchema } from '../src/servicereel.ts';
 import { buildEffectsProps } from '../server/effects.ts';
 import { buildProductReel, STYLES, type Style } from '../server/product.ts';
+import { buildExperienceFilm } from '../server/experience.ts';
 import { renderTemplate } from '../server/render.ts';
 import { buildSaasProps } from '../server/saas.ts';
 import { buildTalkProps } from '../server/talk.ts';
@@ -52,6 +53,7 @@ const schemas = {
   FivePass: fivePassSchema,
   ServiceReel: serviceReelSchema,
   PhotoReel: photoReelSchema,
+  ExperienceFilm: experienceFilmSchema,
 };
 type Template = keyof typeof schemas;
 
@@ -87,8 +89,8 @@ const PREMIUM_TOKENS = 2;
 const exportCost = (job: Job) =>
   EXPORT_TOKENS + ((job.props as { overlays?: unknown[] } | undefined)?.overlays?.length && !job.premiumPaid ? PREMIUM_TOKENS : 0);
 
-/** Tokens each kind of reel takes: own footage only 2, AI photo or effects 5, with AI video 12. */
-const tokensFor = (t: Template, input: Record<string, any>) => (t === 'ProductShine' ? (input.video ? 12 : 5) : t === 'EffectsReel' || t === 'FivePass' || t === 'SaaSPromo' || t === 'ServiceReel' ? 5 : 2);
+/** Tokens each kind of reel takes: own footage only 2, AI photo or effects 5, with AI video 12 (experience films are all AI video). */
+const tokensFor = (t: Template, input: Record<string, any>) => (t === 'ExperienceFilm' ? 12 : t === 'ProductShine' ? (input.video ? 12 : 5) : t === 'EffectsReel' || t === 'FivePass' || t === 'SaaSPromo' || t === 'ServiceReel' ? 5 : 2);
 
 const jobs = new Map<string, Job>();
 
@@ -188,6 +190,28 @@ async function startJob(template: Template, input: Record<string, any>, user: Us
         });
         job.props = res.props;
         job.usage = res.usage;
+      } else if (template === 'ExperienceFilm') {
+        const files = (Array.isArray(input.photos) ? input.photos : []).map(upload).filter(Boolean) as string[];
+        const description = String(input.description || '').slice(0, 400);
+        if (!description) throw new Error('どんな体験かを書いてください');
+        const res = await buildExperienceFilm({
+          brand: String(input.name || '').slice(0, 24),
+          description,
+          place: String(input.place || '').slice(0, 40),
+          facts: String(input.facts || '').slice(0, 300),
+          photos: files.filter((f) => /\.(jpe?g|png|webp)$/i.test(f)),
+          videos: files.filter((f) => /\.(mp4|mov|m4v)$/i.test(f)),
+          url: String(input.url || '').slice(0, 40),
+          cta: String(input.cta || '').slice(0, 16),
+          handle: String(input.handle || '').slice(0, 30),
+          lang,
+          jobId: id,
+          onStep,
+          render: false,
+        });
+        job.props = res.props;
+        job.usage = res.usage;
+        job.title = res.props.title || job.title;
       } else if (template === 'SaaSPromo') {
         const desktop = upload(input.desktop);
         if (!desktop) throw new Error('PC画面のスクリーンショットをアップロードしてください');
@@ -822,7 +846,7 @@ const posterOfJob = (video?: string, props?: Record<string, any>) => {
 };
 
 const thumbOf = (t: Template, props?: Record<string, any>) =>
-  !props ? undefined : t === 'ProductShine' ? props.photo : t === 'SaaSPromo' ? props.desktop : t === 'ServiceReel' ? (props.desktop ?? props.phone ?? props.photos?.[0]) : t === 'PhotoReel' ? props.photos?.[0]?.src : undefined;
+  !props ? undefined : t === 'ExperienceFilm' ? posterOfJob(undefined, { video: props.shots?.find((s: { src: string }) => /\.mp4$/.test(s.src))?.src }) : t === 'ProductShine' ? props.photo : t === 'SaaSPromo' ? props.desktop : t === 'ServiceReel' ? (props.desktop ?? props.phone ?? props.photos?.[0]) : t === 'PhotoReel' ? props.photos?.[0]?.src : undefined;
 
 await loadJobs();
 server.listen(PORT, () => console.log(`Editless on ${ORIGIN} (login ${authEnabled ? 'on' : 'off'}, billing ${billingEnabled ? 'on' : 'off'})`));

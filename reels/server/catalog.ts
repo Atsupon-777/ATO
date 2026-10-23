@@ -9,7 +9,7 @@ import { photoCategories, photoTemplates } from '../src/templates/photoreel-cata
 import { serviceIndustries, serviceTemplates } from '../src/templates/servicereel-catalog.ts';
 import { dataDir, publicDir } from './paths.ts';
 
-export type CatalogKind = 'video' | 'photo' | 'service';
+export type CatalogKind = 'video' | 'photo' | 'service' | 'product';
 export type CatalogEntry = {
   id: string;
   kind: CatalogKind;
@@ -57,6 +57,7 @@ const sources: (() => Omit<CatalogEntry, 'uses' | 'added' | 'sample'>[])[] = [
     videoTemplates.map((v) => ({ id: v.id, kind: 'video' as const, ja: v.ja, en: v.en, categories: v.categories, premium: v.premium })),
   () => photoTemplates.map((t) => ({ id: t.id, kind: 'photo' as const, ja: t.nameJa, en: t.nameEn, categories: t.categories, count: t.count })),
   () => serviceTemplates.map((t) => ({ id: t.id, kind: 'service' as const, ja: t.nameJa, en: t.nameEn, categories: t.industries })),
+  () => productTemplates.map((t) => ({ id: t.id, kind: 'product' as const, ja: t.ja, en: t.en, categories: t.categories })),
   () =>
     extraRecipes.map((r) => ({ id: r.id, kind: 'video' as const, ja: r.name, en: r.en ?? r.name, categories: r.categories ?? [], premium: r.premium })),
 ];
@@ -72,9 +73,15 @@ export async function catalog(): Promise<{ entries: CatalogEntry[]; categories: 
     return { ...e, uses: uses[e.id] ?? 0, added: seen[e.id], sample: showcase.has(`tpl-${e.id}`) ? `tpl-${e.id}` : undefined };
   });
   if (fresh) await save(seenFile, seen);
-  return { entries, categories: { video: videoCategories, photo: categoryRows.photo, service: categoryRows.service } };
+  return { entries, categories: { video: videoCategories, photo: categoryRows.photo, service: categoryRows.service, product: productCategories } };
 }
 export const categoryRows: Record<'photo' | 'service', { id: string; ja: string; en: string }[]> = { photo: photoCategories, service: serviceIndustries };
+
+/** Product-kind templates that are their own generator (the app opens #/new/<generator>/tpl-<id>). */
+export const productCategories = [{ id: 'experience', ja: '体験・ツアー', en: 'Experiences & tours' }];
+export const productTemplates = [
+  { id: 'experience-film', generator: 'ExperienceFilm', ja: '体験を映画のように', en: 'Experience film', categories: ['experience'] },
+];
 
 /** Counts a reel started from a template, for the 人気 sort. */
 export async function countUse(id: string) {

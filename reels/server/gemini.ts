@@ -96,6 +96,8 @@ export async function imageToVideo(opts: {
   pollMs?: number;
 }): Promise<string> {
   const seconds = opts.seconds ?? 8;
+  // Google retired the Veo 3.1 previews on the Gemini API (404 "no longer available"); Gemini Omni makes the clips now.
+  if (!models.video.startsWith('veo')) return omniOnce({ ...opts, seconds });
   // Veo allows 1080p only for 8-second clips. The Gemini Developer API always returns audio
   // (generateAudio is Vertex-only); the template plays the clip muted.
   const resolution = seconds === 8 ? (opts.resolution ?? '1080p') : '720p';
@@ -143,6 +145,60 @@ async function veoOnce(opts: Parameters<typeof imageToVideo>[0] & { seconds: num
     model: models.video,
     units: `${seconds}s ${resolution}, no audio`,
     usd: seconds * (prices.video[family]?.[resolution] ?? 0.1),
+  });
+  return opts.out;
+}
+
+/**
+ * Image-to-video with Gemini Omni (Interactions API, run in the background and polled). 720p unless
+ * REELS_VIDEO_RES=1080p: at 9:16 the film is graded and upscaled anyway, and 1080p costs half as much again.
+ */
+async function omniOnce(opts: Parameters<typeof imageToVideo>[0] & { seconds: number }): Promise<string> {
+  const resolution = process.env.REELS_VIDEO_RES === '1080p' ? '1080p' : '720p';
+  const avoid = opts.negativePrompt ?? 'warped logo, changing text, deformed product, extra parts, morphing, flicker';
+  const params = {
+    model: models.video,
+    background: true,
+    input: [
+      { type: 'image', data: (await readFile(opts.image)).toString('base64'), mime_type: mimeOf(opts.image) },
+      { type: 'text', text: `${opts.prompt}\nThe video starts exactly on this image. Avoid: ${avoid}. No speech, no music.` },
+    ],
+    generation_config: { video_config: { task: 'image_to_video' } },
+    response_format: { type: 'video', aspect_ratio: '9:16', duration: `${opts.seconds}s`, resolution, delivery: 'inline' },
+  };
+  let it: any = await (ai().interactions.create as (p: unknown) => Promise<unknown>)(params);
+  const started = Date.now();
+  while (!['completed', 'failed', 'cancelled', 'incomplete', 'budget_exceeded'].includes(it.status)) {
+    if (Date.now() - started > 12 * 60_000) throw new Error(`${opts.step}: ${models.video} did not finish within 12 minutes`);
+    await new Promise((r) => setTimeout(r, opts.pollMs ?? 10_000));
+    it = await ai().interactions.get(it.id);
+  }
+  if (it.status !== 'completed') throw new Error(`${opts.step}: ${models.video} ${it.status}: ${JSON.stringify(it.error ?? it.steps?.at?.(-1) ?? '').slice(0, 400)}`);
+  // the clip is the first video block anywhere in the result (output_video, or inside the steps)
+  const find = (v: any): any => {
+    if (!v || typeof v !== 'object') return undefined;
+    if (v.type === 'video' && (v.data || v.uri)) return v;
+    for (const x of Array.isArray(v) ? v : Object.values(v)) {
+      const f = find(x);
+      if (f) return f;
+    }
+  };
+  const video = it.output_video?.data || it.output_video?.uri ? it.output_video : find(it.steps ?? it.outputs ?? it);
+  if (!video) throw new Error(`${opts.step}: ${models.video} returned no video`);
+  if (video.data) await writeFile(opts.out, Buffer.from(video.data, 'base64'));
+  else {
+    const r = await fetch(video.uri, { headers: { 'x-goog-api-key': requireKey() } });
+    if (!r.ok) throw new Error(`${opts.step}: download failed (${r.status})`);
+    await writeFile(opts.out, Buffer.from(await r.arrayBuffer()));
+  }
+  const u = it.usage ?? {};
+  const outTok = Number(u.total_output_tokens ?? 0);
+  const inTok = Number(u.total_input_tokens ?? 0);
+  opts.usage.add({
+    step: opts.step,
+    model: models.video,
+    units: `${opts.seconds}s ${resolution}${outTok ? `, ${inTok} in / ${outTok} out tokens` : ''}`,
+    usd: outTok ? (inTok * prices.omni.input + outTok * prices.omni.videoOut) / 1e6 : opts.seconds * (prices.omni.perSecond[resolution] ?? 0.1),
   });
   return opts.out;
 }

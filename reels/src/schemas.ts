@@ -99,6 +99,42 @@ export const productShineSchema = z.object({
 
 export type ProductShineProps = z.infer<typeof productShineSchema>;
 
+/** Story beats of an experience film, in the order they play. */
+export const experienceBeats = ['hook', 'arrival', 'activity', 'sensory', 'peak'] as const;
+
+/**
+ * A wordless short film for an experience (a bike tour, a cooking class, a tea ceremony, a dive, a ryokan stay):
+ * a striking hook, arriving at the place, the activity in motion, its sensory details, the peak moment, then an
+ * end card with the name, one line of copy, optional chips (duration, price) and the booking line.
+ */
+export const experienceFilmSchema = z.object({
+  /** The business (shown small above the title). */
+  brand: z.string().max(24),
+  /** The experience itself, e.g. 早朝の嵐山サイクリング. */
+  title: z.string().max(28),
+  tagline: z.string().max(40),
+  /** Where it happens, e.g. Kyoto · Arashiyama. Shown as a kicker on the first shot and on the end card. */
+  place: z.string().max(32),
+  lang: z.enum(langs).optional(),
+  /** Japanese and Chinese copy can run vertically (tategaki). */
+  vertical: z.boolean(),
+  shots: z.array(filmShotSchema.extend({ beat: z.enum(experienceBeats) })).min(2).max(8),
+  /** Short facts for the end card, e.g. 約3時間 / ¥12,000〜 / 英語ガイド. */
+  chips: z.array(z.string().max(16)).max(3),
+  cta: z.string().max(30),
+  /** Booking line: a URL, a phone number or "プロフィールのリンクから". */
+  url: z.string().max(40),
+  handle: z.string().max(30),
+  music: z.string().optional(),
+  musicVolume: z.number().min(0).max(1),
+  grade: z.enum(['warm', 'cool', 'neutral', 'verdant', 'noir']),
+  /** Typeface of the copy: mincho (Japanese serif), serif (Latin display serif) or sans. */
+  type: z.enum(['mincho', 'serif', 'sans']),
+  palette: z.object({ accent: zColor(), glow: zColor(), base: zColor(), ink: zColor() }),
+});
+
+export type ExperienceFilmProps = z.infer<typeof experienceFilmSchema>;
+
 const focus = z.object({ x: z.number().min(0).max(1), y: z.number().min(0).max(1), zoom: z.number().min(1).max(4) });
 
 export const saasPromoSchema = z.object({

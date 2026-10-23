@@ -1,0 +1,21 @@
+{
+  "brand": "Rinrin Cycling",
+  "title": "朝の京都をめぐる",
+  "tagline": "人のいない京都を、自転車で。",
+  "place": "Kyoto",
+  "lang": "ja",
+  "vertical": true,
+  "shots": [
+    { "src": "samples/photos/travel.jpg", "kind": "hook", "beat": "hook", "seconds": 3, "trimStart": 0, "rate": 1, "audio": 0, "line": "朝六時、まだ誰もいない。", "kicker": "", "focusY": 0.5 },
+    { "src": "samples/photos/matcha-story-1.jpg", "kind": "moment", "beat": "activity", "seconds": 3.4, "trimStart": 0, "rate": 1, "audio": 0, "line": "風を連れて、走る。", "kicker": "The ride", "focusY": 0.5 },
+    { "src": "samples/photos/cafe.jpg", "kind": "hero", "beat": "peak", "seconds": 3.6, "trimStart": 0, "rate": 1, "audio": 0, "line": "", "kicker": "", "focusY": 0.5 }
+  ],
+  "chips": ["約3時間", "¥12,000〜", "英語ガイド"],
+  "cta": "空き枠を見る",
+  "url": "rinrin-cycling.jp",
+  "handle": "@rinrin_kyoto",
+  "musicVolume": 0.8,
+  "grade": "warm",
+  "type": "mincho",
+  "palette": { "accent": "#E2B66E", "glow": "#FFD49A", "base": "#0B0907", "ink": "#F7F0E4" }
+}
