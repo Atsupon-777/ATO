@@ -925,5 +925,20 @@
  "おすすめの投稿時間": "Waktu terbaik untuk posting",
  "キャプションとハッシュタグをまとめてコピー": "Salin caption dan hashtag",
  "コピーしました": "Tersalin",
- "コピー": "Salin"
+ "コピー": "Salin",
+ "生成の状態": "Status pembuatan",
+ "失敗が続いています": "Gagal berulang",
+ "正常": "Normal",
+ "直近24時間": "24 jam terakhir",
+ "直近7日": "7 hari terakhir",
+ "失敗率 {0}": "{0} gagal",
+ "成功 {0}・失敗 {1}": "{0} berhasil · {1} gagal",
+ "書き出し失敗 {0}": "{0} ekspor gagal",
+ "24時間 成功/失敗": "24 jam ok/gagal",
+ "7日 成功/失敗": "7 hari ok/gagal",
+ "失敗率(7日)": "Tingkat gagal (7 hari)",
+ "最後の失敗": "Gagal terakhir",
+ "直近7日の生成はまだありません": "Belum ada pembuatan dalam 7 hari terakhir",
+ "最近のエラー": "Error terbaru",
+ "生成": "Pembuatan"
 }

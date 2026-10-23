@@ -5122,7 +5122,82 @@ type Metrics = {
   reels: { made: number; failed: number; exports: number; byTemplate: { template: string; reels: number; failed: number; exports: number; aiCost: number; avgAiCost: number | null }[] };
   tokens: { sold: number; consumed: number; refunded: number; free: number; granted?: number; outstanding: number };
   trend: MonthSummary[];
+  health?: Health;
 };
+type HealthWin = { ok: number; failed: number; rate: number | null };
+type Health = {
+  day: HealthWin & { exportsFailed: number };
+  week: HealthWin & { exportsFailed: number };
+  byTemplate: { template: string; day: HealthWin; week: HealthWin; lastFailAt?: string }[];
+  recentErrors: { at: string; jobId: string; template: string; kind: 'generate' | 'export'; message: string }[];
+  alert: boolean;
+};
+
+const whenShort = (iso: string) => new Date(iso).toLocaleString(lang, { month: 'numeric', day: 'numeric', hour: '2-digit', minute: '2-digit' });
+const rateTxt = (r: number | null) => (r === null ? '—' : `${r}%`);
+const tplName = (t: string) => TEMPLATES[t as TemplateId]?.name ?? t;
+
+/** Generation health for the owner: is making reels working right now, and if not, what is the error. */
+const HealthPanel: React.FC<{ h: Health }> = ({ h }) => (
+  <section className={`admhealth ${h.alert ? 'alert' : ''}`}>
+    <div className="thead">
+      <h2>{tr("生成の状態")}</h2>
+      <span className={`admstate ${h.alert ? 'bad' : 'good'}`}>{h.alert ? tr("失敗が続いています") : tr("正常")}</span>
+    </div>
+    <div className="admcards admhealthcards">
+      {([[tr("直近24時間"), h.day], [tr("直近7日"), h.week]] as const).map(([label, w]) => (
+        <div key={label} className={`admcard ${w.rate !== null && w.rate >= 30 && w.failed >= 3 ? 'bad' : ''}`}>
+          <span>{label}</span>
+          <b>{tr("失敗率 {0}", rateTxt(w.rate))}</b>
+          <small>
+            {tr("成功 {0}・失敗 {1}", fmtN(w.ok), fmtN(w.failed))}
+            {w.exportsFailed ? ` · ${tr("書き出し失敗 {0}", fmtN(w.exportsFailed))}` : ''}
+          </small>
+        </div>
+      ))}
+    </div>
+    {h.byTemplate.length ? (
+      <div className="admtable">
+        <table>
+          <thead>
+            <tr><th>{tr("テンプレート")}</th><th>{tr("24時間 成功/失敗")}</th><th>{tr("7日 成功/失敗")}</th><th>{tr("失敗率(7日)")}</th><th>{tr("最後の失敗")}</th></tr>
+          </thead>
+          <tbody>
+            {h.byTemplate.map((r) => (
+              <tr key={r.template}>
+                <td>{tplName(r.template)}</td>
+                <td>{fmtN(r.day.ok)} / <span className={r.day.failed ? 'neg' : ''}>{fmtN(r.day.failed)}</span></td>
+                <td>{fmtN(r.week.ok)} / <span className={r.week.failed ? 'neg' : ''}>{fmtN(r.week.failed)}</span></td>
+                <td className={(r.week.rate ?? 0) >= 30 ? 'neg' : ''}>{rateTxt(r.week.rate)}</td>
+                <td>{r.lastFailAt ? whenShort(r.lastFailAt) : '—'}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+    ) : (
+      <p className="cost">{tr("直近7日の生成はまだありません")}</p>
+    )}
+    {h.recentErrors.length ? (
+      <>
+        <h3 className="admsub">{tr("最近のエラー")}</h3>
+        <ul className="admerrors">
+          {h.recentErrors.map((e) => (
+            <li key={e.jobId + e.at}>
+              <div>
+                <b>{tplName(e.template)}</b>
+                <small>
+                  {e.kind === 'export' ? tr("書き出し") : tr("生成")} · {whenShort(e.at)} · {e.jobId}
+                </small>
+              </div>
+              <code>{e.message}</code>
+            </li>
+          ))}
+        </ul>
+      </>
+    ) : null}
+  </section>
+);
 
 const yen = (n: number): string => (n < 0 ? `−${yen(-n)}` : tr("{0}円", fmtN(n)));
 const CHANNEL_NAMES: Record<string, string> = { stripe: 'Stripe (Web)', app_store: 'App Store', play_store: 'Google Play' };
@@ -5230,6 +5305,7 @@ const Admin: React.FC = () => {
         </div>
       </div>
       {err ? <div className="err">{err}</div> : null}
+      {data.health ? <HealthPanel h={data.health} /> : null}
       <div className="admcards">
         {cards.map((c) => (
           <div key={c.label} className={`admcard ${c.tone ?? ''}`}>

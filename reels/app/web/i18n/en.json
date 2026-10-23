@@ -925,5 +925,20 @@
  "おすすめの投稿時間": "Best time to post",
  "キャプションとハッシュタグをまとめてコピー": "Copy caption and hashtags",
  "コピーしました": "Copied",
- "コピー": "Copy"
+ "コピー": "Copy",
+ "生成の状態": "Generation health",
+ "失敗が続いています": "Repeated failures",
+ "正常": "Working",
+ "直近24時間": "Last 24 hours",
+ "直近7日": "Last 7 days",
+ "失敗率 {0}": "{0} failed",
+ "成功 {0}・失敗 {1}": "{0} ok · {1} failed",
+ "書き出し失敗 {0}": "{0} exports failed",
+ "24時間 成功/失敗": "24h ok/failed",
+ "7日 成功/失敗": "7d ok/failed",
+ "失敗率(7日)": "Failure rate (7d)",
+ "最後の失敗": "Last failure",
+ "直近7日の生成はまだありません": "No generations in the last 7 days",
+ "最近のエラー": "Recent errors",
+ "生成": "Generation"
 }

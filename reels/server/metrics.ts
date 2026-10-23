@@ -23,7 +23,7 @@ export const isAdmin = (u: User, accountEmail?: string) => {
 };
 
 /** The fields of a job the dashboard reads. */
-export type JobLike = { id: string; template: string; createdAt: string; status: string; owner?: string; tokens?: number; video?: string; renderStartedAt?: string; props?: unknown; usage?: { totalUsd: number } };
+export type JobLike = { id: string; template: string; createdAt: string; status: string; owner?: string; tokens?: number; video?: string; renderStartedAt?: string; props?: unknown; usage?: { totalUsd: number }; error?: string };
 
 const JST = 9 * 3600_000;
 /** YYYY-MM of a timestamp, in Japan time. */
@@ -56,6 +56,48 @@ const addSale = (m: Money, s: SaleEntry) => {
   m.count += 1;
   m.tokens += s.tokens;
 };
+
+/** Export failures keep the reel (status back to ready) and say so in `error`. */
+const EXPORT_FAIL = /^書き出しに失敗/;
+
+/**
+ * Is generation working right now? Successes and failures in the last 24 hours and 7 days, overall and per
+ * template, plus the latest error messages, so an outage (a model retired, a key revoked) shows at a glance.
+ * Generations count by when they started; a job still generating is not counted yet.
+ */
+export function health(jobs: JobLike[], now = Date.now()) {
+  const H = 3600_000;
+  const finished = jobs.filter((j) => j.status !== 'generating');
+  const genFailed = (j: JobLike) => j.status === 'error';
+  const win = (hours: number) => {
+    const js = finished.filter((j) => now - Date.parse(j.createdAt) < hours * H);
+    const failed = js.filter(genFailed).length;
+    const exportsFailed = jobs.filter((j) => j.error && EXPORT_FAIL.test(j.error) && now - Date.parse(j.renderStartedAt ?? j.createdAt) < hours * H).length;
+    return { ok: js.length - failed, failed, rate: js.length ? Number(((failed / js.length) * 100).toFixed(1)) : null, exportsFailed };
+  };
+  const day = win(24);
+  const week = win(24 * 7);
+  const templates = [...new Set(finished.filter((j) => now - Date.parse(j.createdAt) < 24 * 7 * H).map((j) => j.template))];
+  const byTemplate = templates
+    .map((t) => {
+      const of = (hours: number) => {
+        const js = finished.filter((j) => j.template === t && now - Date.parse(j.createdAt) < hours * H);
+        const failed = js.filter(genFailed).length;
+        return { ok: js.length - failed, failed, rate: js.length ? Number(((failed / js.length) * 100).toFixed(1)) : null };
+      };
+      const lastFail = finished.filter((j) => j.template === t && genFailed(j)).sort((a, b) => b.createdAt.localeCompare(a.createdAt))[0];
+      return { template: t, day: of(24), week: of(24 * 7), lastFailAt: lastFail?.createdAt };
+    })
+    .sort((a, b) => (b.week.rate ?? 0) - (a.week.rate ?? 0) || b.week.failed - a.week.failed);
+  const recentErrors = jobs
+    .filter((j) => j.error && (j.status === 'error' || EXPORT_FAIL.test(j.error)))
+    .map((j) => ({ at: EXPORT_FAIL.test(j.error!) ? (j.renderStartedAt ?? j.createdAt) : j.createdAt, jobId: j.id, template: j.template, kind: EXPORT_FAIL.test(j.error!) ? ('export' as const) : ('generate' as const), message: j.error!.replace(/\s+/g, ' ').slice(0, 180) }))
+    .sort((a, b) => b.at.localeCompare(a.at))
+    .slice(0, 12);
+  // An outage looks like several failures in a row with a high rate today.
+  const alert = day.failed >= 3 && (day.rate ?? 0) >= 30;
+  return { day, week, byTemplate, recentErrors, alert };
+}
 
 export async function metrics(jobs: JobLike[], month = thisMonth()) {
   const ledger = await readLedger();
@@ -205,5 +247,6 @@ export async function metrics(jobs: JobLike[], month = thisMonth()) {
     },
     tokens,
     trend,
+    health: health(jobs),
   };
 }

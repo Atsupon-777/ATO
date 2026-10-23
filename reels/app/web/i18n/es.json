@@ -925,5 +925,20 @@
  "おすすめの投稿時間": "Mejor momento para publicar",
  "キャプションとハッシュタグをまとめてコピー": "Copiar texto y hashtags",
  "コピーしました": "Copiado",
- "コピー": "Copiar"
+ "コピー": "Copiar",
+ "生成の状態": "Estado de la generación",
+ "失敗が続いています": "Fallos repetidos",
+ "正常": "Normal",
+ "直近24時間": "Últimas 24 horas",
+ "直近7日": "Últimos 7 días",
+ "失敗率 {0}": "{0} de fallos",
+ "成功 {0}・失敗 {1}": "{0} bien · {1} fallidas",
+ "書き出し失敗 {0}": "{0} exportaciones fallidas",
+ "24時間 成功/失敗": "24 h bien/fallos",
+ "7日 成功/失敗": "7 d bien/fallos",
+ "失敗率(7日)": "Tasa de fallos (7 d)",
+ "最後の失敗": "Último fallo",
+ "直近7日の生成はまだありません": "Sin generaciones en los últimos 7 días",
+ "最近のエラー": "Errores recientes",
+ "生成": "Generación"
 }
