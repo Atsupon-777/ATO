@@ -27,6 +27,7 @@ import { buildSaasProps } from '../server/saas.ts';
 import { buildTalkProps } from '../server/talk.ts';
 import { derived } from '../server/derived.ts';
 import { isGoal, type Goal } from '../server/goals.ts';
+import { takePostKitTurn, writePostKit, type PostKit } from '../server/postkit.ts';
 import { isLang, type Lang } from '../src/lang.ts';
 import { authEnabled, LOCAL_USER, verifyIdToken, webConfig, type User } from '../server/auth.ts';
 import { type Brand, FreeClaimError, NotEnoughTokens, balance, charge, claimFree, getAccount, refund, removeAccount, update, allAccounts, PLAN_TOKENS, FREE_TOKENS, PAYG_UNIT, PAYG_UNIT_YEN, PAYG_MIN, PAYG_MAX } from '../server/accounts.ts';
@@ -87,6 +88,8 @@ type Job = {
   musicTracks?: Record<string, string>;
   /** What the reel is for, picked on the home screen (server/goals.ts). */
   goal?: Goal;
+  /** 投稿文 (caption, hashtags, when to post) written for this reel, by the language of the app that asked. */
+  postkit?: Partial<Record<Lang, PostKit>>;
 };
 
 /** Each export costs a little; the first export that carries premium-edit layers adds PREMIUM_TOKENS once. */
@@ -749,7 +752,7 @@ const server = http.createServer(async (req, res) => {
         throw e;
       }
     }
-    const m = p.match(/^\/api\/jobs\/([\w-]+)(\/props|\/render|\/pass|\/restore|\/music)?$/);
+    const m = p.match(/^\/api\/jobs\/([\w-]+)(\/props|\/render|\/pass|\/restore|\/music|\/postkit)?$/);
     if (m) {
       const job = jobs.get(m[1]);
       if (!job || (job.owner ?? LOCAL_USER.uid) !== user!.uid) return json(res, 404, { error: 'job not found' });
@@ -845,6 +848,26 @@ const server = http.createServer(async (req, res) => {
           await refund(user!.uid, MUSIC_TOKENS);
           recordTokens({ uid: user!.uid, jobId: job.id, template: job.template, op: 'refund', tokens: MUSIC_TOKENS });
           return json(res, 502, { error: '曲を作れませんでした。トークンは戻しました。もう一度お試しください。' });
+        }
+      }
+      // 投稿文: free, written once per reel (and app language) and kept; `fresh` writes a new one within the owner's limit.
+      if (m[2] === '/postkit' && req.method === 'POST') {
+        if (!job.props) return json(res, 400, { error: 'まだ生成中です' });
+        const { lang: ui, fresh } = await readBody(req);
+        const uiLang: Lang = isLang(ui) ? ui : 'ja';
+        const cached = job.postkit?.[uiLang];
+        if (cached && !fresh) return json(res, 200, cached);
+        if (!takePostKitTurn(user!.uid)) return json(res, 429, { error: '投稿文の作成が続いています。しばらくしてからもう一度お試しください。' });
+        try {
+          const a = await getAccount(user!.uid, user!.email);
+          const { kit, usage } = await writePostKit({ template: job.template, title: job.title, props: job.props, goal: job.goal, brand: a.brand, uiLang });
+          recordAi({ jobId: job.id, uid: user!.uid, template: job.template, step: 'postkit', usd: usage.totalUsd });
+          job.postkit = { ...job.postkit, [uiLang]: kit };
+          await save(job);
+          return json(res, 200, kit);
+        } catch (e) {
+          console.error('postkit', e);
+          return json(res, 502, { error: '投稿文を作れませんでした。もう一度お試しください。' });
         }
       }
       if (m[2] === '/render' && req.method === 'POST') {

@@ -915,5 +915,15 @@
  "Instagramのアカウント名": "Instagram handle",
  "メインカラー": "Main colour",
  "未設定": "Not set",
- "ロゴを外す": "Remove logo"
+ "ロゴを外す": "Remove logo",
+ "投稿文": "Post text",
+ "AIが書きました・無料": "Written by AI · free",
+ "書いています…": "Writing…",
+ "別の文にする": "Write another",
+ "キャプションとハッシュタグを書いています…": "Writing the caption and hashtags…",
+ "投稿文を作る": "Write the post text",
+ "おすすめの投稿時間": "Best time to post",
+ "キャプションとハッシュタグをまとめてコピー": "Copy caption and hashtags",
+ "コピーしました": "Copied",
+ "コピー": "Copy"
 }

@@ -1002,6 +1002,112 @@ const WebShare: React.FC<{ job: Job; compact?: boolean }> = ({ job, compact }) =
   );
 };
 
+// ---------- 投稿文: caption, hashtags and when to post, for a finished reel (free) ----------
+
+type PostKitData = { caption: string; hashtags: string[]; when: { day: string; time: string; why: string } };
+
+/** Copies text; the iPhone app's web view may lack the async clipboard, so a hidden textarea is the fallback. */
+const copyText = async (t: string) => {
+  try {
+    await navigator.clipboard.writeText(t);
+    return true;
+  } catch {
+    const ta = document.createElement('textarea');
+    ta.value = t;
+    ta.setAttribute('readonly', '');
+    ta.style.cssText = 'position:fixed;top:0;left:0;opacity:0';
+    document.body.appendChild(ta);
+    ta.select();
+    ta.setSelectionRange(0, t.length);
+    const ok = document.execCommand('copy');
+    ta.remove();
+    return ok;
+  }
+};
+
+const CopyButton: React.FC<{ text: string; label?: string; big?: boolean }> = ({ text, label, big }) => {
+  const [done, setDone] = useState(false);
+  return (
+    <button className={`btn ${big ? '' : 'small'} ghost pkcopy ${done ? 'done' : ''}`} onClick={async () => (await copyText(text)) && (setDone(true), setTimeout(() => setDone(false), 1800))}>
+      {done ? tr("コピーしました") : (label ?? tr("コピー"))}
+    </button>
+  );
+};
+
+/** The 投稿文 card under a finished reel: written once by the AI, kept with the reel, copied with one tap. */
+const PostKit: React.FC<{ job: Job }> = ({ job }) => {
+  const [kit, setKit] = useState<PostKitData | null>((job as { postkit?: Record<string, PostKitData> }).postkit?.[lang] ?? null);
+  const [busy, setBusy] = useState(false);
+  const [err, setErr] = useState('');
+  const load = async (fresh = false) => {
+    setBusy(true);
+    setErr('');
+    try {
+      setKit(await api<PostKitData>(`/api/jobs/${job.id}/postkit`, { method: 'POST', body: JSON.stringify({ lang, fresh }) }));
+    } catch (e: any) {
+      setErr(e.message);
+    }
+    setBusy(false);
+  };
+  useEffect(() => {
+    if (!kit && !DEMO) load();
+  }, [job.id]);
+  const tags = kit?.hashtags.join(' ') ?? '';
+  return (
+    <section className="postkit" aria-busy={busy}>
+      <div className="pkhead">
+        <span>
+          <b>{tr("投稿文")}</b>
+          <small>{tr("AIが書きました・無料")}</small>
+        </span>
+        {kit ? (
+          <button className="linkbtn" disabled={busy} onClick={() => load(true)}>
+            {busy ? tr("書いています…") : tr("別の文にする")}
+          </button>
+        ) : null}
+      </div>
+      {!kit ? (
+        busy ? (
+          <div className="pkwait">
+            <i className="gspin" /> {tr("キャプションとハッシュタグを書いています…")}
+          </div>
+        ) : (
+          <button className="btn small" onClick={() => load()} disabled={!!DEMO}>
+            {tr("投稿文を作る")}
+          </button>
+        )
+      ) : (
+        <>
+          <div className="pkblock">
+            <p className="pkcaption">{kit.caption}</p>
+            <CopyButton text={kit.caption} />
+          </div>
+          <div className="pkblock">
+            <div className="pktags">
+              {kit.hashtags.map((h) => (
+                <span key={h}>{h}</span>
+              ))}
+            </div>
+            <CopyButton text={tags} />
+          </div>
+          <div className="pkwhen">
+            <Glyph d="M12 7v5l3 2M12 21a9 9 0 1 0 0-18 9 9 0 0 0 0 18z" size={18} />
+            <div>
+              <b>{tr("おすすめの投稿時間")}</b>
+              <span>
+                {kit.when.day} · {kit.when.time}
+              </span>
+              <small>{kit.when.why}</small>
+            </div>
+          </div>
+          <CopyButton big text={`${kit.caption}\n\n${tags}`} label={tr("キャプションとハッシュタグをまとめてコピー")} />
+        </>
+      )}
+      {err ? <p className="err">{err}</p> : null}
+    </section>
+  );
+};
+
 /**
  * 高画質・高音質で書き出す: off by default, HQ_TOKENS more for the export it is on for. Also says plainly that the
  * previews in the app play a lighter copy and the export is made from the full footage.
@@ -1134,6 +1240,7 @@ const Editor: React.FC<{ id: string }> = ({ id }) => {
           )}
         </div>
         {job.status === 'done' && job.video ? <p className="cost ok" style={{ textAlign: 'center' }}>{tr("書き出し完了。編集すると再書き出しできます。")}</p> : null}
+        {job.status === 'done' && job.video ? <PostKit job={job} /> : null}
         {job.error ? <p className="err">{job.error}</p> : null}
         {saveErr ? <p className="err">{saveErr}</p> : null}
       </div>
@@ -1505,6 +1612,7 @@ const FilmPick: React.FC<{ job: Job; p: ExperienceFilmProps; update: PanelProps<
           )}
         </div>
         {job.status === 'done' && job.video ? <p className="cost ok" style={{ textAlign: 'center' }}>{tr("書き出し完了。編集すると再書き出しできます。")}</p> : null}
+        {job.status === 'done' && job.video ? <PostKit job={job} /> : null}
         {err ? <p className="err">{err}</p> : null}
       </div>
       <div>
@@ -3295,9 +3403,12 @@ const PickFlow: React.FC<{
           {job.status === 'rendering' ? (
             <RenderProgress job={job} />
           ) : job.status === 'done' && job.video ? (
-            <div className="pickshare">
-              <ShareButton job={job} />
-            </div>
+            <>
+              <div className="pickshare">
+                <ShareButton job={job} />
+              </div>
+              <PostKit job={job} />
+            </>
           ) : (
             <div className="pickcta">
               <HqOption on={hq} set={setHq} />
