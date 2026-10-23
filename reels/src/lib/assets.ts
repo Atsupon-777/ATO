@@ -21,11 +21,11 @@ const rendering = () => {
 /**
  * In the app's live previews (app/web/main.tsx sets reels_preview), a job's talking video plays from a
  * light 720p copy the server makes next to it (source.preview.mp4). A phone then decodes a third of the
- * pixels per copy of the footage, which is what keeps the web view under its memory limit. Renders and
- * Remotion Studio always read the full source.
+ * pixels per copy of the footage, which is what keeps the web view under its memory limit. The person matte
+ * likewise plays from matte.preview.webm (540×960). Renders and Remotion Studio always read the full files.
  */
 const previewCopy = (src: string) =>
-  !rendering() && (globalThis as { reels_preview?: boolean }).reels_preview && /^\/?jobs\/[\w-]+\/source\.mp4$/.test(src) ? src.replace(/\.mp4$/, '.preview.mp4') : src;
+  !rendering() && (globalThis as { reels_preview?: boolean }).reels_preview && /^\/?jobs\/[\w-]+\/(source\.mp4|matte\.webm)$/.test(src) ? src.replace(/\.(mp4|webm)$/, '.preview.$1') : src;
 
 /** Template props may reference files in `public/` ("samples/watch.jpg") or full URLs. */
 export const asset = (src: string) => {

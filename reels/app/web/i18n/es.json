@@ -872,5 +872,10 @@
  "五感": "Los sentidos",
  "いちばんの景色": "La mejor vista",
  "色と音": "Color y sonido",
- "音楽の音量": "Volumen de la música"
+ "音楽の音量": "Volumen de la música",
+ "高画質・高音質で書き出す": "Exportar en alta calidad (imagen y sonido)",
+ "＋{0}トークン": "+{0} tokens",
+ "ビットレートを上げて細部まで鮮明に書き出します。声は雑音を抑え、聞き取りやすいスタジオ風の音に整えます。": "Mayor tasa de bits para un detalle más nítido, y tu voz se limpia para sonar clara, como en un estudio, con menos ruido de fondo.",
+ "アプリ内のプレビューは軽い画質で再生しています。書き出す動画は元の映像から作ります。": "Las vistas previas de la app usan una copia más ligera. La exportación se hace con el vídeo original.",
+ "高画質・高音質で書き出しました。": "Exportado en alta calidad."
 }

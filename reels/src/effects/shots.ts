@@ -27,6 +27,11 @@ export const FRAMING: Record<Framing, { s: number; x: number; y: number }> = {
   thirdsR: { s: 1.38, x: 0.63, y: 0.35 },
 };
 
+/** Most a speaker beat enlarges the footage (1.6× of a 1080×1920 recording is still ~675 px of real detail across), */
+export const MAX_ZOOM = 1.6;
+/** and the most its framing and move may take before the punch-in. */
+const MAX_FRAMING = 1.45;
+
 /** Scenes that fill the frame with graphics and keep the speaker in a small window (no speaker on screen). */
 export const GRAPHIC_SCENES: EffectId[] = ['uiLayers', 'isoGrid', 'lineIcons', 'flatBoard'];
 /** Scenes whose own layout moves or boxes the footage; they keep the recorded framing. */
@@ -67,11 +72,14 @@ export function framingTransform(shot: Shot | undefined, subject: SubjectBox | u
     default:
       break;
   }
+  // Every step of zoom enlarges the recorded pixels: framing + move stop at MAX_FRAMING, and the punch-in
+  // takes whatever is left up to MAX_ZOOM (at least +10%), so a close-up never blows the footage up 2×.
+  s = Math.min(s, MAX_FRAMING);
   // the punch-in: a hard, fast zoom on the key word that holds to the end of the beat
   if (shot.punch !== undefined) {
     const at = shot.punch * fps;
     const k = smooth((frame - at) / 4);
-    s *= 1 + 0.2 * k;
+    s *= 1 + Math.min(0.2, MAX_ZOOM / s - 1) * k;
     ty += 0.02 * k;
   }
   const W = 1080;

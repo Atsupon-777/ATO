@@ -872,5 +872,10 @@
  "五感": "Indra",
  "いちばんの景色": "Pemandangan terbaik",
  "色と音": "Warna dan suara",
- "音楽の音量": "Volume musik"
+ "音楽の音量": "Volume musik",
+ "高画質・高音質で書き出す": "Ekspor kualitas tinggi (gambar & suara)",
+ "＋{0}トークン": "+{0} token",
+ "ビットレートを上げて細部まで鮮明に書き出します。声は雑音を抑え、聞き取りやすいスタジオ風の音に整えます。": "Bitrate lebih tinggi agar detail tetap tajam, dan suara Anda dibersihkan jadi jernih ala studio dengan lebih sedikit bising.",
+ "アプリ内のプレビューは軽い画質で再生しています。書き出す動画は元の映像から作ります。": "Pratinjau di aplikasi memutar salinan yang lebih ringan. Hasil ekspor dibuat dari video asli.",
+ "高画質・高音質で書き出しました。": "Diekspor dalam kualitas tinggi."
 }

@@ -287,6 +287,8 @@ const EFFECT_NAMES: Record<(typeof effectIds)[number], string> = {
 
 type Job = {
   premiumPaid?: boolean;
+  /** The current export was made with 高画質・高音質. */
+  hq?: boolean;
   id: string;
   template: TemplateId;
   title: string;
@@ -353,7 +355,9 @@ const tokensFor = (t: TemplateId, input: Record<string, any>) =>
 /** Tokens to export a finished reel (each time), and extra for the premium edit (stickers, captions added by hand). */
 const EXPORT_TOKENS = 1;
 const PREMIUM_TOKENS = 2;
-const exportCost = (job: Job, p: { overlays?: unknown[] }) => EXPORT_TOKENS + (p.overlays?.length && !job.premiumPaid ? PREMIUM_TOKENS : 0);
+/** 高画質・高音質で書き出す adds this much to that export (the same as the server's HQ_TOKENS). */
+const HQ_TOKENS = 2;
+const exportCost = (job: Job, p: { overlays?: unknown[] }, hq = false) => EXPORT_TOKENS + (p.overlays?.length && !job.premiumPaid ? PREMIUM_TOKENS : 0) + (hq ? HQ_TOKENS : 0);
 /** Plan sizes run into the hundreds, so counts get separators in the viewer's language. */
 const fmtN = (n: number) => n.toLocaleString(lang);
 
@@ -940,6 +944,25 @@ const WebShare: React.FC<{ job: Job; compact?: boolean }> = ({ job, compact }) =
   );
 };
 
+/**
+ * 高画質・高音質で書き出す: off by default, HQ_TOKENS more for the export it is on for. Also says plainly that the
+ * previews in the app play a lighter copy and the export is made from the full footage.
+ */
+const HqOption: React.FC<{ on: boolean; set: (on: boolean) => void }> = ({ on, set }) => (
+  <>
+    <label className={`hqopt ${on ? 'on' : ''}`}>
+      <input type="checkbox" checked={on} onChange={(e) => set(e.target.checked)} />
+      <span>
+        <b>
+          {tr("高画質・高音質で書き出す")} <small className="tokcost">{tr("＋{0}トークン", HQ_TOKENS)}</small>
+        </b>
+        <small>{tr("ビットレートを上げて細部まで鮮明に書き出します。声は雑音を抑え、聞き取りやすいスタジオ風の音に整えます。")}</small>
+      </span>
+    </label>
+    <p className="cost" style={{ width: '100%', margin: '0 0 6px' }}>{tr("アプリ内のプレビューは軽い画質で再生しています。書き出す動画は元の映像から作ります。")}</p>
+  </>
+);
+
 /** Tokens this reel used. Cost figures stay server-side (usage.json) and are never shown to customers. */
 const Cost: React.FC<{ job: Job }> = ({ job }) => <p className="cost">{tr("このリールで使ったトークン:")}{' '}{fmtN(jobTokens(job))}</p>;
 
@@ -954,6 +977,8 @@ const Editor: React.FC<{ id: string }> = ({ id }) => {
   usePanelAccordion(side);
   // EffectsReel opens on the pick flow; the detailed panels are one tap away.
   const [advanced, setAdvanced] = useState(false);
+  // 高画質・高音質で書き出す (off unless chosen for this export)
+  const [hq, setHq] = useState(false);
 
   useEffect(() => {
     if (job?.props && !props) setProps(job.props);
@@ -1016,7 +1041,7 @@ const Editor: React.FC<{ id: string }> = ({ id }) => {
 
   const render = async () => {
     try {
-      const j = await api<Job>(`/api/jobs/${id}/render`, { method: 'POST' });
+      const j = await api<Job>(`/api/jobs/${id}/render`, { method: 'POST', body: JSON.stringify({ hq }) });
       setJob({ ...j, props });
       refreshJob();
     } catch (e: any) {
@@ -1027,7 +1052,7 @@ const Editor: React.FC<{ id: string }> = ({ id }) => {
   if (job.template === 'ExperienceFilm' && !advanced)
     return <FilmPick job={job} p={props} update={update} saved={saved} err={saveErr || job.error} onRender={render} onAdvanced={() => setAdvanced(true)} />;
   if (job.template === 'EffectsReel' && !advanced)
-    return <PickFlow job={job} p={props} update={update} saved={saved} err={saveErr || job.error} onRender={render} onAdvanced={() => setAdvanced(true)} />;
+    return <PickFlow job={job} p={props} update={update} saved={saved} err={saveErr || job.error} hq={hq} setHq={setHq} onRender={render} onAdvanced={() => setAdvanced(true)} />;
 
   const t = TEMPLATES[job.template];
   const isTalk = job.template === 'TalkCaptions';
@@ -1042,8 +1067,9 @@ const Editor: React.FC<{ id: string }> = ({ id }) => {
             </div>
           ) : (
             <>
+              <HqOption on={hq} set={setHq} />
               <button className={`btn ${job.status === 'done' && job.video ? 'ghost' : ''}`} disabled={!saved || !!DEMO || (job.template === 'FivePass' && props.pass < 5)} onClick={render} title={DEMO ? DEMO_BLOCKED : job.template === 'FivePass' && props.pass < 5 ? tr("5つの工程が終わると書き出せます") : undefined}>
-                {tr("動画を書き出す")} <small className="tokcost">{tr("{0}トークン", exportCost(job, props as { overlays?: unknown[] }))}</small>
+                {tr("動画を書き出す")} <small className="tokcost">{tr("{0}トークン", exportCost(job, props as { overlays?: unknown[] }, hq))}</small>
               </button>
               {job.status === 'done' && job.video ? <ShareButton job={job} /> : null}
             </>
@@ -2975,9 +3001,11 @@ const PickFlow: React.FC<{
   update: PanelProps<EffectsReelProps>['update'];
   saved: boolean;
   err?: string;
+  hq: boolean;
+  setHq: (on: boolean) => void;
   onRender: () => void;
   onAdvanced: () => void;
-}> = ({ job, p, update, saved, err, onRender, onAdvanced }) => {
+}> = ({ job, p, update, saved, err, hq, setHq, onRender, onAdvanced }) => {
   const [stage, setStage] = useState<PickStage>(job.status === 'done' || job.status === 'rendering' ? 'post' : 'feed');
   const at = PICK_STAGES.findIndex(([s]) => s === stage);
   const back = () => (at > 0 ? setStage(PICK_STAGES[at - 1][0]) : goBack('#/reels'));
@@ -3023,15 +3051,18 @@ const PickFlow: React.FC<{
             </div>
           ) : (
             <div className="pickcta">
+              <HqOption on={hq} set={setHq} />
               <button className="btn" disabled={!saved || !!DEMO} onClick={onRender} title={DEMO ? DEMO_BLOCKED : undefined}>
-                {tr("動画を書き出す")} <small className="tokcost">{tr("{0}トークン", exportCost(job, p))}</small>
+                {tr("動画を書き出す")} <small className="tokcost">{tr("{0}トークン", exportCost(job, p, hq))}</small>
               </button>
             </div>
           )}
           {job.status === 'done' && job.video ? (
             <div className="pickcta">
+              {job.hq ? <p className="cost ok" style={{ width: '100%', margin: '0 0 6px' }}>{tr("高画質・高音質で書き出しました。")}</p> : null}
+              <HqOption on={hq} set={setHq} />
               <button className="btn ghost" disabled={!saved || !!DEMO} onClick={onRender}>
-                {tr("選び直した内容で書き出し直す")} <small className="tokcost">{tr("{0}トークン", exportCost(job, p))}</small>
+                {tr("選び直した内容で書き出し直す")} <small className="tokcost">{tr("{0}トークン", exportCost(job, p, hq))}</small>
               </button>
             </div>
           ) : null}

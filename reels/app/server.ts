@@ -12,7 +12,8 @@ import { fileURLToPath } from 'node:url';
 import * as esbuild from 'esbuild';
 import { effectIds, effectsReelSchema, experienceFilmSchema, productShineSchema, saasPromoSchema, talkCaptionsSchema, fivePassSchema, type EffectsReelProps } from '../src/schemas.ts';
 import { pass1, restoreVersion, runPass } from '../server/fivepass.ts';
-import { loudnorm } from '../server/loudnorm.ts';
+import { finish } from '../server/loudnorm.ts';
+import { studioVoice, videoFps } from '../server/studio.ts';
 import { catalog, countUse } from '../server/catalog.ts';
 import { buildServiceProps } from '../server/service.ts';
 import { buildPhotoProps } from '../server/photo.ts';
@@ -79,6 +80,8 @@ type Job = {
   tokens?: number;
   /** The premium edit (stickers, telops) has been paid for once, so later exports cost only EXPORT_TOKENS. */
   premiumPaid?: boolean;
+  /** The current export (`video`) was made with 高画質・高音質. */
+  hq?: boolean;
   /** Music beds made for this reel, by genre (plus `original`, the one it was first made with): re-picking one is free. */
   musicTracks?: Record<string, string>;
 };
@@ -86,8 +89,10 @@ type Job = {
 /** Each export costs a little; the first export that carries premium-edit layers adds PREMIUM_TOKENS once. */
 const EXPORT_TOKENS = 1;
 const PREMIUM_TOKENS = 2;
-const exportCost = (job: Job) =>
-  EXPORT_TOKENS + ((job.props as { overlays?: unknown[] } | undefined)?.overlays?.length && !job.premiumPaid ? PREMIUM_TOKENS : 0);
+const premiumDue = (job: Job) => Boolean((job.props as { overlays?: unknown[] } | undefined)?.overlays?.length && !job.premiumPaid);
+/** 高画質・高音質で書き出す: a lower CRF, near-lossless frames, the source's 60 fps and the studio voice, on top of the export. */
+const HQ_TOKENS = 2;
+const exportCost = (job: Job, hq = false) => EXPORT_TOKENS + (premiumDue(job) ? PREMIUM_TOKENS : 0) + (hq ? HQ_TOKENS : 0);
 
 /** Tokens each kind of reel takes: own footage only 2, AI photo or effects 5, with AI video 12 (experience films are all AI video). */
 const tokensFor = (t: Template, input: Record<string, any>) => (t === 'ExperienceFilm' ? 12 : t === 'ProductShine' ? (input.video ? 12 : 5) : t === 'EffectsReel' || t === 'FivePass' || t === 'SaaSPromo' || t === 'ServiceReel' ? 5 : 2);
@@ -324,23 +329,37 @@ const absolutize = (v: unknown): unknown => {
 };
 
 let renderQueue = Promise.resolve();
-function startRender(job: Job, cost = 0) {
+function startRender(job: Job, cost = 0, opts: { hq?: boolean; premium?: boolean } = {}) {
   job.status = 'rendering';
   job.renderProgress = 0;
   job.renderStartedAt = new Date().toISOString();
   save(job);
   // One render at a time: each render already uses every core.
   renderQueue = renderQueue.then(async () => {
+    const dir = path.join(jobsDir, job.id);
+    const out = path.join(dir, `reel-${Date.now().toString(36)}.mp4`);
+    const wav = out.replace(/\.mp4$/, '.wav');
+    const studio = path.join(dir, 'source.studio.mov');
     try {
-      const out = path.join(jobsDir, job.id, `reel-${Date.now().toString(36)}.mp4`);
-      await renderTemplate(job.template, absolutize(job.props) as Record<string, unknown>, out, (p) => {
+      let props = job.props as Record<string, unknown>;
+      let fps: number | undefined;
+      const video = typeof props.video === 'string' && /^jobs\/[\w-]+\/source\.mp4$/.test(props.video) ? path.join(publicDir, props.video) : undefined;
+      if (opts.hq && video) {
+        // 高音質: the render reads a copy of the footage whose sound is the studio voice.
+        if (await studioVoice(video, studio)) props = { ...props, video: `jobs/${job.id}/${path.basename(studio)}` };
+        // 60 fps footage stays 60 fps, unless a 30 fps person matte is layered over it (it would lag behind).
+        if (!props.matte && (await videoFps(video)) >= 50) fps = 60;
+      }
+      await renderTemplate(job.template, absolutize(props) as Record<string, unknown>, out, (p) => {
         job.renderProgress = p;
-      });
-      // Voice, music and cue sounds end up at -14 LUFS, the level Instagram and TikTok play back at.
-      await loudnorm(out).catch((e) => console.warn(`loudnorm ${job.id}: ${(e as Error).message}`));
+      }, { hq: opts.hq, fps, audioTo: wav });
+      // The mix gets its one AAC encode here, with voice, music and cue sounds at -14 LUFS (Instagram / TikTok level).
+      await finish(out, wav, { hq: opts.hq });
       job.video = `jobs/${job.id}/${path.basename(out)}`;
+      job.hq = opts.hq || undefined;
       job.status = 'done';
-      if (cost > EXPORT_TOKENS) job.premiumPaid = true;
+      job.error = undefined;
+      if (opts.premium) job.premiumPaid = true;
       job.tokens = (job.tokens ?? 0) + cost;
       if (job.owner) notifyJob(job.owner, 'done', job);
     } catch (e) {
@@ -349,8 +368,11 @@ function startRender(job: Job, cost = 0) {
       job.error = `書き出しに失敗しました: ${e instanceof Error ? e.message : e}`;
       // Nothing came out, so the export tokens go back.
       if (cost) await refund(job.owner ?? LOCAL_USER.uid, cost).catch(console.error);
-      if (cost) recordTokens({ uid: job.owner ?? LOCAL_USER.uid, jobId: job.id, template: job.template, op: 'refund', tokens: cost });
+      if (cost) recordTokens({ uid: job.owner ?? LOCAL_USER.uid, jobId: job.id, template: job.template, op: 'refund', tokens: cost, hq: opts.hq || undefined });
+      await rm(out, { force: true }).catch(() => null);
     }
+    await rm(wav, { force: true }).catch(() => null);
+    await rm(studio, { force: true }).catch(() => null);
     job.renderProgress = undefined;
     await save(job);
   });
@@ -790,15 +812,19 @@ const server = http.createServer(async (req, res) => {
       if (m[2] === '/render' && req.method === 'POST') {
         if (!job.props) return json(res, 400, { error: 'まだ生成中です' });
         if (job.status === 'rendering') return json(res, 409, { error: '書き出し中です' });
-        const cost = exportCost(job);
+        const { hq = false } = await readBody(req);
+        if (typeof hq !== 'boolean') return json(res, 400, { error: 'hq must be true or false' });
+        // One charge for the whole export (plus the premium edit once, plus 高画質・高音質 when chosen); all of it comes back if it fails.
+        const premium = premiumDue(job);
+        const cost = exportCost(job, hq);
         try {
           await charge(user!.uid, cost);
-          recordTokens({ uid: user!.uid, jobId: job.id, template: job.template, op: 'export', tokens: cost });
+          recordTokens({ uid: user!.uid, jobId: job.id, template: job.template, op: 'export', tokens: cost, hq: hq || undefined });
         } catch (e) {
           if (e instanceof NotEnoughTokens) return json(res, 402, { error: e.message, code: 'tokens' });
           throw e;
         }
-        startRender(job, cost);
+        startRender(job, cost, { hq, premium });
         return json(res, 200, job);
       }
     }
@@ -814,15 +840,17 @@ const server = http.createServer(async (req, res) => {
     }
     // Light copies the app's previews ask for, cut from a job video on first request (see derived()).
     // <name>.t<deciseconds>[s].jpg is a still from that moment (the pick screen's scene thumbnails; s = small).
-    const dm = p.match(/^\/jobs\/[\w-]+\/[\w-]+\.(preview\.mp4|poster\.jpg|t(\d{1,5})(s?)\.jpg)$/);
+    // matte.preview.webm is the person matte at preview size.
+    const dm = p.match(/^\/jobs\/[\w-]+\/[\w-]+\.(preview\.mp4|preview\.webm|poster\.jpg|t(\d{1,5})(s?)\.jpg)$/);
     if (dm && !(await stat(file).catch(() => null))) {
-      const src = file.replace(/\.(preview\.mp4|poster\.jpg|t\d{1,5}s?\.jpg)$/, '.mp4');
+      const preview = dm[1].startsWith('preview.');
+      const src = dm[1] === 'preview.webm' ? file.replace(/\.preview\.webm$/, '.webm') : file.replace(/\.(preview\.mp4|poster\.jpg|t\d{1,5}s?\.jpg)$/, '.mp4');
       if (!(await stat(src).catch(() => null))) return res.writeHead(404).end('not found');
-      const made = derived(src, dm[1] === 'preview.mp4' ? 'preview' : 'poster', dm[2] ? Number(dm[2]) / 10 : undefined, dm[3] === 's');
-      if (dm[1] === 'preview.mp4') {
+      const made = derived(src, preview ? 'preview' : 'poster', dm[2] ? Number(dm[2]) / 10 : undefined, dm[3] === 's');
+      if (preview) {
         // Not ready yet: play the full file this time (a redirect, so range requests stay on one file).
         made.catch(() => null);
-        res.writeHead(302, { Location: `${p.replace(/\.preview\.mp4$/, '.mp4')}${url.search}`, 'Cache-Control': 'no-store', 'Access-Control-Allow-Origin': '*' });
+        res.writeHead(302, { Location: `${p.replace(/\.preview\.(mp4|webm)$/, '.$1')}${url.search}`, 'Cache-Control': 'no-store', 'Access-Control-Allow-Origin': '*' });
         return res.end();
       }
       try {

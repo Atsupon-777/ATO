@@ -36,6 +36,49 @@ async function probe(file: string): Promise<Probe> {
   return { duration: Number(j.format.duration), width: j.streams[0].width, height: j.streams[0].height };
 }
 
+type Streams = {
+  v?: { codec_name: string; pix_fmt?: string; width: number; height: number; color_transfer?: string; color_primaries?: string; side_data_list?: { rotation?: number }[]; tags?: { rotate?: string } };
+  a?: { codec_name: string; profile?: string; sample_rate?: string };
+};
+
+async function streams(file: string): Promise<Streams> {
+  const { stdout } = await run('ffprobe', ['-v', 'error', '-show_streams', '-of', 'json', file]);
+  const s = (JSON.parse(stdout).streams ?? []) as any[];
+  return { v: s.find((x) => x.codec_type === 'video'), a: s.find((x) => x.codec_type === 'audio') };
+}
+
+/** HLG / PQ footage (iPhone records HDR by default): tone-mapped to SDR BT.709 so the reel keeps its brightness and colour. */
+const isHdr = (v: NonNullable<Streams['v']>) => /arib-std-b67|smpte2084/.test(v.color_transfer ?? '') || v.color_primaries === 'bt2020';
+const TONEMAP = 'zscale=t=linear:npl=100,format=gbrpf32le,zscale=p=bt709,tonemap=tonemap=mobius:param=0.3:desat=0,zscale=t=bt709:m=bt709:r=tv';
+
+/**
+ * The editor's and renderer's copy of an upload (source.mp4): never worse than what was filmed.
+ *  - picture: an H.264 8-bit SDR upload up to 1080×1920 (long side ≤ 1920, no rotation flag) is kept as it is;
+ *    anything else (HEVC, HDR, 4K, rotated) is made H.264 once, long side ≤ 1920, CRF 16 / preset medium,
+ *    HDR tone-mapped, keyframe every second so seeking in the editor stays quick.
+ *  - sound: kept as recorded (AAC is copied, other codecs become AAC 256k). No noise reduction or compression
+ *    here: the free export only normalises loudness, and 高音質 cleans the voice from the original at export.
+ */
+export async function sourceCopy(original: string, out: string) {
+  const { v, a } = await streams(original);
+  if (!v) throw new Error('動画が読み込めませんでした');
+  const rotated = Boolean(v.side_data_list?.some((d) => d.rotation && d.rotation % 360 !== 0) || (v.tags?.rotate && v.tags.rotate !== '0'));
+  const keep = v.codec_name === 'h264' && (v.pix_fmt === 'yuv420p' || v.pix_fmt === 'yuvj420p') && !isHdr(v) && !rotated && Math.max(v.width, v.height) <= 1920;
+  const fit = "scale='if(gt(iw,ih),min(1920,iw),-2)':'if(gt(iw,ih),-2,min(1920,ih))':flags=lanczos";
+  const vargs = keep
+    ? ['-c:v', 'copy']
+    : [
+        '-vf', [isHdr(v) ? TONEMAP : '', fit, 'format=yuv420p'].filter(Boolean).join(','),
+        '-c:v', 'libx264', '-preset', 'medium', '-crf', '16', '-profile:v', 'high', '-pix_fmt', 'yuv420p', '-g', '30',
+        '-color_primaries', 'bt709', '-color_trc', 'bt709', '-colorspace', 'bt709',
+      ];
+  const aargs = !a ? [] : a.codec_name === 'aac' ? ['-c:a', 'copy'] : ['-c:a', 'aac', '-b:a', '256k', '-ar', '48000'];
+  await run('ffmpeg', ['-y', '-hide_banner', '-loglevel', 'error', '-i', original, '-map', '0:v:0', ...(a ? ['-map', '0:a:0'] : []), ...vargs, ...aargs, '-movflags', '+faststart', out], {
+    maxBuffer: 32 << 20,
+  });
+  return { copied: keep };
+}
+
 /** Non-silent ranges of the audio track. */
 async function speechRanges(file: string, duration: number) {
   const { stderr } = await run('ffmpeg', ['-hide_banner', '-i', file, '-af', 'silencedetect=noise=-32dB:d=0.2', '-f', 'null', '-'], { maxBuffer: 32 << 20 });
@@ -135,17 +178,9 @@ export async function buildTalkProps(brief: TalkBrief) {
   brief.onStep?.(1, 3, 'audio');
   const src = await probe(original);
   if (src.duration > 180) throw new Error('動画は3分以内にしてください');
-  // iPhone HEVC/MOV does not play in every browser, so the editor and renderer get an H.264 copy
-  // (long side ≤ 1920, keyframe every second so seeking in the editor is instant).
+  // iPhone HEVC/MOV does not play in every browser, so the editor and renderer get an H.264 copy (see sourceCopy()).
   const video = path.join(dir, 'source.mp4');
-  await run('ffmpeg', [
-    '-y', '-hide_banner', '-loglevel', 'error', '-i', original,
-    '-vf', "scale='if(gt(iw,ih),min(1920,iw),-2)':'if(gt(iw,ih),-2,min(1920,ih))'",
-    '-c:v', 'libx264', '-preset', 'veryfast', '-crf', '20', '-pix_fmt', 'yuv420p', '-g', '30',
-    // phone voice made clean and even: rumble cut, light noise reduction, gentle compression
-    '-af', 'highpass=f=80,afftdn=nf=-25,acompressor=threshold=-20dB:ratio=3:attack=5:release=120:makeup=2',
-    '-c:a', 'aac', '-b:a', '160k', '-movflags', '+faststart', video,
-  ]);
+  await sourceCopy(original, video);
   const info = await probe(video);
   // The phone previews play a 720p copy; start it now so it is ready when the takes are.
   derived(video, 'preview').catch((e) => console.error('preview copy', e));
