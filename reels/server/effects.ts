@@ -11,6 +11,7 @@ import { LANG_NAMES, fit, langs, type Lang } from '../src/lang.ts';
 import { recipeAxes, recipeById, rollStyles } from '../src/effects/recipes.ts';
 import { GRAPHIC_SCENES, directShots, framings, layouts, rhythm, type DirectInput } from '../src/effects/shots.ts';
 import { askJson, editImage, generateMusic } from './gemini.ts';
+import { goalLine } from './goals.ts';
 import { matte, measureSubject } from './matte.ts';
 import { buildTalkProps } from './talk.ts';
 import { Usage } from './usage.ts';
@@ -232,6 +233,8 @@ export async function buildEffectsProps(brief: {
   recipe?: string;
   /** Language to write captions and on-screen text in; defaults to the spoken language. */
   lang?: Lang;
+  /** What the reel is for (server/goals.ts), picked on the home screen. */
+  goal?: string;
   onStep?: (n: number, total: number, label: string) => void;
 }) {
   const total = 4;
@@ -255,6 +258,7 @@ export async function buildEffectsProps(brief: {
     recipe: brief.recipe,
     prefer: brief.prefer,
     lang: brief.lang,
+    goal: brief.goal,
     usage,
   });
   await writeFile(path.join(talk.dir, 'props.json'), JSON.stringify(props, null, 2));
@@ -276,6 +280,8 @@ export async function planEffectsReel(t: {
   recipe?: string;
   prefer?: EffectId[];
   lang?: Lang;
+  /** What the reel is for (server/goals.ts). */
+  goal?: string;
   usage: Usage;
   /** Reuse this music file instead of making one. */
   music?: string;
@@ -326,6 +332,7 @@ export async function planEffectsReel(t: {
         'beats are layout speaker. For broll and split write picture = a concrete, visual English description of one photo',
         '(an object, place or action, no text in it) that illustrates the beat. Put the key word of each beat in emphasis.',
         `Mix: ${recipe.name} — ${recipe.desc}`,
+        goalLine(brief.goal),
         'start/end are seconds from the transcript; beats must be in order and not overlap. caption = the words spoken in that beat',
         `(max ${fit(outLang, 60)} characters). ${langRule(talk.language, brief.lang)} Leave values empty unless the effect is chartGrow, infographic or sourceCard.`,
         ...(brief.prefer?.length

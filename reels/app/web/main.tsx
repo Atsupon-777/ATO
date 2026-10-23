@@ -529,7 +529,8 @@ const VideoLang: React.FC<{ template: TemplateId; value: string; onChange: (v: s
 const NewJob: React.FC<{ template: TemplateId; fx?: EffectId; mixArg?: string; tplArg?: string; onStarted: (job: Job) => void; onBack: () => void }> = ({ template, fx, mixArg, tplArg, onStarted, onBack }) => {
   // tplArg is a catalog template ("tpl-<id>"), which is also the key of its sample render.
   const tplId = tplArg?.slice(4);
-  const [input, setInput] = useState<Record<string, any>>({ lang: template === 'TalkCaptions' || template === 'EffectsReel' || template === 'FivePass' ? '' : lang, style: 'luxury', cta: template === 'ExperienceFilm' ? '' : tr("詳しくはプロフィールへ"), effects: fx ? [fx] : [], recipe: (template === 'EffectsReel' && tplId) || mixArg || 'all', templateId: tplId });
+  const goal = goalOfHash();
+  const [input, setInput] = useState<Record<string, any>>({ goal, lang: template === 'TalkCaptions' || template === 'EffectsReel' || template === 'FivePass' ? '' : lang, style: 'luxury', cta: template === 'ExperienceFilm' ? '' : tr("詳しくはプロフィールへ"), effects: fx ? [fx] : [], recipe: (template === 'EffectsReel' && tplId) || mixArg || 'all', templateId: tplId });
   const [err, setErr] = useState('');
   const [busy, setBusy] = useState(false);
   const set = (k: string) => (v: any) => setInput((s) => ({ ...s, [k]: v }));
@@ -551,7 +552,7 @@ const NewJob: React.FC<{ template: TemplateId; fx?: EffectId; mixArg?: string; t
     }
   };
   return (
-    <div className="editor">
+    <div className={`editor ${goal ? 'goalfirst' : ''}`}>
       <div className="stage">
         <div className="player">
           <div style={{ aspectRatio: '9 / 16' }}>
@@ -562,7 +563,8 @@ const NewJob: React.FC<{ template: TemplateId; fx?: EffectId; mixArg?: string; t
       </div>
       <div>
         <Crumbs items={newJobCrumbs(template, fx, mixArg)} />
-        <h1 style={{ marginTop: 16 }}>{t.name}</h1>
+        {goal ? <span className="goaltag">{GOAL_CHOICES.find((g) => g.id === goal)!.name}</span> : null}
+        <h1 style={{ marginTop: goal ? 8 : 16 }}>{t.name}</h1>
         <p className="sub">{t.desc}</p>
         <div className="form">
           {template === 'ProductShine' ? (
@@ -3940,8 +3942,8 @@ const TemplateBrowser: React.FC<{ onOpen: (it: CatalogItem) => void; featured: C
   }))];
   return (
     <section className="tsection tbrowser">
-      <div className="thead">
-        <h2>{tr("見本から選ぶ")}</h2>
+      <div className="thead quiet">
+        <h2>{tr("テンプレートから選ぶ")}</h2>
         <span className="cost">{tr("{0}種", fmtN(all.length + feat.length))}</span>
       </div>
       <div className="kindtabs" role="tablist" style={{ '--n': kinds.length + 1 } as React.CSSProperties}>
@@ -4054,11 +4056,13 @@ const Start: React.FC<{ go: (h: string) => void }> = ({ go }) => {
   const [video, setVideo] = useState<{ file: string; url: string; name: string } | undefined>();
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState('');
+  // 話して伝える on the home screen lands here with the upload already open.
+  const goal = goalOfHash();
   const submit = async () => {
     setBusy(true);
     setErr('');
     try {
-      const j = await api<Job>('/api/jobs', { method: 'POST', body: JSON.stringify({ template: 'EffectsReel', input: { video: video!.file, recipe: 'all', lang: '' } }) });
+      const j = await api<Job>('/api/jobs', { method: 'POST', body: JSON.stringify({ template: 'EffectsReel', input: { video: video!.file, recipe: 'all', lang: '', goal } }) });
       enablePush(registerPushToken);
       go(`#/job/${j.id}`);
     } catch (e: any) {
@@ -4066,7 +4070,7 @@ const Start: React.FC<{ go: (h: string) => void }> = ({ go }) => {
       setBusy(false);
     }
   };
-  const [open, setOpen] = useState<string | null>(null);
+  const [open, setOpen] = useState<string | null>(goal === 'talk' ? 'video' : null);
   const fold = (id: string, title: string, note: string, body: React.ReactNode) => (
     <section className={`fold ${open === id ? 'open' : ''}`}>
       <button className="foldhead" aria-expanded={open === id} onClick={() => setOpen(open === id ? null : id)}>
@@ -4151,6 +4155,43 @@ const RecentReels: React.FC<{ go: (h: string) => void }> = ({ go }) => {
   );
 };
 
+/**
+ * What the reel is for, in the customer's words. Each goal opens the upload step of the template that fits it
+ * best and carries `goal` along, so the AI writes the copy for that purpose (server/goals.ts).
+ */
+type GoalId = 'launch' | 'visit' | 'sale' | 'experience' | 'talk' | 'service';
+const GOAL_CHOICES: { id: GoalId; name: string; note: string; href: string; icon: string }[] = [
+  { id: 'launch', name: tr("新商品を知らせる"), note: tr("商品写真1枚から"), href: '#/new/ProductShine', icon: G.sparkle },
+  { id: 'visit', name: tr("来店・予約を増やす"), note: tr("お店や人の写真から"), href: '#/new/ServiceReel/tpl-svc-voice-none-clean', icon: 'M4 9h16M5.5 5h13L20 9H4zM5 9v10h14V9M10 19v-5h4v5' },
+  { id: 'sale', name: tr("セール・キャンペーン"), note: tr("写真と割引の内容から"), href: '#/new/ServiceReel/tpl-svc-kinetic-none-vivid', icon: 'M3.5 12.5V4h8.5l8.5 8.5-8 8zM8 8.2h.01' },
+  { id: 'experience', name: tr("体験・ツアーを伝える"), note: tr("写真がなくても作れます"), href: '#/new/ExperienceFilm/tpl-experience-film', icon: 'M3 19l6-10 4 6 3-4 5 8z' },
+  { id: 'talk', name: tr("話して伝える"), note: tr("話している動画から"), href: '#/start', icon: 'M4 5h16v11H9l-5 4z' },
+  { id: 'service', name: tr("サービスを紹介する"), note: tr("写真やスクショから"), href: '#/new/ServiceReel/tpl-svc-features-none-clean', icon: 'M4 8h16v11H4zM9 8V5h6v3M4 13h16' },
+];
+const isGoalId = (g: unknown): g is GoalId => GOAL_CHOICES.some((c) => c.id === g);
+/** The goal carried in the address (#/new/…?goal=launch). */
+const goalOfHash = (): GoalId | undefined => {
+  const g = new URLSearchParams(location.hash.split('?')[1] ?? '').get('goal');
+  return isGoalId(g) ? g : undefined;
+};
+
+const GoalPicker: React.FC<{ go: (h: string) => void }> = ({ go }) => (
+  <section className="goals" aria-labelledby="goals-h">
+    <h2 id="goals-h">{tr("何を伝えたいですか？")}</h2>
+    <div className="goalgrid">
+      {GOAL_CHOICES.map((g) => (
+        <button key={g.id} className={`goal goal-${g.id}`} onClick={() => go(`${g.href}?goal=${g.id}`)}>
+          <span className="goalicon" aria-hidden>
+            <Glyph d={g.icon} size={22} />
+          </span>
+          <b>{g.name}</b>
+          <small>{g.note}</small>
+        </button>
+      ))}
+    </div>
+  </section>
+);
+
 const Home: React.FC<{ go: (h: string) => void; initialGroup?: string }> = ({ go, initialGroup }) => {
   const [group, setGroupState] = useState<Group | 'all'>(GROUPS.some((g) => g.id === initialGroup) ? (initialGroup as Group) : 'all');
   const setGroup = (g: Group | 'all') => {
@@ -4186,13 +4227,7 @@ const Home: React.FC<{ go: (h: string) => void; initialGroup?: string }> = ({ go
         <h1>{tr("載せたら、あとは選ぶだけ。")}</h1>
         <p className="sub">{tr("編集しない、動画編集アプリ。")}</p>
       </div>
-      <button className="herotile" onClick={() => go('#/start')}>
-        <span className="upplus">
-          <Glyph d="M12 5v14M5 12h14" size={28} />
-        </span>
-        <b>{tr("動画を作る")}</b>
-        <small>{tr("AIがいくつもの案を作ります")}</small>
-      </button>
+      <GoalPicker go={go} />
       <RecentReels go={go} />
       <TemplateBrowser onOpen={setOpen} featured={catalog.filter((c) => c.group === 'base')} />
       {effectGroups.length ? (

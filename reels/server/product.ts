@@ -9,6 +9,7 @@ import { productShineSchema, type FilmShot, type ProductFilmProps, type ProductS
 import { copyLanguage, fit, isCJK, type Lang } from '../src/lang.ts';
 import { cutout } from './cutout.ts';
 import { askJson, editImage, generateMusic, imageToVideo } from './gemini.ts';
+import { goalLine } from './goals.ts';
 import { renderTemplate } from './render.ts';
 import { Usage } from './usage.ts';
 
@@ -105,6 +106,8 @@ export type ProductBrief = {
   lang?: Lang;
   /** Cosmetics: generate an on-skin model shot and animate that instead of the product shot. */
   onSkin: boolean;
+  /** What the reel is for (server/goals.ts), picked on the home screen. */
+  goal?: string;
   jobId?: string;
   /** Progress callback for the web app (step number, total, label). */
   onStep?: (step: number, total: number, label: string) => void;
@@ -178,6 +181,7 @@ export async function buildProductReel(brief: ProductBrief) {
       `Brand: ${brief.brand}. Product: ${brief.productName}.`,
       `Facts you may use (do not claim anything else, no numbers, awards or effects that are not listed): ${brief.facts || '(none)'}`,
       `Write natural copy for an Instagram reel. ${copyLanguage(lang)} Pick three close-up details that are clearly visible in IMAGE 2 and differ from each other.`,
+      goalLine(brief.goal),
       'The reel opens like a short film: three cinematic scenes of the product\'s world (a sensory hook, its origin, the ritual of using it), each with one quiet line of narration, and only then the product itself. Make the viewer feel the moment before they see the package.',
     ].join('\n'),
   });

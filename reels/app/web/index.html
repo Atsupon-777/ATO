@@ -969,6 +969,23 @@
     .board > .pickcta { justify-content: flex-end; }
     .board > .pickcta .btn { flex: 0 0 320px; }
   }
+  /* ---- goal-first home: what the reel is for, in the customer's words ---- */
+  .goals { margin: 0 0 28px; max-width: 760px; }
+  .goals h2 { font-size: 17px; margin: 0 0 12px; }
+  .goalgrid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
+  @media (min-width: 700px) { .goalgrid { grid-template-columns: repeat(3, minmax(0, 1fr)); } }
+  .goal { position: relative; display: grid; align-content: start; justify-items: start; gap: 4px; min-height: 118px; padding: 16px 14px 14px; border-radius: 20px; border: 1px solid var(--line); background: radial-gradient(120% 90% at 100% 0%, color-mix(in srgb, var(--gold) 12%, transparent), transparent 62%), var(--panel); color: var(--ink); text-align: left; cursor: pointer; font: inherit; box-shadow: var(--shadow); transition: border-color .2s, transform .15s; }
+  :root[data-theme="light"] .goal { box-shadow: 0 6px 18px rgba(60,48,20,.08); }
+  .goal:hover { border-color: var(--accent-line); }
+  .goal:active { transform: scale(.98); }
+  .goal b { font-size: 15.5px; line-height: 1.3; font-family: "Plus Jakarta Sans", "Noto Sans JP", system-ui, sans-serif; }
+  .goal small { color: var(--mute); font-size: 12px; line-height: 1.35; }
+  :lang(ja) .goal b, :lang(zh) .goal b { font-size: 14.5px; letter-spacing: -.03em; text-wrap: balance; }
+  .goalicon { width: 40px; height: 40px; border-radius: 12px; display: grid; place-items: center; background: color-mix(in srgb, var(--accent) 16%, var(--panel2)); color: var(--accent-text); margin-bottom: 6px; }
+  /* arriving from a goal on a phone: the form first, the sample under it */
+  @media (max-width: 900px) { .editor.goalfirst > .stage { order: 2; max-width: 240px; } }
+  .goaltag { display: inline-block; margin-top: 14px; font-size: 12px; font-weight: 700; padding: 4px 10px; border-radius: 999px; border: 1px solid var(--accent-line); color: var(--accent-text); }
+  .thead.quiet h2 { font-size: 15px; color: var(--mute); font-weight: 600; }
 </style>
 </head>
 <body>

@@ -8,6 +8,7 @@ import { serviceReelSchema, type ServiceReelProps } from '../src/servicereel.ts'
 import { serviceTemplates } from '../src/templates/servicereel-catalog.ts';
 import { copyLanguage, fit, type Lang } from '../src/lang.ts';
 import { askJson, generateMusic } from './gemini.ts';
+import { goalLine } from './goals.ts';
 import { publicDir } from './paths.ts';
 import { Usage } from './usage.ts';
 
@@ -59,6 +60,8 @@ export type ServiceBrief = {
   photos?: string[];
   logo?: string;
   lang?: Lang;
+  /** What the reel is for (server/goals.ts), picked on the home screen. */
+  goal?: string;
   jobId?: string;
   onStep?: (step: number, total: number, label: string) => void;
 };
@@ -94,8 +97,11 @@ export async function buildServiceProps(brief: ServiceBrief) {
       `Presentation: ${tpl.nameEn}. The images are the screenshots and photos the owner gave${shots.length ? '' : ' (none)'}.`,
       `What it is: ${brief.description || '(read it from the images)'}`,
       `Facts you may use for numbers, prices, quotes and offers (never invent any): ${brief.facts || '(none)'}`,
+      goalLine(brief.goal),
       `Write punchy, natural copy. ${copyLanguage(lang)} Keep every length limit. Pick accent colours from the brand in the images.`,
-    ].join('\n'),
+    ]
+      .filter(Boolean)
+      .join('\n'),
   });
   const plan = planSchema.parse(raw);
 

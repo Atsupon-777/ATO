@@ -10,6 +10,7 @@ import { z } from 'zod';
 import { experienceBeats, experienceFilmSchema, type ExperienceFilmProps } from '../src/schemas.ts';
 import { copyLanguage, fit, isCJK, type Lang } from '../src/lang.ts';
 import { askJson, editImage, generateMusic, imageToVideo } from './gemini.ts';
+import { goalLine } from './goals.ts';
 import { publicDir } from './paths.ts';
 import { renderTemplate } from './render.ts';
 import { Usage } from './usage.ts';
@@ -85,6 +86,8 @@ export type ExperienceBrief = {
   cta?: string;
   handle?: string;
   lang?: Lang;
+  /** What the reel is for (server/goals.ts), picked on the home screen. */
+  goal?: string;
   jobId?: string;
   onStep?: (step: number, total: number, label: string) => void;
   /** false: stop after building props, so the editor can preview and tweak before rendering. */
@@ -181,6 +184,7 @@ export async function buildExperienceFilm(brief: ExperienceBrief) {
             ? `The client sent ${media.length} MEDIA images (in order, index 0 first: ${media.map((m, i) => `${i} = ${m.kind === 'video' ? 'a frame of their video' : 'their photo'}`).join(', ')}). Build scenes on them where they fit, so the film shows the real place; let the AI fill the beats they do not cover, in the same look.`
             : 'There are no client photos: create every scene, true to how this kind of experience really looks in this place.',
           `${copyLanguage(lang)}`,
+          goalLine(brief.goal),
           'Story: hook (a striking moment) → arrival (the place) → activity (people enjoying it, in motion) → sensory (a detail you can feel) → peak (the view or moment everyone came for). Keep the same people, clothes, equipment and time of day across every scene, and keep each scene simple enough to film cleanly.',
         ].join('\n'),
       });

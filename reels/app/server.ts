@@ -26,6 +26,7 @@ import { renderTemplate } from '../server/render.ts';
 import { buildSaasProps } from '../server/saas.ts';
 import { buildTalkProps } from '../server/talk.ts';
 import { derived } from '../server/derived.ts';
+import { isGoal, type Goal } from '../server/goals.ts';
 import { isLang, type Lang } from '../src/lang.ts';
 import { authEnabled, LOCAL_USER, verifyIdToken, webConfig, type User } from '../server/auth.ts';
 import { FreeClaimError, NotEnoughTokens, balance, charge, claimFree, getAccount, refund, removeAccount, update, allAccounts, PLAN_TOKENS, FREE_TOKENS, PAYG_UNIT, PAYG_UNIT_YEN, PAYG_MIN, PAYG_MAX } from '../server/accounts.ts';
@@ -84,6 +85,8 @@ type Job = {
   hq?: boolean;
   /** Music beds made for this reel, by genre (plus `original`, the one it was first made with): re-picking one is free. */
   musicTracks?: Record<string, string>;
+  /** What the reel is for, picked on the home screen (server/goals.ts). */
+  goal?: Goal;
 };
 
 /** Each export costs a little; the first export that carries premium-edit layers adds PREMIUM_TOKENS once. */
@@ -161,7 +164,9 @@ async function startJob(template: Template, input: Record<string, any>, user: Us
     status: 'generating',
     owner: user.uid,
     tokens: cost,
+    goal: isGoal(input.goal) ? input.goal : undefined,
   };
+  const goal = job.goal;
   jobs.set(id, job);
   await save(job);
   recordTokens({ uid: user.uid, jobId: id, template, op: 'reel', tokens: cost });
@@ -188,6 +193,7 @@ async function startJob(template: Template, input: Record<string, any>, user: Us
           handle: String(input.handle || '').slice(0, 30),
           video: Boolean(input.video),
           onSkin: Boolean(input.onSkin),
+          goal,
           lang,
           jobId: id,
           onStep,
@@ -210,6 +216,7 @@ async function startJob(template: Template, input: Record<string, any>, user: Us
           cta: String(input.cta || '').slice(0, 16),
           handle: String(input.handle || '').slice(0, 30),
           lang,
+          goal,
           jobId: id,
           onStep,
           render: false,
@@ -261,6 +268,7 @@ async function startJob(template: Template, input: Record<string, any>, user: Us
           logo: upload(input.logo),
           photos,
           lang,
+          goal,
           jobId: id,
           onStep,
         });
@@ -280,7 +288,7 @@ async function startJob(template: Template, input: Record<string, any>, user: Us
         if (!video) throw new Error('動画をアップロードしてください');
         const prefer = (Array.isArray(input.effects) ? input.effects : []).filter((e: string) => (effectIds as readonly string[]).includes(e));
         const recipe = typeof input.recipe === 'string' ? input.recipe : undefined;
-        const brief = { video, jobId: id, prefer, recipe, lang: isLang(input.lang) ? input.lang : undefined, onStep };
+        const brief = { video, jobId: id, prefer, recipe, lang: isLang(input.lang) ? input.lang : undefined, goal, onStep };
         const res = await buildEffectsProps(brief);
         // A sub-type picked in the gallery fixes one style axis (caption, camera, transition, grade or texture) on every cut.
         const lock = input.lock && typeof input.lock === 'object' ? input.lock : null;
