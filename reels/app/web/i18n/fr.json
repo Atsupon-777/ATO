@@ -890,5 +890,17 @@
  "サービスを紹介する": "Présenter un service",
  "写真やスクショから": "À partir de photos ou de captures",
  "何を伝えたいですか？": "Que voulez-vous faire passer ?",
- "テンプレートから選ぶ": "Choisir un modèle"
+ "テンプレートから選ぶ": "Choisir un modèle",
+ "もっと高級に": "Plus haut de gamme",
+ "もっと楽しく": "Plus fun",
+ "もっと短く": "Plus court",
+ "文字を少なく": "Moins de texte",
+ "ひとことで変える": "Changer en un geste",
+ "これ以上は短くできません": "Impossible de raccourcir davantage",
+ "{0}秒 → {1}秒（話の少ないシーンを外しました）": "{0} s → {1} s (scènes les moins parlées retirées)",
+ "色・書体・字幕・カメラ・つなぎを落ち着いた高級感のある組み合わせにしました": "Couleurs, typo, sous-titres, caméra et transitions passés en mode sobre et haut de gamme",
+ "色・字幕・カメラ・つなぎを明るく弾む組み合わせにしました": "Couleurs, sous-titres, caméra et transitions passés en mode vif et pétillant",
+ "字幕を1〜3語ずつにして、文字だけの画面を減らしました": "Sous-titres de 1 à 3 mots à la fois, moins d'écrans de texte seul",
+ "{0}秒 → {1}秒": "{0} s → {1} s",
+ "最初と最後の言葉だけ残しました": "Seules la première et la dernière phrase restent"
 }

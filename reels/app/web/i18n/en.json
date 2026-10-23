@@ -890,5 +890,17 @@
  "サービスを紹介する": "Introduce a service",
  "写真やスクショから": "From photos or screenshots",
  "何を伝えたいですか？": "What do you want to say?",
- "テンプレートから選ぶ": "Choose from templates"
+ "テンプレートから選ぶ": "Choose from templates",
+ "もっと高級に": "More premium",
+ "もっと楽しく": "More fun",
+ "もっと短く": "Shorter",
+ "文字を少なく": "Less text",
+ "ひとことで変える": "Change it in one tap",
+ "これ以上は短くできません": "It can't get any shorter",
+ "{0}秒 → {1}秒（話の少ないシーンを外しました）": "{0}s → {1}s (took out the scenes with the least said)",
+ "色・書体・字幕・カメラ・つなぎを落ち着いた高級感のある組み合わせにしました": "Colours, type, captions, camera and cuts set to a calm, premium mix",
+ "色・字幕・カメラ・つなぎを明るく弾む組み合わせにしました": "Colours, captions, camera and cuts set to a bright, bouncy mix",
+ "字幕を1〜3語ずつにして、文字だけの画面を減らしました": "Captions now show 1–3 words at a time, with fewer text-only screens",
+ "{0}秒 → {1}秒": "{0}s → {1}s",
+ "最初と最後の言葉だけ残しました": "Kept only the first and last lines"
 }

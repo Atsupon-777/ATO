@@ -890,5 +890,17 @@
  "サービスを紹介する": "Perkenalkan layanan",
  "写真やスクショから": "Dari foto atau tangkapan layar",
  "何を伝えたいですか？": "Apa yang ingin Anda sampaikan?",
- "テンプレートから選ぶ": "Pilih dari template"
+ "テンプレートから選ぶ": "Pilih dari template",
+ "もっと高級に": "Lebih mewah",
+ "もっと楽しく": "Lebih seru",
+ "もっと短く": "Lebih pendek",
+ "文字を少なく": "Lebih sedikit teks",
+ "ひとことで変える": "Ubah dengan satu ketuk",
+ "これ以上は短くできません": "Tidak bisa lebih pendek lagi",
+ "{0}秒 → {1}秒（話の少ないシーンを外しました）": "{0} dtk → {1} dtk (adegan dengan sedikit ucapan dihapus)",
+ "色・書体・字幕・カメラ・つなぎを落ち着いた高級感のある組み合わせにしました": "Warna, huruf, teks, kamera, dan transisi diubah jadi tenang dan mewah",
+ "色・字幕・カメラ・つなぎを明るく弾む組み合わせにしました": "Warna, teks, kamera, dan transisi diubah jadi cerah dan ceria",
+ "字幕を1〜3語ずつにして、文字だけの画面を減らしました": "Teks kini 1–3 kata sekaligus, layar teks saja dikurangi",
+ "{0}秒 → {1}秒": "{0} dtk → {1} dtk",
+ "最初と最後の言葉だけ残しました": "Hanya kalimat pertama dan terakhir yang disisakan"
 }

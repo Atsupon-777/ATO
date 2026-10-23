@@ -1383,6 +1383,24 @@ const FilmThumb: React.FC<{ p: ExperienceFilmProps }> = ({ p }) => {
  * The pick screen of an experience film: the film, then whole-film takes made from the same shots (colour world,
  * typeface, vertical or horizontal copy, pace). A tap takes one; 「別の案」 deals new ones; the text is one tap away.
  */
+/** Mood quick picks for an experience film: its colour world and typeface, its length, or fewer lines on screen. */
+const applyFilmMood = (x: ExperienceFilmProps, mood: MoodId) => {
+  const look = (id: string) => FILM_LOOKS.find((l) => l.id === id)!;
+  const cjk = x.lang === 'ja' || x.lang === 'zh' || x.lang === undefined;
+  if (mood === 'luxe' || mood === 'fun') {
+    const l = look(mood === 'luxe' ? 'night' : 'airy');
+    x.grade = l.grade;
+    x.palette = { ...l.palette };
+    x.type = mood === 'luxe' ? (cjk ? 'mincho' : 'serif') : 'sans';
+    if (mood === 'fun') x.vertical = false;
+  } else if (mood === 'short') {
+    x.shots = x.shots.map((sh) => ({ ...sh, seconds: Math.max(1.5, Math.round(sh.seconds * 0.8 * 10) / 10) }));
+  } else {
+    x.shots = x.shots.map((sh) => ({ ...sh, kicker: '', line: sh.beat === 'hook' || sh.beat === 'peak' ? sh.line : '' }));
+  }
+};
+const filmSeconds = (p: ExperienceFilmProps) => p.shots.reduce((a, sh) => a + sh.seconds, 0);
+
 const FilmPick: React.FC<{ job: Job; p: ExperienceFilmProps; update: PanelProps<ExperienceFilmProps>['update']; saved: boolean; err?: string; onRender: () => void; onAdvanced: () => void }> = ({
   job,
   p,
@@ -1401,6 +1419,9 @@ const FilmPick: React.FC<{ job: Job; p: ExperienceFilmProps; update: PanelProps<
       ...[0, 1, 2, 3, 4].map((k) => filmTake(orig, seed, k)),
     ],
     [seed, orig],
+  );
+  const mood = useMood(p, update as (fn: (x: ExperienceFilmProps) => ExperienceFilmProps) => void, applyFilmMood, (a, b, m) =>
+    m === 'short' ? tr("{0}秒 → {1}秒", Math.round(filmSeconds(a)), Math.round(filmSeconds(b))) : m === 'less' ? tr("最初と最後の言葉だけ残しました") : '',
   );
   const preview = (o: FilmOpt) => {
     const x = structuredClone(p);
@@ -1434,6 +1455,7 @@ const FilmPick: React.FC<{ job: Job; p: ExperienceFilmProps; update: PanelProps<
         <Crumbs items={[{ label: tr("リール"), href: '#/reels' }, { label: TEMPLATES.ExperienceFilm.name, href: '#/reels' }, { label: job.title }]} />
         <h1 style={{ marginTop: 12 }}>{job.title}</h1>
         <Cost job={job} />
+        <MoodChips p={p} {...mood} />
         <div className="panel" style={{ marginTop: 16 }}>
           <div className="row" style={{ justifyContent: 'space-between' }}>
             <h2>{tr("全体の案")}</h2>
@@ -2426,11 +2448,174 @@ const reelSnapshot = (orig: EffectsReelProps): Edition => {
     apply: (x) => {
       x.recipe = orig.recipe;
       x.palette = structuredClone(orig.palette);
+      // 「もっと短く」 took beats out: the first take has them all again
+      if (x.segments.length !== orig.segments.length) (x.segments = structuredClone(orig.segments)), (x.speech = structuredClone(orig.speech));
       x.segments.forEach((s, k) => ((s.effect = orig.segments[k].effect), (s.style = structuredClone(orig.segments[k].style)), (s.text = orig.segments[k].text), (s.shot = structuredClone(orig.segments[k].shot))));
     },
     on: (x) => sig(x) === want,
   };
 };
+
+// ---------- mood quick picks: one tap changes several options at once ----------
+
+type MoodId = 'luxe' | 'fun' | 'short' | 'less';
+const MOOD_NAMES: { id: MoodId; name: string; icon: string }[] = [
+  { id: 'luxe', name: tr("もっと高級に"), icon: G.sparkle },
+  { id: 'fun', name: tr("もっと楽しく"), icon: 'M12 21a9 9 0 1 0 0-18 9 9 0 0 0 0 18zM8.5 14.5a4.5 4.5 0 0 0 7 0M9 9.5h.01M15 9.5h.01' },
+  { id: 'short', name: tr("もっと短く"), icon: 'M6 4l6 6 6-6M6 20l6-6 6 6' },
+  { id: 'less', name: tr("文字を少なく"), icon: 'M5 6h14M12 6v13M4 20L20 4' },
+];
+const cycle = <T,>(arr: readonly T[], i: number) => arr[i % arr.length];
+const PLAYFUL = new Set(['stickers', 'emoji', 'arrows', 'sparkles', 'beatFlash', 'underline']);
+const isCjk = (l?: string) => l === undefined || l === 'ja' || l === 'zh';
+
+/** Seconds of a reel (segments play back to back). */
+const reelSeconds = (p: EffectsReelProps) => p.segments.reduce((a, s) => a + Math.max(0, s.end - s.start), 0);
+
+/**
+ * About a quarter shorter: drops the middle beats that say least (shortest lines), never the first or last,
+ * never below three beats. The speech map (for ducking) is moved along with the beats that stay.
+ */
+const shortenReel = (x: EffectsReelProps) => {
+  const n = x.segments.length;
+  if (n <= 3) return;
+  const drop = new Set(
+    x.segments
+      .map((s, i) => ({ i, score: (s.caption ?? '').length + (s.text ? 6 : 0) + (s.values?.length ? 20 : 0) }))
+      .filter((c) => c.i > 0 && c.i < n - 1)
+      .sort((a, b) => a.score - b.score)
+      .slice(0, Math.min(n - 3, Math.max(1, Math.round(n * 0.25))))
+      .map((c) => c.i),
+  );
+  let oldAt = 0;
+  let newAt = 0;
+  const speech: [number, number][] = [];
+  x.segments.forEach((s, i) => {
+    const d = Math.max(0, s.end - s.start);
+    if (!drop.has(i)) {
+      for (const [a, b] of x.speech ?? []) {
+        const from = Math.max(a, oldAt);
+        const to = Math.min(b, oldAt + d);
+        if (to > from) speech.push([+(from - oldAt + newAt).toFixed(2), +(to - oldAt + newAt).toFixed(2)]);
+      }
+      newAt += d;
+    }
+    oldAt += d;
+  });
+  x.segments = x.segments.filter((_, i) => !drop.has(i));
+  if (x.speech) x.speech = speech;
+};
+
+/**
+ * What each mood does to a talking reel. Only free options: colours, fonts, captions, camera, cuts, accents and
+ * length; the music changes only to a kind already made for this reel (picking it again is free).
+ */
+const applyMood = (x: EffectsReelProps, mood: MoodId, tracks: Record<string, string> = {}) => {
+  const style = (i: number, patch: Partial<BeatStyle>) => (x.segments[i].style = { ...(x.segments[i].style ?? {}), ...patch });
+  if (mood === 'luxe') {
+    x.palette = { accent: '#F2E3A0', ink: '#FFFFFF', paper: '#16130B' };
+    x.segments.forEach((s, i) =>
+      style(i, {
+        grade: 'film',
+        color: '#F2E3A0',
+        font: isCjk(x.lang) ? 'mincho' : 'serif',
+        caption: 'spaced',
+        camera: cycle(['dollyIn', 'drift', 'push'] as const, i),
+        transition: i ? cycle(['blurDissolve', 'dip'] as const, i) : s.style?.transition,
+        texture: 'grain',
+        accents: (s.style?.accents ?? []).filter((a) => !PLAYFUL.has(a)) as never,
+      }),
+    );
+    const t = tracks.classical ?? tracks.jazz;
+    if (t) x.music = t;
+  } else if (mood === 'fun') {
+    x.palette = { accent: '#FF6FB5', ink: '#FFFFFF', paper: '#1E0F18' };
+    x.segments.forEach((s, i) =>
+      style(i, {
+        grade: 'punchy',
+        color: cycle(['#FF6FB5', '#FFC542', '#29D3F0'], i),
+        font: isCjk(x.lang) ? 'sansJP' : 'display',
+        caption: 'bounce',
+        camera: cycle(['punch', 'shake', 'spinIn'] as const, i),
+        transition: i ? cycle(['whipLeft', 'whipUp', 'zoomBlur', 'flash'] as const, i) : s.style?.transition,
+        texture: 'none',
+        accents: [...new Set([...(s.style?.accents ?? []).filter((a) => a !== 'letterbox'), ...(i % 2 ? ['emoji'] : ['sparkles'])])] as never,
+      }),
+    );
+    if (tracks.pop) x.music = tracks.pop;
+  } else if (mood === 'short') {
+    shortenReel(x);
+  } else {
+    // fewer words on screen: 1-3 words at a time, no full-screen lines or word-heavy scenes, no extra labels
+    x.segments.forEach((s, i) => {
+      style(i, { caption: 'keyword', accents: (s.style?.accents ?? []).filter((a) => !['emoji', 'stickers', 'arrows', 'echo', 'underline'].includes(a)) as never });
+      if (s.shot?.layout === 'text') s.shot = { ...s.shot, layout: 'speaker', framing: 'medium' };
+      if (OWN_TYPE.has(s.effect) && i > 0) s.effect = 'digitalZoom';
+      if (i > 0) s.text = undefined;
+    });
+  }
+};
+
+/**
+ * The quick picks above the detailed choices: one tap applies a whole mood, a second chip undoes it.
+ * `apply` returns the new props; nothing here costs tokens.
+ */
+const MoodChips: React.FC<{ p: any; onApply: (mood: MoodId) => void; onUndo?: () => void; last?: MoodId | null; note?: string }> = ({ onApply, onUndo, last, note }) => (
+  <div className="moods" role="group" aria-label={tr("ひとことで変える")}>
+    <div className="moodrow">
+      {MOOD_NAMES.map((m) => (
+        <button key={m.id} className={`mood ${last === m.id ? 'on' : ''}`} onClick={() => onApply(m.id)}>
+          <Glyph d={m.icon} size={16} />
+          {m.name}
+        </button>
+      ))}
+      {onUndo ? (
+        <button className="mood undo" onClick={onUndo}>
+          <Glyph d="M9 14L4 9l5-5M4 9h10a6 6 0 0 1 0 12h-3" size={16} />
+          {tr("元に戻す")}
+        </button>
+      ) : null}
+    </div>
+    {note ? <p className="moodnote">{note}</p> : null}
+  </div>
+);
+
+/** Mood state for a screen: the props before the last tap (for 元に戻す) and a one-line note of what changed. */
+const useMood = <P,>(p: P, update: (fn: (x: P) => P) => void, apply: (x: P, mood: MoodId) => void, describe?: (before: P, after: P, mood: MoodId) => string) => {
+  const [prev, setPrev] = useState<P | null>(null);
+  const [last, setLast] = useState<MoodId | null>(null);
+  const [note, setNote] = useState('');
+  const onApply = (mood: MoodId) => {
+    const before = structuredClone(p);
+    const after = structuredClone(p);
+    apply(after, mood);
+    setPrev(before);
+    setLast(mood);
+    setNote(describe ? describe(before, after, mood) : '');
+    update(() => after);
+  };
+  const onUndo = prev
+    ? () => {
+        const back = prev;
+        setPrev(null);
+        setLast(null);
+        setNote('');
+        update(() => structuredClone(back));
+      }
+    : undefined;
+  return { onApply, onUndo, last, note };
+};
+
+const moodNote = (before: EffectsReelProps, after: EffectsReelProps, mood: MoodId) =>
+  mood === 'short'
+    ? after.segments.length === before.segments.length
+      ? tr("これ以上は短くできません")
+      : tr("{0}秒 → {1}秒（話の少ないシーンを外しました）", Math.round(reelSeconds(before)), Math.round(reelSeconds(after)))
+    : mood === 'luxe'
+      ? tr("色・書体・字幕・カメラ・つなぎを落ち着いた高級感のある組み合わせにしました")
+      : mood === 'fun'
+        ? tr("色・字幕・カメラ・つなぎを明るく弾む組み合わせにしました")
+        : tr("字幕を1〜3語ずつにして、文字だけの画面を減らしました");
 
 /** Track rows under the preview. Read-only: they show what is in each scene, they are not for editing. */
 const TRACKS: { id: 'video' | 'picture' | 'audio' | 'text'; name: string }[] = [
@@ -2560,15 +2745,17 @@ const PickBoard: React.FC<{ job: Job; p: EffectsReelProps; update: PanelProps<Ef
   const scenes = useMemo(() => scenesOf(p), [p.segments]);
   const total = scenes.length ? scenes[scenes.length - 1].from + scenes[scenes.length - 1].dur : 1;
   const sc = sel === null ? null : scenes[Math.min(sel, scenes.length - 1)];
+  useEffect(() => void (sel !== null && sel >= scenes.length && setSel(null)), [scenes.length]);
   // dealt once per scene / reshuffle, so taking one does not reshuffle the rest
   const editions = useMemo<Edition[]>(
     () =>
       sel === null
         ? [reelSnapshot(orig), ...(live.current.segments.some((s) => s.shot) ? [recutOpt(live.current, seed)] : []), ...BUILD_STEPS[0].deal(live.current, seed).map((o) => ({ ...o, kind: '' }))]
-        : [sceneSnapshot(orig.segments[sel], sel), ...sceneEditions(live.current, sel, seed)],
+        : [sceneSnapshot(orig.segments.find((s) => s.start === live.current.segments[sel]?.start) ?? orig.segments[sel], sel), ...sceneEditions(live.current, sel, seed)],
     [sel, seed],
   );
   const take = (o: Edition) => update((x) => (o.apply(x), x));
+  const mood = useMood(p, update, (x, m) => applyMood(x, m, tracks), moodNote);
 
   // preview: one player, a still until tapped
   const solo = useSolo();
@@ -2729,6 +2916,8 @@ const PickBoard: React.FC<{ job: Job; p: EffectsReelProps; update: PanelProps<Ef
         </div>
       </div>
 
+      <MoodChips p={p} {...mood} />
+
       <div className="tl" aria-label={tr("シーン")}>
         <div className="tlbar">
           <button className="tlplay" onClick={toggle} aria-label={playing && !paused ? tr("一時停止") : tr("再生")}>
@@ -2817,7 +3006,8 @@ const STICKERS = stickerIds;
 const OVERLAY_COLORS = ['#DFFF4F', '#FFFFFF', '#FF5A36', '#7C9CFF', '#FF7EB6', '#0A0A0B'];
 
 /** Drag the caption up or down on the video itself, or with the slider; brightness with one slider; premium layers on top. */
-const PickTune: React.FC<{ jobId: string; p: EffectsReelProps; update: PanelProps<EffectsReelProps>['update']; onNext: () => void }> = ({ jobId, p, update, onNext }) => {
+const PickTune: React.FC<{ jobId: string; tracks?: Record<string, string>; p: EffectsReelProps; update: PanelProps<EffectsReelProps>['update']; onNext: () => void }> = ({ jobId, tracks, p, update, onNext }) => {
+  const mood = useMood(p, update, (x, m) => applyMood(x, m, tracks), moodNote);
   const [song, setSong] = useState<'idle' | 'busy' | string>('idle');
   const newSong = async () => {
     setSong('busy');
@@ -2894,6 +3084,7 @@ const PickTune: React.FC<{ jobId: string; p: EffectsReelProps; update: PanelProp
           ))}
         </div>
       </div>
+      <MoodChips p={p} {...mood} />
       <p className="pickhint">{tr("字幕やステッカーは、動画の上で指でドラッグして動かせます。")}</p>
       <div className="picktools">
         <div className="field">
@@ -3033,7 +3224,7 @@ const PickFlow: React.FC<{
       {stage === 'feed' ? (
         <PickBoard job={job} p={p} update={update} onDone={() => setStage('post')} />
       ) : stage === 'tune' ? (
-        <PickTune jobId={job.id} p={p} update={update} onNext={() => setStage('post')} />
+        <PickTune jobId={job.id} tracks={job.musicTracks} p={p} update={update} onNext={() => setStage('post')} />
       ) : (
         <div className="pickpost">
           <div className="pickpostrow">

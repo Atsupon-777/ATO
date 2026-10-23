@@ -986,6 +986,17 @@
   @media (max-width: 900px) { .editor.goalfirst > .stage { order: 2; max-width: 240px; } }
   .goaltag { display: inline-block; margin-top: 14px; font-size: 12px; font-weight: 700; padding: 4px 10px; border-radius: 999px; border: 1px solid var(--accent-line); color: var(--accent-text); }
   .thead.quiet h2 { font-size: 15px; color: var(--mute); font-weight: 600; }
+  /* ---- mood quick picks (pick / 整える screens) ---- */
+  .moods { margin: 12px 0 14px; }
+  .moodrow { display: flex; flex-wrap: wrap; gap: 8px; }
+  .mood { display: inline-flex; align-items: center; gap: 6px; min-height: 40px; padding: 8px 14px; border-radius: 999px; border: 1px solid var(--line); background: var(--panel); color: var(--ink); font: inherit; font-size: 13.5px; font-weight: 700; cursor: pointer; transition: border-color .2s, background .2s, transform .12s; }
+  .mood svg { color: var(--accent-text); flex: none; }
+  .mood:active { transform: scale(.97); }
+  .mood.on { border-color: var(--accent-line); background: color-mix(in srgb, var(--accent) 14%, var(--panel)); }
+  .mood.undo { background: transparent; color: var(--mute); font-weight: 600; }
+  .mood.undo svg { color: var(--mute); }
+  .moodnote { margin: 8px 2px 0; font-size: 12px; color: var(--mute); }
+  .board .moods { padding: 0 2px; }
 </style>
 </head>
 <body>
