@@ -940,5 +940,13 @@
  "最後の失敗": "Last failure",
  "直近7日の生成はまだありません": "No generations in the last 7 days",
  "最近のエラー": "Recent errors",
- "生成": "Generation"
+ "生成": "Generation",
+ "初回の商品動画は無料": "Your first product video is free",
+ "初回の商品動画は無料です。アカウントのページで電話番号を確認すると使えます。": "Your first product video is free. Confirm your phone number on the account page to use it.",
+ "「商品を魅せる」「体験を映画のように」の最初の1本は0トークンで作れます。": "Your first “Showcase a product” or “Experience film” video costs 0 tokens.",
+ "電話番号を確認すると、「商品を魅せる」「体験を映画のように」の最初の1本を0トークンで作れます。": "Confirm your phone number and your first “Showcase a product” or “Experience film” video costs 0 tokens.",
+ "無料でできることは？": "What's free?",
+ "BGMの作り直しや音楽の種類の変更、投稿文（キャプション・ハッシュタグ）の作成は無料です。電話番号を確認したアカウントは、最初の商品動画（商品を魅せる・体験を映画のように）も1本無料で作れます。": "Remaking the background music, changing the kind of music and writing the post text (caption and hashtags) are free. Accounts with a confirmed phone number also get their first product video (Showcase a product or Experience film) free.",
+ "初回無料の商品動画": "Free first product videos",
+ "{0}本": "{0}"
 }

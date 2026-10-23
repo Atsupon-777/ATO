@@ -47,7 +47,8 @@ export type TokenEntry = {
   uid: string;
   jobId?: string;
   template?: string;
-  op: 'reel' | 'export' | 'music' | 'refund' | 'free' | 'grant';
+  /** free_first: an account's first product ad film, made for 0 tokens; free_first_back: it failed, so the free right came back. */
+  op: 'reel' | 'export' | 'music' | 'refund' | 'free' | 'grant' | 'free_first' | 'free_first_back';
   tokens: number;
   /** An export (or its refund) that included 高画質・高音質 (HQ_TOKENS of `tokens`). */
   hq?: boolean;
@@ -121,6 +122,6 @@ export function recordAi(a: { jobId: string; uid: string; template: string; step
 }
 
 export function recordTokens(t: Omit<TokenEntry, 'at' | 'kind'>) {
-  if (!t.tokens) return Promise.resolve();
+  if (!t.tokens && t.op !== 'free_first' && t.op !== 'free_first_back') return Promise.resolve();
   return append({ at: now(), kind: 'tokens', ...t });
 }

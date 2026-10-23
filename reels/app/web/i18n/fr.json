@@ -940,5 +940,13 @@
  "最後の失敗": "Dernier échec",
  "直近7日の生成はまだありません": "Aucune génération ces 7 derniers jours",
  "最近のエラー": "Erreurs récentes",
- "生成": "Génération"
+ "生成": "Génération",
+ "初回の商品動画は無料": "Votre première vidéo produit est offerte",
+ "初回の商品動画は無料です。アカウントのページで電話番号を確認すると使えます。": "Votre première vidéo produit est offerte. Confirmez votre numéro de téléphone sur la page du compte pour en profiter.",
+ "「商品を魅せる」「体験を映画のように」の最初の1本は0トークンで作れます。": "Votre première vidéo « Mettre un produit en valeur » ou « Film d'expérience » coûte 0 jeton.",
+ "電話番号を確認すると、「商品を魅せる」「体験を映画のように」の最初の1本を0トークンで作れます。": "Confirmez votre numéro et votre première vidéo « Mettre un produit en valeur » ou « Film d'expérience » coûtera 0 jeton.",
+ "無料でできることは？": "Qu'est-ce qui est gratuit ?",
+ "BGMの作り直しや音楽の種類の変更、投稿文（キャプション・ハッシュタグ）の作成は無料です。電話番号を確認したアカウントは、最初の商品動画（商品を魅せる・体験を映画のように）も1本無料で作れます。": "Refaire la musique, changer de style musical et rédiger le texte de publication (légende et hashtags) sont gratuits. Les comptes avec un numéro confirmé ont aussi leur première vidéo produit (Mettre un produit en valeur ou Film d'expérience) offerte.",
+ "初回無料の商品動画": "Premières vidéos produit offertes",
+ "{0}本": "{0}"
 }

@@ -30,7 +30,7 @@ import { isGoal, type Goal } from '../server/goals.ts';
 import { takePostKitTurn, writePostKit, type PostKit } from '../server/postkit.ts';
 import { isLang, type Lang } from '../src/lang.ts';
 import { authEnabled, LOCAL_USER, verifyIdToken, webConfig, type User } from '../server/auth.ts';
-import { type Brand, FreeClaimError, NotEnoughTokens, balance, charge, claimFree, getAccount, refund, removeAccount, update, allAccounts, PLAN_TOKENS, FREE_TOKENS, PAYG_UNIT, PAYG_UNIT_YEN, PAYG_MIN, PAYG_MAX } from '../server/accounts.ts';
+import { type Brand, freeFirstState, giveBackFreeFirst, takeFreeFirst, FreeClaimError, NotEnoughTokens, balance, charge, claimFree, getAccount, refund, removeAccount, update, allAccounts, PLAN_TOKENS, FREE_TOKENS, PAYG_UNIT, PAYG_UNIT_YEN, PAYG_MIN, PAYG_MAX } from '../server/accounts.ts';
 import { billingEnabled, cancelSubscription, checkout, isPurchase, paygUnits, portal, webhook } from '../server/billing.ts';
 import { iapConfig, revenuecatWebhook } from '../server/appstore.ts';
 import { deleteFirebaseUser } from '../server/google.ts';
@@ -101,6 +101,8 @@ const HQ_TOKENS = 2;
 const exportCost = (job: Job, hq = false) => EXPORT_TOKENS + (premiumDue(job) ? PREMIUM_TOKENS : 0) + (hq ? HQ_TOKENS : 0);
 
 /** Tokens each kind of reel takes: own footage only 2, AI photo or effects 5, with AI video 12 (experience films are all AI video). */
+/** Product ad films: an account's first one is free (accounts.ts freeFirstState). Names of templates still to come are listed too. */
+const PRODUCT_AD = new Set<string>(['ProductShine', 'ExperienceFilm', 'PhotoAdFilm', 'PhotoAd']);
 const tokensFor = (t: Template, input: Record<string, any>) => (t === 'ExperienceFilm' ? 12 : t === 'ProductShine' ? (input.video ? 12 : 5) : t === 'EffectsReel' || t === 'FivePass' || t === 'SaaSPromo' || t === 'ServiceReel' ? 5 : 2);
 
 const jobs = new Map<string, Job>();
@@ -134,8 +136,22 @@ const uploadOf = (user: User) => (name: unknown) => {
   return path.join(uploadsDir, userDir(user), path.basename(name));
 };
 
-/** Tokens for one 「別の曲」. */
-const MUSIC_TOKENS = 1;
+/**
+ * 「別の曲」 and new kinds of music are free (no tokens since 2026-10-23); each owner may make MUSIC_PER_HOUR /
+ * MUSIC_PER_DAY new tracks, so free re-dos can't be farmed. Picking a kind already made for the reel is not counted.
+ */
+const MUSIC_PER_HOUR = 8;
+const MUSIC_PER_DAY = 30;
+const musicMade = new Map<string, number[]>();
+const takeMusicTurn = (uid: string) => {
+  const now = Date.now();
+  const list = (musicMade.get(uid) ?? []).filter((t) => now - t < 24 * 3600_000);
+  if (list.filter((t) => now - t < 3600_000).length >= MUSIC_PER_HOUR || list.length >= MUSIC_PER_DAY) return false;
+  list.push(now);
+  musicMade.set(uid, list);
+  if (musicMade.size > 10_000) musicMade.clear();
+  return true;
+};
 /** The music kinds the pick screen offers, each with the Lyria prompt that makes it. */
 const MUSIC_GENRES: Record<string, string> = {
   jazz: 'Smooth modern jazz at about 90 BPM: brushed drums with a relaxed swing, a warm walking upright bass, soft Rhodes electric piano chords and a few gentle muted-trumpet phrases. Laid-back, warm, a stylish cafe feel.',
@@ -154,10 +170,12 @@ const keepOriginalMusic = (job: Job, next?: unknown) => {
 };
 
 async function startJob(template: Template, input: Record<string, any>, user: User) {
-  const cost = tokensFor(template, input);
+  const id = `job-${Date.now().toString(36)}${Math.random().toString(36).slice(2, 6)}`;
+  // The account's first product ad film costs nothing (once; it comes back if the film fails).
+  const freeFirst = PRODUCT_AD.has(template) && (await takeFreeFirst(user.uid, id));
+  const cost = freeFirst ? 0 : tokensFor(template, input);
   await charge(user.uid, cost);
   const upload = uploadOf(user);
-  const id = `job-${Date.now().toString(36)}${Math.random().toString(36).slice(2, 6)}`;
   await mkdir(path.join(jobsDir, id), { recursive: true });
   const job: Job = {
     id,
@@ -172,7 +190,7 @@ async function startJob(template: Template, input: Record<string, any>, user: Us
   const goal = job.goal;
   jobs.set(id, job);
   await save(job);
-  recordTokens({ uid: user.uid, jobId: id, template, op: 'reel', tokens: cost });
+  recordTokens({ uid: user.uid, jobId: id, template, op: freeFirst ? 'free_first' : 'reel', tokens: cost });
   const onStep = (n: number, total: number, label: string) => {
     job.step = { n, total, label, at: new Date().toISOString() };
     save(job);
@@ -323,9 +341,14 @@ async function startJob(template: Template, input: Record<string, any>, user: Us
       console.error(e);
       job.status = 'error';
       job.error = e instanceof Error ? e.message : String(e);
-      // Nothing was made, so the tokens go back.
-      await refund(user.uid, cost).catch(console.error);
-      recordTokens({ uid: user.uid, jobId: id, template, op: 'refund', tokens: cost });
+      // Nothing was made, so the tokens go back (or, for the free first film, the right to it).
+      if (freeFirst) {
+        await giveBackFreeFirst(user.uid, id).catch(console.error);
+        recordTokens({ uid: user.uid, jobId: id, template, op: 'free_first_back', tokens: 0 });
+      } else {
+        await refund(user.uid, cost).catch(console.error);
+        recordTokens({ uid: user.uid, jobId: id, template, op: 'refund', tokens: cost });
+      }
       job.tokens = 0;
     }
     await save(job);
@@ -621,7 +644,7 @@ const server = http.createServer(async (req, res) => {
 
     if (p === '/api/me' && req.method === 'GET') {
       const a = await getAccount(user!.uid, user!.email);
-      return json(res, 200, { admin: isAdmin(user!, a.email) || undefined, email: a.email, plan: a.plan, tokens: a.tokens, extra: a.extra, balance: balance(a), billing: billingEnabled, subscribed: Boolean(a.subscriptionId), store: a.store ?? (a.subscriptionId ? 'stripe' : undefined), pastDue: Boolean(a.pastDue), freePending: Boolean(a.freePending), displayName: a.displayName, avatar: a.avatar, auth: authEnabled });
+      return json(res, 200, { admin: isAdmin(user!, a.email) || undefined, email: a.email, plan: a.plan, tokens: a.tokens, extra: a.extra, balance: balance(a), billing: billingEnabled, subscribed: Boolean(a.subscriptionId), store: a.store ?? (a.subscriptionId ? 'stripe' : undefined), pastDue: Boolean(a.pastDue), freePending: Boolean(a.freePending), displayName: a.displayName, avatar: a.avatar, auth: authEnabled, freeFirst: freeFirstState(a) });
     }
     // Account deletion (App Store guideline 5.1.1(v)): web plan cancelled, jobs, uploads, account and login removed.
     // An App Store subscription can only be cancelled by the customer in their Apple ID settings; the app says so.
@@ -803,7 +826,7 @@ const server = http.createServer(async (req, res) => {
         await save(job);
         return json(res, 200, job);
       }
-      // 「別の曲」 / 音楽の種類: a new AI music bed for the same reel, for MUSIC_TOKENS. With a genre (jazz,
+      // 「別の曲」 / 音楽の種類: a new AI music bed for the same reel, free within the owner's limit. With a genre (jazz,
       // phonk, classical, chill, pop) the track is kept on the job, so picking that genre again is free.
       if (m[2] === '/music' && req.method === 'POST') {
         if (!job.props || !['EffectsReel', 'ServiceReel', 'PhotoReel'].includes(job.template)) return json(res, 400, { error: 'この動画には曲を付けられません' });
@@ -818,13 +841,7 @@ const server = http.createServer(async (req, res) => {
           await save(job);
           return json(res, 200, job);
         }
-        try {
-          await charge(user!.uid, MUSIC_TOKENS);
-          recordTokens({ uid: user!.uid, jobId: job.id, template: job.template, op: 'music', tokens: MUSIC_TOKENS });
-        } catch (e) {
-          if (e instanceof NotEnoughTokens) return json(res, 402, { error: e.message, code: 'tokens' });
-          throw e;
-        }
+        if (!takeMusicTurn(user!.uid)) return json(res, 429, { error: '曲の作り直しが続いています。しばらくしてからもう一度お試しください。' });
         const moods = ['warm and hopeful', 'bright upbeat pop', 'chill lo-fi', 'cinematic and airy', 'punchy electronic', 'acoustic and cozy', 'sleek minimal house', 'funky groove'];
         const pick = typeof mood === 'string' && mood.trim() ? mood.trim().slice(0, 60) : moods[Math.floor(Math.random() * moods.length)];
         const usage = new Usage();
@@ -845,9 +862,7 @@ const server = http.createServer(async (req, res) => {
           return json(res, 200, job);
         } catch (e) {
           console.error(e);
-          await refund(user!.uid, MUSIC_TOKENS);
-          recordTokens({ uid: user!.uid, jobId: job.id, template: job.template, op: 'refund', tokens: MUSIC_TOKENS });
-          return json(res, 502, { error: '曲を作れませんでした。トークンは戻しました。もう一度お試しください。' });
+          return json(res, 502, { error: '曲を作れませんでした。もう一度お試しください。' });
         }
       }
       // 投稿文: free, written once per reel (and app language) and kept; `fresh` writes a new one within the owner's limit.

@@ -195,6 +195,8 @@ export async function metrics(jobs: JobLike[], month = thisMonth()) {
     refunded: sumOp('refund'),
     free: sumOp('free'),
     granted: sumOp('grant'),
+    /** First product ad films made free this month (less those that failed and gave the right back). */
+    freeFirst: monthToks.filter((e) => e.op === 'free_first').length - monthToks.filter((e) => e.op === 'free_first_back').length,
     outstanding: accounts.reduce((a, x) => a + (x.tokens ?? 0) + (x.extra ?? 0), 0),
   };
 

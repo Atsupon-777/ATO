@@ -352,6 +352,8 @@ const uploadFile = async (f: File) => {
 // Tokens per reel, the same table as the server (A: own material 2, B: AI photo or effects 5, C: AI video 12).
 const tokensFor = (t: TemplateId, input: Record<string, any>) =>
   t === 'ExperienceFilm' ? 12 : t === 'ProductShine' ? (input.video ? 12 : 5) : t === 'EffectsReel' || t === 'FivePass' || t === 'SaaSPromo' || t === 'ServiceReel' ? 5 : 2;
+/** Product ad films: an account's first one is free (the server's PRODUCT_AD). */
+const PRODUCT_AD = new Set<string>(['ProductShine', 'ExperienceFilm', 'PhotoAdFilm', 'PhotoAd']);
 /** Tokens to export a finished reel (each time), and extra for the premium edit (stickers, captions added by hand). */
 const EXPORT_TOKENS = 1;
 const PREMIUM_TOKENS = 2;
@@ -573,6 +575,11 @@ const NewJob: React.FC<{ template: TemplateId; fx?: EffectId; mixArg?: string; t
     loadBrand().then((b) => (setBrand(b), setInput((s) => withBrand(s, b, template))));
   }, []);
   const bf = BRAND_FIELDS[template] ?? {};
+  // 初回の商品動画は無料: the account's first product ad film costs nothing
+  const [freeFirst, setFreeFirst] = useState<Me['freeFirst']>();
+  useEffect(() => {
+    if (PRODUCT_AD.has(template) && !DEMO) api<Me>('/api/me').then((m) => setFreeFirst(m.freeFirst), () => null);
+  }, []);
   const typedBrand: Brand = { name: bf.name ? input[bf.name[0]] || undefined : undefined, handle: bf.handle ? input.handle || undefined : undefined, logo: bf.logo ? input.logo?.url : undefined };
   const offerSave = brand !== null && !hasBrand(brand) && Boolean(typedBrand.name || typedBrand.handle) && !DEMO;
   const ready =
@@ -775,9 +782,18 @@ const NewJob: React.FC<{ template: TemplateId; fx?: EffectId; mixArg?: string; t
               {busy ? tr("送信中…") : input.video && template !== 'ProductShine' ? tr("作成する") : tr("AIで作成する")}
             </button>
             <span className="cost">
-              {tr("消費:")}{' '}<b>{fmtN(tokensFor(template, input))}{tr("トークン")}</b>
+              {freeFirst === 'available' ? (
+                <>
+                  {tr("消費:")} <s>{fmtN(tokensFor(template, input))}</s> <b>0{tr("トークン")}</b> <span className="freefirst">{tr("初回の商品動画は無料")}</span>
+                </>
+              ) : (
+                <>
+                  {tr("消費:")}{' '}<b>{fmtN(tokensFor(template, input))}{tr("トークン")}</b>
+                </>
+              )}
             </span>
           </div>
+          {freeFirst === 'needs_phone' ? <p className="cost">{tr("初回の商品動画は無料です。アカウントのページで電話番号を確認すると使えます。")}</p> : null}
           {err ? <div className="err">{err}</div> : null}
           {DEMO ? <div className="warn">{DEMO_BLOCKED}</div> : null}
         </div>
@@ -2798,8 +2814,6 @@ const MUSIC_GENRES: { id: string; name: string; tint: string }[] = [
   { id: 'chill', name: tr("チル風"), tint: '#3ddc97' },
   { id: 'pop', name: tr("ポップス風"), tint: '#ff7eb6' },
 ];
-/** Tokens a new kind of music takes (MUSIC_TOKENS on the server). */
-const MUSIC_TOKENS_UI = 1;
 /** BGM level under the voice (ducking stays on); 中 is the default. */
 const MUSIC_LEVELS: { v: number; name: string }[] = [
   { v: 0, name: tr("ミュート") },
@@ -2813,8 +2827,8 @@ const musicLevelOf = (p: EffectsReelProps) => {
 };
 
 /**
- * The 音声 choices on the pick screen: the kind of music (each new kind is made once, for MUSIC_TOKENS, and
- * kept on the job so going back to it is free) and how loud it sits under the voice.
+ * The 音声 choices on the pick screen: the kind of music (each new kind is made once, free, and kept on the job
+ * so going back to it is instant) and how loud it sits under the voice.
  */
 const AudioOptions: React.FC<{
   jobId: string;
@@ -2861,7 +2875,7 @@ const AudioOptions: React.FC<{
         {opts.spin ? <i className="gspin" /> : <Glyph d={opts.off ? G.mute : G.sound} size={16} />}
       </span>
       <b>{name}</b>
-      {opts.spin ? <small>{tr("曲を作っています…")}</small> : opts.cost ? <small className="tokcost">{tr("{0}トークン", MUSIC_TOKENS_UI)}</small> : null}
+      {opts.spin ? <small>{tr("曲を作っています…")}</small> : opts.cost ? <small className="tokcost">{tr("無料")}</small> : null}
       {on ? check : null}
     </button>
   );
@@ -3296,7 +3310,7 @@ const PickTune: React.FC<{ jobId: string; tracks?: Record<string, string>; p: Ef
               <span>{tr("BGMを優先")}</span>
             </div>
             <button className="chipbtn newsong" disabled={song === 'busy'} onClick={newSong}>
-              {song === 'busy' ? tr("曲を作っています…") : tr("別の曲にする")} <small className="tokcost">{tr("{0}トークン", 1)}</small>
+              {song === 'busy' ? tr("曲を作っています…") : tr("別の曲にする")} <small className="tokcost">{tr("無料")}</small>
             </button>
             {song !== 'idle' && song !== 'busy' ? <p className="err">{song}</p> : null}
           </div>
@@ -4748,12 +4762,13 @@ const FAQ = [
   { q: tr("同じテンプレートでも毎回ちがう動画になりますか？"), a: tr("はい。ミックスはカットごとにエフェクト・字幕・カメラ・切り替えを組み合わせるので、シャッフルするたびに別の組み合わせになります。") },
   { q: tr("書き出した動画は商用で使えますか？"), a: tr("使えます。インスタのリール、TikTok、YouTubeショート、広告にそのまま使える縦型MP4です。") },
   { q: tr("書き出した後でも直せますか？"), a: tr("直せます。字幕・色・カットの演出を変えて、何度でも書き出し直せます。書き出しは1回につき1トークンです。") },
+  { q: tr("無料でできることは？"), a: tr("BGMの作り直しや音楽の種類の変更、投稿文（キャプション・ハッシュタグ）の作成は無料です。電話番号を確認したアカウントは、最初の商品動画（商品を魅せる・体験を映画のように）も1本無料で作れます。") },
   { q: tr("解約はいつでもできますか？"), a: tr("できます。アカウントの「お支払い・解約の管理」から、いつでも手続きできます。") },
 ];
 
 const jobTokens = (j: Job) => j.tokens ?? (j.template === 'ExperienceFilm' ? 12 : j.template === 'ProductShine' ? (j.props?.clip ? 12 : 5) : j.template === 'EffectsReel' || j.template === 'FivePass' || j.template === 'SaaSPromo' ? 5 : 2);
 
-type Me = { admin?: boolean; email?: string; plan: 'free' | 'starter' | 'standard' | 'pro'; tokens: number; extra: number; balance: number; billing: boolean; subscribed: boolean; store?: 'stripe' | 'app_store' | 'play_store'; pastDue?: boolean; freePending?: boolean; displayName?: string; avatar?: string; auth: boolean };
+type Me = { freeFirst?: 'available' | 'needs_phone' | 'used'; admin?: boolean; email?: string; plan: 'free' | 'starter' | 'standard' | 'pro'; tokens: number; extra: number; balance: number; billing: boolean; subscribed: boolean; store?: 'stripe' | 'app_store' | 'play_store'; pastDue?: boolean; freePending?: boolean; displayName?: string; avatar?: string; auth: boolean };
 const PLAN_NAMES: Record<Me['plan'], string> = { free: tr("無料"), starter: tr("スターター"), standard: tr("スタンダード"), pro: tr("プロ") };
 
 // Free tokens are claimed once per phone number: SMS code, then the server checks the number is new.
@@ -5023,6 +5038,14 @@ const Account: React.FC<{ go: (h: string) => void }> = ({ go }) => {
       </div>
       {me ? <BrandKit /> : null}
       <h2>{tr("プラン")}</h2>
+      {me && me.freeFirst && me.freeFirst !== 'used' ? (
+        <div className="okmsg freefirstmsg">
+          <b>{tr("初回の商品動画は無料")}</b>
+          <div className="cost" style={{ margin: '2px 0 0' }}>
+            {me.freeFirst === 'available' ? tr("「商品を魅せる」「体験を映画のように」の最初の1本は0トークンで作れます。") : tr("電話番号を確認すると、「商品を魅せる」「体験を映画のように」の最初の1本を0トークンで作れます。")}
+          </div>
+        </div>
+      ) : null}
       {isNative ? (
         <StorePlans me={me} onChanged={loadMe} />
       ) : (
@@ -5120,7 +5143,7 @@ type Metrics = {
   payingByPlan: { plan: string; users: number; mrr: number; stripe: number; app_store: number; play_store: number; pastDue: number }[];
   users: { total: number; newInMonth: number; freeClaims: number; freeClaimsTotal: number; paying: number };
   reels: { made: number; failed: number; exports: number; byTemplate: { template: string; reels: number; failed: number; exports: number; aiCost: number; avgAiCost: number | null }[] };
-  tokens: { sold: number; consumed: number; refunded: number; free: number; granted?: number; outstanding: number };
+  tokens: { sold: number; consumed: number; refunded: number; free: number; granted?: number; freeFirst?: number; outstanding: number };
   trend: MonthSummary[];
   health?: Health;
 };
@@ -5394,6 +5417,7 @@ const Admin: React.FC = () => {
             <dt>{tr("失敗で返したトークン")}</dt><dd>{fmtN(data.tokens.refunded)}</dd>
             <dt>{tr("無料で配ったトークン")}</dt><dd>{fmtN(data.tokens.free)}</dd>
             <dt>{tr("オーナーが付与したトークン")}</dt><dd>{fmtN(data.tokens.granted ?? 0)}</dd>
+            <dt>{tr("初回無料の商品動画")}</dt><dd>{tr("{0}本", fmtN(data.tokens.freeFirst ?? 0))}</dd>
             <dt>{tr("未使用の残高（全ユーザー）")}</dt><dd>{fmtN(data.tokens.outstanding)}</dd>
           </dl>
         </div>

@@ -70,6 +70,8 @@ export type Account = {
   tokenScale?: number;
   /** Brand kit: filled into new reels' forms; `color` is the accent of templates that take one, `logo` one of the user's uploads. */
   brand?: Brand;
+  /** The job that used the account's free first product ad film (unset while it is still unused). */
+  freeFirstJob?: string;
 };
 
 export type Brand = { name?: string; handle?: string; color?: string; logo?: string };
@@ -159,6 +161,29 @@ export async function refund(uid: string, n: number) {
   const a = await getAccount(uid);
   a.extra += n;
   await persist();
+}
+
+/**
+ * Each account's first product ad film is free, once. Only accounts that confirmed a phone number by SMS (the
+ * same gate as the free tokens, so it can't be farmed with new accounts); with login off (local) always.
+ */
+export const freeFirstState = (a: Account): 'available' | 'needs_phone' | 'used' =>
+  a.freeFirstJob ? 'used' : !authEnabled || a.phoneHash ? 'available' : 'needs_phone';
+
+/** Takes the free first product film for `jobId` if it is still there. True when this job is the free one. */
+export async function takeFreeFirst(uid: string, jobId: string) {
+  let took = false;
+  await update(uid, (a) => {
+    if (freeFirstState(a) === 'available') (a.freeFirstJob = jobId), (took = true);
+  });
+  return took;
+}
+
+/** The free first film's job failed: the right comes back (no tokens are given). */
+export async function giveBackFreeFirst(uid: string, jobId: string) {
+  await update(uid, (a) => {
+    if (a.freeFirstJob === jobId) a.freeFirstJob = undefined;
+  });
 }
 
 /** Every account, for the owner's dashboard. */
