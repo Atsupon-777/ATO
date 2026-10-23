@@ -948,5 +948,21 @@
  "無料でできることは？": "Apa saja yang gratis?",
  "BGMの作り直しや音楽の種類の変更、投稿文（キャプション・ハッシュタグ）の作成は無料です。電話番号を確認したアカウントは、最初の商品動画（商品を魅せる・体験を映画のように）も1本無料で作れます。": "Membuat ulang musik latar, mengganti jenis musik, dan membuat teks postingan (caption dan hashtag) gratis. Akun dengan nomor telepon terkonfirmasi juga mendapat video produk pertama (Tonjolkan produk atau Film pengalaman) gratis.",
  "初回無料の商品動画": "Video produk pertama gratis",
- "{0}本": "{0}"
+ "{0}本": "{0}",
+ "写真1枚で広告動画": "Satu foto jadi video iklan",
+ "商品写真1枚から、中身が本当に動く広告動画に。液体が流れ落ちるシーン、肌にのる瞬間、モデルが使うシーン、最後の商品カットまでAIが撮り下ろし、音楽もAIが作ります。": "Satu foto produk menjadi iklan di mana produknya benar-benar bergerak: cairan mengalir, saat menyentuh kulit, model yang memakainya, dan pack shot terakhir, semua difilmkan AI, dengan musik buatan AI.",
+ "商品の写真（1枚）": "Foto produk (satu)",
+ "スマホで撮った写真で大丈夫です。ラベルが読めるように": "Foto dari ponsel sudah cukup. Pastikan labelnya terbaca",
+ "どんな商品か（任意）": "Produk apa (opsional)",
+ "例: 化粧水": "mis. toner wajah",
+ "言ってよいこと（任意。コピーはここに書いたことだけを使います）": "Yang boleh disebut (opsional; teks hanya memakai yang Anda tulis di sini)",
+ "例: 150mL、無香料": "mis. 150 mL, tanpa pewangi",
+ "詳しく見る": "Selengkapnya",
+ "AIが5つの場面（液体が流れ落ちる・質感のアップ・肌にのる瞬間・モデルが使う・商品カット）を映像にし、音楽を作って広告動画に仕上げます。生成に3〜5分ほどかかります。": "AI memfilmkan lima adegan (cairan mengalir, close-up tekstur, saat menyentuh kulit, model memakainya, pack shot), membuat musik, lalu menyuntingnya jadi iklan. Sekitar 3–5 menit.",
+ "流れ落ちる": "Cairan mengalir",
+ "肌にのる": "Di kulit",
+ "使うシーン": "Dipakai",
+ "商品カット": "Pack shot",
+ "商品名（ブランド名と同じなら出ません）": "Nama produk (tidak tampil jika sama dengan merek)",
+ "水の音の音量": "Volume suara air"
 }

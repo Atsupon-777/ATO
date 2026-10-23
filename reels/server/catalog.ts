@@ -78,9 +78,13 @@ export async function catalog(): Promise<{ entries: CatalogEntry[]; categories: 
 export const categoryRows: Record<'photo' | 'service', { id: string; ja: string; en: string }[]> = { photo: photoCategories, service: serviceIndustries };
 
 /** Product-kind templates that are their own generator (the app opens #/new/<generator>/tpl-<id>). */
-export const productCategories = [{ id: 'experience', ja: '体験・ツアー', en: 'Experiences & tours' }];
+export const productCategories = [
+  { id: 'experience', ja: '体験・ツアー', en: 'Experiences & tours' },
+  { id: 'ad', ja: '商品の広告', en: 'Product ads' },
+];
 export const productTemplates = [
   { id: 'experience-film', generator: 'ExperienceFilm', ja: '体験を映画のように', en: 'Experience film', categories: ['experience'] },
+  { id: 'photo-ad', generator: 'PhotoAdFilm', ja: '写真1枚で広告動画', en: 'One photo to an ad film', categories: ['ad'] },
 ];
 
 /** Counts a reel started from a template, for the 人気 sort. */

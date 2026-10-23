@@ -383,3 +383,47 @@ export const fivePassSchema = z.object({
   notes: z.array(z.object({ pass: z.number().int(), version: z.number().int(), text: z.string() })).default([]),
 });
 export type FivePassProps = z.infer<typeof fivePassSchema>;
+
+/** Shots of a one-photo product ad, in the order they play. */
+export const photoAdBeats = ['splash', 'texture', 'bridge', 'ritual', 'pack'] as const;
+
+/**
+ * A short product ad made from one photo (PhotoAdFilm): the product's substance moving for real (splash, macro),
+ * a matched cut from a falling drop onto skin, a person using it, and the pack shot that carries the end card.
+ * Shots play as filmed (no zooms); type stays small.
+ */
+export const photoAdSchema = z.object({
+  brand: z.string().max(24),
+  name: z.string().max(30),
+  tagline: z.string().max(36),
+  cta: z.string().max(24),
+  handle: z.string().max(30),
+  lang: z.enum(langs).optional(),
+  shots: z
+    .array(
+      z.object({
+        src: z.string(),
+        beat: z.enum(photoAdBeats),
+        seconds: z.number().min(0.8).max(8),
+        trimStart: z.number().min(0).max(8),
+        rate: z.number().min(0.25).max(2),
+        /** cut = a hard (matched) cut on motion, dissolve = a short soft dissolve. */
+        enter: z.enum(['cut', 'dissolve']),
+        line: z.string().max(30),
+        kicker: z.string().max(24),
+        /** Where the line sits: the calmer band of the frame. */
+        place: z.enum(['top', 'bottom']).default('bottom'),
+      }),
+    )
+    .min(2)
+    .max(8),
+  music: z.string().optional(),
+  musicVolume: z.number().min(0).max(1),
+  /** Volume of the clips' own sound (splashes, drips). */
+  sfxVolume: z.number().min(0).max(1),
+  /** Latin copy in a display serif; Japanese / Chinese in a light mincho. */
+  serif: z.boolean(),
+  ink: zColor(),
+});
+
+export type PhotoAdProps = z.infer<typeof photoAdSchema>;

@@ -948,5 +948,21 @@
  "無料でできることは？": "What's free?",
  "BGMの作り直しや音楽の種類の変更、投稿文（キャプション・ハッシュタグ）の作成は無料です。電話番号を確認したアカウントは、最初の商品動画（商品を魅せる・体験を映画のように）も1本無料で作れます。": "Remaking the background music, changing the kind of music and writing the post text (caption and hashtags) are free. Accounts with a confirmed phone number also get their first product video (Showcase a product or Experience film) free.",
  "初回無料の商品動画": "Free first product videos",
- "{0}本": "{0}"
+ "{0}本": "{0}",
+ "写真1枚で広告動画": "One photo to an ad film",
+ "商品写真1枚から、中身が本当に動く広告動画に。液体が流れ落ちるシーン、肌にのる瞬間、モデルが使うシーン、最後の商品カットまでAIが撮り下ろし、音楽もAIが作ります。": "One product photo becomes an ad where the product really moves: the liquid pouring, the moment it touches skin, a model using it and the final pack shot, all filmed by AI, with music made by AI.",
+ "商品の写真（1枚）": "Product photo (one)",
+ "スマホで撮った写真で大丈夫です。ラベルが読めるように": "A phone snapshot is fine. Keep the label readable",
+ "どんな商品か（任意）": "What it is (optional)",
+ "例: 化粧水": "e.g. facial toner",
+ "言ってよいこと（任意。コピーはここに書いたことだけを使います）": "What we may say (optional; the copy uses only what you write here)",
+ "例: 150mL、無香料": "e.g. 150 mL, fragrance-free",
+ "詳しく見る": "Learn more",
+ "AIが5つの場面（液体が流れ落ちる・質感のアップ・肌にのる瞬間・モデルが使う・商品カット）を映像にし、音楽を作って広告動画に仕上げます。生成に3〜5分ほどかかります。": "AI films five scenes (the liquid pouring, a texture close-up, the moment it touches skin, a model using it, the pack shot), makes the music and edits them into an ad. Takes about 3–5 minutes.",
+ "流れ落ちる": "Pouring",
+ "肌にのる": "On skin",
+ "使うシーン": "In use",
+ "商品カット": "Pack shot",
+ "商品名（ブランド名と同じなら出ません）": "Product name (hidden if the same as the brand)",
+ "水の音の音量": "Water sound volume"
 }

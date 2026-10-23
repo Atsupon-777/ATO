@@ -13,10 +13,12 @@ import { TalkCaptions, talkCaptionsDuration } from '../../src/templates/TalkCapt
 import { EffectsReel, MUSIC_DEFAULT, effectsReelDuration } from '../../src/templates/EffectsReel';
 import { FivePass, fivePassDuration } from '../../src/templates/FivePass';
 import { ExperienceFilm, experienceFilmDuration, experienceTimeline } from '../../src/templates/ExperienceFilm';
+import { PhotoAdFilm, photoAdDuration } from '../../src/templates/PhotoAdFilm';
+import photoAdSample from '../../props/photoad-demo.json';
 import { FPS, beatFrames } from '../../src/lib/timing';
 import { keepSegments, paginate, placeWords } from '../../src/lib/edit';
 import { STICKER_PATHS } from '../../src/effects/overlays';
-import { effectIds, stickerIds, type Overlay, type BeatStyle, type EffectId, type EffectsReelProps, type ExperienceFilmProps, type FivePassProps, type ProductShineProps, type SaaSPromoProps, type TalkCaptionsProps } from '../../src/schemas';
+import { effectIds, stickerIds, type Overlay, type BeatStyle, type EffectId, type EffectsReelProps, type ExperienceFilmProps, type FivePassProps, type PhotoAdProps, type ProductShineProps, type SaaSPromoProps, type TalkCaptionsProps } from '../../src/schemas';
 import productSample from '../../props/product-watch.json';
 import saasSample from '../../props/saas-sample.json';
 import talkSample from '../../props/talk-sample.json';
@@ -180,7 +182,7 @@ function mixCount() {
     : tr("約{0}通り", new Intl.NumberFormat(lang, { notation: 'compact', maximumFractionDigits: 1 }).format(n));
 }
 
-type TemplateId = 'ProductShine' | 'SaaSPromo' | 'TalkCaptions' | 'EffectsReel' | 'FivePass' | 'ServiceReel' | 'PhotoReel' | 'ExperienceFilm';
+type TemplateId = 'ProductShine' | 'SaaSPromo' | 'TalkCaptions' | 'EffectsReel' | 'FivePass' | 'ServiceReel' | 'PhotoReel' | 'ExperienceFilm' | 'PhotoAdFilm';
 
 const TEMPLATES: Record<
   TemplateId,
@@ -249,6 +251,14 @@ const TEMPLATES: Record<
     component: ExperienceFilm,
     frames: (p) => experienceFilmDuration(p, FPS),
     sample: experienceSample,
+  },
+  PhotoAdFilm: {
+    name: tr("写真1枚で広告動画"),
+    tag: tr("写真1枚から"),
+    desc: tr("商品写真1枚から、中身が本当に動く広告動画に。液体が流れ落ちるシーン、肌にのる瞬間、モデルが使うシーン、最後の商品カットまでAIが撮り下ろし、音楽もAIが作ります。"),
+    component: PhotoAdFilm,
+    frames: (p) => photoAdDuration(p, FPS),
+    sample: photoAdSample,
   },
 };
 
@@ -351,7 +361,7 @@ const uploadFile = async (f: File) => {
 
 // Tokens per reel, the same table as the server (A: own material 2, B: AI photo or effects 5, C: AI video 12).
 const tokensFor = (t: TemplateId, input: Record<string, any>) =>
-  t === 'ExperienceFilm' ? 12 : t === 'ProductShine' ? (input.video ? 12 : 5) : t === 'EffectsReel' || t === 'FivePass' || t === 'SaaSPromo' || t === 'ServiceReel' ? 5 : 2;
+  t === 'ExperienceFilm' || t === 'PhotoAdFilm' ? 12 : t === 'ProductShine' ? (input.video ? 12 : 5) : t === 'EffectsReel' || t === 'FivePass' || t === 'SaaSPromo' || t === 'ServiceReel' ? 5 : 2;
 /** Product ad films: an account's first one is free (the server's PRODUCT_AD). */
 const PRODUCT_AD = new Set<string>(['ProductShine', 'ExperienceFilm', 'PhotoAdFilm', 'PhotoAd']);
 /** Tokens to export a finished reel (each time), and extra for the premium edit (stickers, captions added by hand). */
@@ -563,7 +573,7 @@ const NewJob: React.FC<{ template: TemplateId; fx?: EffectId; mixArg?: string; t
   // tplArg is a catalog template ("tpl-<id>"), which is also the key of its sample render.
   const tplId = tplArg?.slice(4);
   const goal = goalOfHash();
-  const [input, setInput] = useState<Record<string, any>>({ goal, lang: template === 'TalkCaptions' || template === 'EffectsReel' || template === 'FivePass' ? '' : lang, style: 'luxury', cta: template === 'ExperienceFilm' ? '' : tr("詳しくはプロフィールへ"), effects: fx ? [fx] : [], recipe: (template === 'EffectsReel' && tplId) || mixArg || 'all', templateId: tplId });
+  const [input, setInput] = useState<Record<string, any>>({ goal, lang: template === 'TalkCaptions' || template === 'EffectsReel' || template === 'FivePass' ? '' : lang, style: 'luxury', cta: template === 'ExperienceFilm' || template === 'PhotoAdFilm' ? '' : tr("詳しくはプロフィールへ"), effects: fx ? [fx] : [], recipe: (template === 'EffectsReel' && tplId) || mixArg || 'all', templateId: tplId });
   const [err, setErr] = useState('');
   const [busy, setBusy] = useState(false);
   const set = (k: string) => (v: any) => setInput((s) => ({ ...s, [k]: v }));
@@ -583,7 +593,7 @@ const NewJob: React.FC<{ template: TemplateId; fx?: EffectId; mixArg?: string; t
   const typedBrand: Brand = { name: bf.name ? input[bf.name[0]] || undefined : undefined, handle: bf.handle ? input.handle || undefined : undefined, logo: bf.logo ? input.logo?.url : undefined };
   const offerSave = brand !== null && !hasBrand(brand) && Boolean(typedBrand.name || typedBrand.handle) && !DEMO;
   const ready =
-    template === 'ExperienceFilm' ? input.name && input.description : template === 'ProductShine' ? input.photo && input.brand && input.name : template === 'SaaSPromo' ? input.desktop && input.name : template === 'ServiceReel' ? input.name && input.description : template === 'PhotoReel' ? input.photo1 : input.video;
+    template === 'ExperienceFilm' ? input.name && input.description : template === 'PhotoAdFilm' ? input.photo && input.brand : template === 'ProductShine' ? input.photo && input.brand && input.name : template === 'SaaSPromo' ? input.desktop && input.name : template === 'ServiceReel' ? input.name && input.description : template === 'PhotoReel' ? input.photo1 : input.video;
   const submit = async () => {
     setBusy(true);
     setErr('');
@@ -693,6 +703,26 @@ const NewJob: React.FC<{ template: TemplateId; fx?: EffectId; mixArg?: string; t
               </div>
               <Field label={tr("アカウント名（任意）")} max={30} value={input.handle ?? ''} onChange={set('handle')} placeholder="@your_account" />
               <p className="cost">{tr("AIが5つの場面（つかみ・到着・体験・五感・いちばんの景色）を映像にし、音楽を作って短編映画に仕上げます。生成に3〜6分ほどかかります。")}</p>
+            </>
+          ) : template === 'PhotoAdFilm' ? (
+            <>
+              <Drop label={tr("商品の写真（1枚）")} hint={tr("スマホで撮った写真で大丈夫です。ラベルが読めるように")} accept="image/*" value={input.photo} onChange={set('photo')} />
+              <div className="grid2">
+                <Field label={tr("ブランド名")} max={24} value={input.brand ?? ''} onChange={set('brand')} placeholder="LUMINA" />
+                <Field label={tr("どんな商品か（任意）")} max={60} value={input.description ?? ''} onChange={set('description')} placeholder={tr("例: 化粧水")} />
+              </div>
+              <Field
+                label={tr("言ってよいこと（任意。コピーはここに書いたことだけを使います）")}
+                multiline
+                value={input.facts ?? ''}
+                onChange={set('facts')}
+                placeholder={tr("例: 150mL、無香料")}
+              />
+              <div className="grid2">
+                <Field label={tr("最後のひとこと（CTA、任意）")} max={16} value={input.cta ?? ''} onChange={set('cta')} placeholder={tr("詳しく見る")} />
+                <Field label={tr("アカウント名（任意）")} max={30} value={input.handle ?? ''} onChange={set('handle')} placeholder="@your_brand" />
+              </div>
+              <p className="cost">{tr("AIが5つの場面（液体が流れ落ちる・質感のアップ・肌にのる瞬間・モデルが使う・商品カット）を映像にし、音楽を作って広告動画に仕上げます。生成に3〜5分ほどかかります。")}</p>
             </>
           ) : template === 'PhotoReel' ? (
             <>
@@ -879,6 +909,8 @@ const Generating: React.FC<{ job: Job }> = ({ job }) => {
   const steps =
     job.template === 'ExperienceFilm'
       ? ['plan and copy', 'scene stills', 'motion clip (Veo)', 'build props']
+      : job.template === 'PhotoAdFilm'
+      ? ['plan', 'keyframes', 'motion (Omni) and music', 'build props']
       : job.template === 'ProductShine'
       ? ['cut-out', 'studio shot', 'plan and copy', ...(jobTokens(job) >= 12 ? ['motion clip (Veo)'] : []), 'build props']
       : job.template === 'SaaSPromo'
@@ -1280,6 +1312,8 @@ const Editor: React.FC<{ id: string }> = ({ id }) => {
           <ProductPanel p={props} update={update} />
         ) : job.template === 'ExperienceFilm' ? (
           <ExperiencePanel p={props} update={update} />
+        ) : job.template === 'PhotoAdFilm' ? (
+          <PhotoAdPanel p={props} update={update} />
         ) : job.template === 'SaaSPromo' ? (
           <SaasPanel p={props} update={update} />
         ) : job.template === 'ServiceReel' ? (
@@ -1726,6 +1760,58 @@ const ExperiencePanel: React.FC<PanelProps<ExperienceFilmProps>> = ({ p, update 
           </label>
           <input type="range" min={0} max={100} value={Math.round(p.musicVolume * 100)} onChange={(e) => set((x) => void (x.musicVolume = Number(e.target.value) / 100))} />
         </div>
+      </div>
+    </>
+  );
+};
+
+const PhotoAdPanel: React.FC<PanelProps<PhotoAdProps>> = ({ p, update }) => {
+  const set = (fn: (p: PhotoAdProps) => void) => mut(update, fn)();
+  const BEAT: Record<string, string> = { splash: tr("流れ落ちる"), texture: tr("質感"), bridge: tr("肌にのる"), ritual: tr("使うシーン"), pack: tr("商品カット") };
+  return (
+    <>
+      <div className="panel">
+        <h2>{tr("最後の画面")}</h2>
+        <div className="form" style={{ maxWidth: 'none' }}>
+          <div className="grid2">
+            <Field label={tr("ブランド名")} max={24} value={p.brand} onChange={(v) => set((x) => void (x.brand = v))} />
+            <Field label={tr("商品名（ブランド名と同じなら出ません）")} max={30} value={p.name} onChange={(v) => set((x) => void (x.name = v))} />
+          </div>
+          <Field label={tr("キャッチコピー")} max={36} value={p.tagline} onChange={(v) => set((x) => void (x.tagline = v))} />
+          <div className="grid2">
+            <Field label="CTA" max={24} value={p.cta} onChange={(v) => set((x) => void (x.cta = v))} />
+            <Field label={tr("アカウント名")} max={30} value={p.handle} onChange={(v) => set((x) => void (x.handle = v))} />
+          </div>
+        </div>
+      </div>
+      <div className="panel">
+        <h2>{tr("場面ごとのひとこと")}</h2>
+        <div style={{ display: 'grid', gap: 12 }}>
+          {p.shots.map((s, i) =>
+            s.beat === 'pack' ? null : (
+              <div key={i} className="grid2">
+                <Field label={`${i + 1}. ${BEAT[s.beat] ?? s.beat}`} max={30} value={s.line} onChange={(v) => set((x) => void (x.shots[i].line = v))} />
+                <Field label={tr("{0}. 英字ラベル", i + 1)} max={24} value={s.kicker} onChange={(v) => set((x) => void (x.shots[i].kicker = v))} />
+              </div>
+            ),
+          )}
+        </div>
+      </div>
+      <div className="panel">
+        <h2>{tr("色と音")}</h2>
+        <Colors value={{ ink: p.ink }} labels={{ ink: tr("文字") }} onChange={(v) => set((x) => void (x.ink = (v as { ink: string }).ink))} />
+        {[
+          { k: 'musicVolume' as const, label: tr("音楽の音量") },
+          { k: 'sfxVolume' as const, label: tr("水の音の音量") },
+        ].map(({ k, label }) => (
+          <div key={k} className="field" style={{ marginTop: 14 }}>
+            <label>
+              <span>{label}</span>
+              <span>{Math.round(p[k] * 100)}%</span>
+            </label>
+            <input type="range" min={0} max={100} value={Math.round(p[k] * 100)} onChange={(e) => set((x) => void (x[k] = Number(e.target.value) / 100))} />
+          </div>
+        ))}
       </div>
     </>
   );
@@ -4235,7 +4321,7 @@ const HREF: Record<CatalogKind, (id: string) => string> = {
   video: (id) => `#/new/EffectsReel/tpl-${id}`,
   photo: (id) => `#/new/PhotoReel/tpl-${id}`,
   service: (id) => `#/new/ServiceReel/tpl-${id}`,
-  product: (id) => (id === 'experience-film' ? '#/new/ExperienceFilm/tpl-experience-film' : '#/new/ProductShine'),
+  product: (id) => (id === 'experience-film' ? '#/new/ExperienceFilm/tpl-experience-film' : id === 'photo-ad' ? '#/new/PhotoAdFilm/tpl-photo-ad' : '#/new/ProductShine'),
 };
 /** The app's own starting points (each its own generator), filed under the same kinds as the catalog. */
 const FEATURED_KIND: Partial<Record<TemplateId, CatalogKind>> = { TalkCaptions: 'video', EffectsReel: 'video', FivePass: 'video', SaaSPromo: 'service', ProductShine: 'product' };
@@ -4250,8 +4336,17 @@ const loadCatalog = () =>
       ...photoTemplates.map((t) => ({ id: t.id, kind: 'photo' as const, ja: t.nameJa, en: t.nameEn, categories: t.categories as string[], count: t.count, uses: 0, added: '', sample: `tpl-${t.id}` })),
       ...serviceTemplates.map((t) => ({ id: t.id, kind: 'service' as const, ja: t.nameJa, en: t.nameEn, categories: t.industries as string[], uses: 0, added: '', sample: `tpl-${t.id}` })),
       { id: 'experience-film', kind: 'product' as const, ja: '体験を映画のように', en: 'Experience film', categories: ['experience'], uses: 0, added: '', sample: 'tpl-experience-film' },
+      { id: 'photo-ad', kind: 'product' as const, ja: '写真1枚で広告動画', en: 'One photo to an ad film', categories: ['ad'], uses: 0, added: '', sample: 'tpl-photo-ad' },
     ],
-    categories: { video: videoCategories, photo: photoCategories, service: serviceIndustries, product: [{ id: 'experience', ja: '体験・ツアー', en: 'Experiences & tours' }] },
+    categories: {
+      video: videoCategories,
+      photo: photoCategories,
+      service: serviceIndustries,
+      product: [
+        { id: 'experience', ja: '体験・ツアー', en: 'Experiences & tours' },
+        { id: 'ad', ja: '商品の広告', en: 'Product ads' },
+      ],
+    },
   })));
 
 /** Same order for everyone on a given day, different the next: "おすすめ" keeps changing without being random per tap. */
@@ -4766,7 +4861,7 @@ const FAQ = [
   { q: tr("解約はいつでもできますか？"), a: tr("できます。アカウントの「お支払い・解約の管理」から、いつでも手続きできます。") },
 ];
 
-const jobTokens = (j: Job) => j.tokens ?? (j.template === 'ExperienceFilm' ? 12 : j.template === 'ProductShine' ? (j.props?.clip ? 12 : 5) : j.template === 'EffectsReel' || j.template === 'FivePass' || j.template === 'SaaSPromo' ? 5 : 2);
+const jobTokens = (j: Job) => j.tokens ?? (j.template === 'ExperienceFilm' || j.template === 'PhotoAdFilm' ? 12 : j.template === 'ProductShine' ? (j.props?.clip ? 12 : 5) : j.template === 'EffectsReel' || j.template === 'FivePass' || j.template === 'SaaSPromo' ? 5 : 2);
 
 type Me = { freeFirst?: 'available' | 'needs_phone' | 'used'; admin?: boolean; email?: string; plan: 'free' | 'starter' | 'standard' | 'pro'; tokens: number; extra: number; balance: number; billing: boolean; subscribed: boolean; store?: 'stripe' | 'app_store' | 'play_store'; pastDue?: boolean; freePending?: boolean; displayName?: string; avatar?: string; auth: boolean };
 const PLAN_NAMES: Record<Me['plan'], string> = { free: tr("無料"), starter: tr("スターター"), standard: tr("スタンダード"), pro: tr("プロ") };

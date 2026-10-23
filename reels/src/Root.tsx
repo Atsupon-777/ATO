@@ -28,6 +28,9 @@ import filmDemo from '../props/film-demo.json';
 import { ExperienceFilm, experienceFilmDuration } from './templates/ExperienceFilm';
 import { experienceFilmSchema, type ExperienceFilmProps } from './schemas';
 import experienceDemo from '../props/experience-demo.json';
+import { PhotoAdFilm, photoAdDuration } from './templates/PhotoAdFilm';
+import { photoAdSchema, type PhotoAdProps } from './schemas';
+import photoAdDemo from '../props/photoad-demo.json';
 import { PhotoReel, photoReelDuration } from './templates/PhotoReel';
 import { photoReelSchema, type PhotoReelProps } from './photoreel';
 import photoCinematic from '../props/photo-cinematic.json';
@@ -143,6 +146,17 @@ export const RemotionRoot: React.FC = () => (
       height={1920}
       durationInFrames={experienceFilmDuration(experienceDemo as ExperienceFilmProps, FPS)}
       calculateMetadata={({ props }) => ({ durationInFrames: experienceFilmDuration(props, FPS) })}
+    />
+    <Composition
+      id="PhotoAdFilm"
+      component={PhotoAdFilm}
+      schema={photoAdSchema}
+      defaultProps={photoAdDemo as PhotoAdProps}
+      fps={FPS}
+      width={1080}
+      height={1920}
+      durationInFrames={photoAdDuration(photoAdDemo as PhotoAdProps, FPS)}
+      calculateMetadata={({ props }) => ({ durationInFrames: photoAdDuration(props, FPS) })}
     />
     <Composition
       id="PhotoReel"

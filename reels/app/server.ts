@@ -10,7 +10,7 @@ import path from 'node:path';
 import { pipeline } from 'node:stream/promises';
 import { fileURLToPath } from 'node:url';
 import * as esbuild from 'esbuild';
-import { effectIds, effectsReelSchema, experienceFilmSchema, productShineSchema, saasPromoSchema, talkCaptionsSchema, fivePassSchema, type EffectsReelProps } from '../src/schemas.ts';
+import { effectIds, effectsReelSchema, experienceFilmSchema, photoAdSchema, productShineSchema, saasPromoSchema, talkCaptionsSchema, fivePassSchema, type EffectsReelProps } from '../src/schemas.ts';
 import { pass1, restoreVersion, runPass } from '../server/fivepass.ts';
 import { finish } from '../server/loudnorm.ts';
 import { studioVoice, videoFps } from '../server/studio.ts';
@@ -22,6 +22,7 @@ import { serviceReelSchema } from '../src/servicereel.ts';
 import { buildEffectsProps } from '../server/effects.ts';
 import { buildProductReel, STYLES, type Style } from '../server/product.ts';
 import { buildExperienceFilm } from '../server/experience.ts';
+import { buildPhotoAd } from '../server/photoad.ts';
 import { renderTemplate } from '../server/render.ts';
 import { buildSaasProps } from '../server/saas.ts';
 import { buildTalkProps } from '../server/talk.ts';
@@ -57,6 +58,7 @@ const schemas = {
   ServiceReel: serviceReelSchema,
   PhotoReel: photoReelSchema,
   ExperienceFilm: experienceFilmSchema,
+  PhotoAdFilm: photoAdSchema,
 };
 type Template = keyof typeof schemas;
 
@@ -100,10 +102,10 @@ const premiumDue = (job: Job) => Boolean((job.props as { overlays?: unknown[] } 
 const HQ_TOKENS = 2;
 const exportCost = (job: Job, hq = false) => EXPORT_TOKENS + (premiumDue(job) ? PREMIUM_TOKENS : 0) + (hq ? HQ_TOKENS : 0);
 
-/** Tokens each kind of reel takes: own footage only 2, AI photo or effects 5, with AI video 12 (experience films are all AI video). */
+/** Tokens each kind of reel takes: own footage only 2, AI photo or effects 5, with AI video 12 (experience films and photo ads are all AI video). */
 /** Product ad films: an account's first one is free (accounts.ts freeFirstState). Names of templates still to come are listed too. */
 const PRODUCT_AD = new Set<string>(['ProductShine', 'ExperienceFilm', 'PhotoAdFilm', 'PhotoAd']);
-const tokensFor = (t: Template, input: Record<string, any>) => (t === 'ExperienceFilm' ? 12 : t === 'ProductShine' ? (input.video ? 12 : 5) : t === 'EffectsReel' || t === 'FivePass' || t === 'SaaSPromo' || t === 'ServiceReel' ? 5 : 2);
+const tokensFor = (t: Template, input: Record<string, any>) => (t === 'ExperienceFilm' || t === 'PhotoAdFilm' ? 12 : t === 'ProductShine' ? (input.video ? 12 : 5) : t === 'EffectsReel' || t === 'FivePass' || t === 'SaaSPromo' || t === 'ServiceReel' ? 5 : 2);
 
 const jobs = new Map<string, Job>();
 
@@ -245,6 +247,24 @@ async function startJob(template: Template, input: Record<string, any>, user: Us
         job.props = res.props;
         job.usage = res.usage;
         job.title = res.props.title || job.title;
+      } else if (template === 'PhotoAdFilm') {
+        const photo = upload(input.photo);
+        if (!photo) throw new Error('商品の写真をアップロードしてください');
+        const res = await buildPhotoAd({
+          photo,
+          brand: String(input.brand || '').slice(0, 24),
+          description: String(input.description || '').slice(0, 300),
+          facts: String(input.facts || '').slice(0, 300),
+          cta: String(input.cta || '').slice(0, 16),
+          handle: String(input.handle || '').slice(0, 30),
+          lang,
+          jobId: id,
+          onStep,
+          until: 'props',
+        });
+        job.props = res.props!;
+        job.usage = res.usage;
+        job.title = res.props?.brand || job.title;
       } else if (template === 'SaaSPromo') {
         const desktop = upload(input.desktop);
         if (!desktop) throw new Error('PC画面のスクリーンショットをアップロードしてください');
@@ -950,7 +970,7 @@ const posterOfJob = (video?: string, props?: Record<string, any>) => {
 };
 
 const thumbOf = (t: Template, props?: Record<string, any>) =>
-  !props ? undefined : t === 'ExperienceFilm' ? posterOfJob(undefined, { video: props.shots?.find((s: { src: string }) => /\.mp4$/.test(s.src))?.src }) : t === 'ProductShine' ? props.photo : t === 'SaaSPromo' ? props.desktop : t === 'ServiceReel' ? (props.desktop ?? props.phone ?? props.photos?.[0]) : t === 'PhotoReel' ? props.photos?.[0]?.src : undefined;
+  !props ? undefined : t === 'ExperienceFilm' || t === 'PhotoAdFilm' ? posterOfJob(undefined, { video: props.shots?.find((s: { src: string }) => /\.mp4$/.test(s.src))?.src }) : t === 'ProductShine' ? props.photo : t === 'SaaSPromo' ? props.desktop : t === 'ServiceReel' ? (props.desktop ?? props.phone ?? props.photos?.[0]) : t === 'PhotoReel' ? props.photos?.[0]?.src : undefined;
 
 await loadJobs();
 server.listen(PORT, () => console.log(`Editless on ${ORIGIN} (login ${authEnabled ? 'on' : 'off'}, billing ${billingEnabled ? 'on' : 'off'})`));

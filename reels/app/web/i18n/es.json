@@ -948,5 +948,21 @@
  "無料でできることは？": "¿Qué es gratis?",
  "BGMの作り直しや音楽の種類の変更、投稿文（キャプション・ハッシュタグ）の作成は無料です。電話番号を確認したアカウントは、最初の商品動画（商品を魅せる・体験を映画のように）も1本無料で作れます。": "Rehacer la música, cambiar el tipo de música y escribir el texto de la publicación (texto y hashtags) son gratis. Las cuentas con teléfono confirmado también tienen gratis su primer vídeo de producto (Luce tu producto o Película de experiencia).",
  "初回無料の商品動画": "Primeros vídeos de producto gratis",
- "{0}本": "{0}"
+ "{0}本": "{0}",
+ "写真1枚で広告動画": "De una foto a un anuncio",
+ "商品写真1枚から、中身が本当に動く広告動画に。液体が流れ落ちるシーン、肌にのる瞬間、モデルが使うシーン、最後の商品カットまでAIが撮り下ろし、音楽もAIが作ります。": "Una sola foto del producto se convierte en un anuncio donde el producto se mueve de verdad: el líquido cayendo, el momento en que toca la piel, una modelo usándolo y el plano final del producto, todo filmado por IA, con música creada por IA.",
+ "商品の写真（1枚）": "Foto del producto (una)",
+ "スマホで撮った写真で大丈夫です。ラベルが読めるように": "Una foto con el móvil sirve. Que la etiqueta se lea",
+ "どんな商品か（任意）": "Qué es (opcional)",
+ "例: 化粧水": "p. ej. tónico facial",
+ "言ってよいこと（任意。コピーはここに書いたことだけを使います）": "Lo que podemos decir (opcional; el texto solo usa lo que escribas aquí)",
+ "例: 150mL、無香料": "p. ej. 150 mL, sin perfume",
+ "詳しく見る": "Más información",
+ "AIが5つの場面（液体が流れ落ちる・質感のアップ・肌にのる瞬間・モデルが使う・商品カット）を映像にし、音楽を作って広告動画に仕上げます。生成に3〜5分ほどかかります。": "La IA filma cinco escenas (el líquido cayendo, un primer plano de la textura, el contacto con la piel, una modelo usándolo, el plano del producto), crea la música y monta el anuncio. Tarda unos 3–5 minutos.",
+ "流れ落ちる": "Cae el líquido",
+ "肌にのる": "En la piel",
+ "使うシーン": "En uso",
+ "商品カット": "Plano del producto",
+ "商品名（ブランド名と同じなら出ません）": "Nombre del producto (no se muestra si es igual a la marca)",
+ "水の音の音量": "Volumen del sonido del agua"
 }

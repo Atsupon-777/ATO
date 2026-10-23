@@ -82,3 +82,34 @@ export async function renderTemplate(
   process.stdout.write('\n');
   return { out, frames: composition.durationInFrames, fps: composition.fps, seconds: (Date.now() - started) / 1000 };
 }
+
+/**
+ * Renders from the command line, where no app server is running: job and upload media are served from
+ * public/ on a throwaway local port and the props point at it, the way the app's absolutize() does.
+ */
+export async function renderLocal(id: string, props: Record<string, unknown>, out: string, opts: RenderOptions = {}) {
+  const { createServer } = await import('node:http');
+  const { createReadStream, statSync } = await import('node:fs');
+  const pub = path.join(root, 'public');
+  const server = createServer((req, res) => {
+    const rel = decodeURIComponent(new URL(req.url ?? '/', 'http://x').pathname).replace(/^\/+/, '');
+    const file = path.join(pub, rel);
+    if (!/^(jobs|uploads)\//.test(rel) || !file.startsWith(pub + path.sep)) return res.writeHead(404).end();
+    try {
+      const size = statSync(file).size;
+      res.writeHead(200, { 'content-length': size, 'access-control-allow-origin': '*' });
+      createReadStream(file).pipe(res);
+    } catch {
+      res.writeHead(404).end();
+    }
+  });
+  await new Promise<void>((r) => server.listen(0, '127.0.0.1', r));
+  const origin = `http://127.0.0.1:${(server.address() as { port: number }).port}`;
+  const abs = (v: unknown): unknown =>
+    typeof v === 'string' ? (/^(jobs|uploads)\//.test(v) ? `${origin}/${v}` : v) : Array.isArray(v) ? v.map(abs) : v && typeof v === 'object' ? Object.fromEntries(Object.entries(v).map(([k, x]) => [k, abs(x)])) : v;
+  try {
+    return await renderTemplate(id, abs(props) as Record<string, unknown>, out, undefined, opts);
+  } finally {
+    server.close();
+  }
+}
