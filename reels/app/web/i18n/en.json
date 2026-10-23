@@ -902,5 +902,18 @@
  "色・字幕・カメラ・つなぎを明るく弾む組み合わせにしました": "Colours, captions, camera and cuts set to a bright, bouncy mix",
  "字幕を1〜3語ずつにして、文字だけの画面を減らしました": "Captions now show 1–3 words at a time, with fewer text-only screens",
  "{0}秒 → {1}秒": "{0}s → {1}s",
- "最初と最後の言葉だけ残しました": "Kept only the first and last lines"
+ "最初と最後の言葉だけ残しました": "Kept only the first and last lines",
+ "ブランドのロゴ": "Brand logo",
+ "ブランドキットの内容を入れています": "Filled in from your brand kit",
+ "変更": "Change",
+ "次回から自動で入れる": "Fill this in automatically next time",
+ "名前とアカウント名をブランドキットに保存します。アカウントのページでいつでも変えられます。": "Saves the name and handle to your brand kit. You can change them any time on your account page.",
+ "保存しました": "Saved",
+ "ブランド": "Brand",
+ "新しい動画に自動で入ります": "Filled into every new video",
+ "ブランド名・お店の名前": "Brand or shop name",
+ "Instagramのアカウント名": "Instagram handle",
+ "メインカラー": "Main colour",
+ "未設定": "Not set",
+ "ロゴを外す": "Remove logo"
 }

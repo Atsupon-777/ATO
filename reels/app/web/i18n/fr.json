@@ -902,5 +902,18 @@
  "色・字幕・カメラ・つなぎを明るく弾む組み合わせにしました": "Couleurs, sous-titres, caméra et transitions passés en mode vif et pétillant",
  "字幕を1〜3語ずつにして、文字だけの画面を減らしました": "Sous-titres de 1 à 3 mots à la fois, moins d'écrans de texte seul",
  "{0}秒 → {1}秒": "{0} s → {1} s",
- "最初と最後の言葉だけ残しました": "Seules la première et la dernière phrase restent"
+ "最初と最後の言葉だけ残しました": "Seules la première et la dernière phrase restent",
+ "ブランドのロゴ": "Logo de la marque",
+ "ブランドキットの内容を入れています": "Rempli depuis votre kit de marque",
+ "変更": "Modifier",
+ "次回から自動で入れる": "Remplir automatiquement la prochaine fois",
+ "名前とアカウント名をブランドキットに保存します。アカウントのページでいつでも変えられます。": "Enregistre le nom et le compte dans votre kit de marque. Modifiable à tout moment depuis la page du compte.",
+ "保存しました": "Enregistré",
+ "ブランド": "Marque",
+ "新しい動画に自動で入ります": "Ajouté à chaque nouvelle vidéo",
+ "ブランド名・お店の名前": "Nom de la marque ou de la boutique",
+ "Instagramのアカウント名": "Compte Instagram",
+ "メインカラー": "Couleur principale",
+ "未設定": "Non défini",
+ "ロゴを外す": "Retirer le logo"
 }

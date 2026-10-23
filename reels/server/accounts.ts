@@ -68,7 +68,11 @@ export type Account = {
   devices?: { token: string; platform: 'ios' | 'android'; lang: string; at: string }[];
   /** TOKEN_SCALE once `tokens` and `extra` are in the current units. */
   tokenScale?: number;
+  /** Brand kit: filled into new reels' forms; `color` is the accent of templates that take one, `logo` one of the user's uploads. */
+  brand?: Brand;
 };
+
+export type Brand = { name?: string; handle?: string; color?: string; logo?: string };
 
 const file = path.join(dataDir, 'accounts.json');
 let accounts: Map<string, Account> | null = null;

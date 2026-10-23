@@ -29,7 +29,7 @@ import { derived } from '../server/derived.ts';
 import { isGoal, type Goal } from '../server/goals.ts';
 import { isLang, type Lang } from '../src/lang.ts';
 import { authEnabled, LOCAL_USER, verifyIdToken, webConfig, type User } from '../server/auth.ts';
-import { FreeClaimError, NotEnoughTokens, balance, charge, claimFree, getAccount, refund, removeAccount, update, allAccounts, PLAN_TOKENS, FREE_TOKENS, PAYG_UNIT, PAYG_UNIT_YEN, PAYG_MIN, PAYG_MAX } from '../server/accounts.ts';
+import { type Brand, FreeClaimError, NotEnoughTokens, balance, charge, claimFree, getAccount, refund, removeAccount, update, allAccounts, PLAN_TOKENS, FREE_TOKENS, PAYG_UNIT, PAYG_UNIT_YEN, PAYG_MIN, PAYG_MAX } from '../server/accounts.ts';
 import { billingEnabled, cancelSubscription, checkout, isPurchase, paygUnits, portal, webhook } from '../server/billing.ts';
 import { iapConfig, revenuecatWebhook } from '../server/appstore.ts';
 import { deleteFirebaseUser } from '../server/google.ts';
@@ -309,6 +309,8 @@ async function startJob(template: Template, input: Record<string, any>, user: Us
         job.usage = res.usage;
         job.title = String(res.props.title || job.title);
       }
+      // The brand kit's main colour, on templates that take an accent colour.
+      if (typeof input.accent === 'string' && /^#[0-9a-f]{6}$/i.test(input.accent) && job.props) brandAccent(template, job.props, input.accent.toUpperCase());
       job.status = 'ready';
       job.step = undefined;
       // The generation's AI spend, once, for the owner's dashboard.
@@ -326,6 +328,17 @@ async function startJob(template: Template, input: Record<string, any>, user: Us
     await save(job);
   })();
   return job;
+}
+
+/** Puts the brand colour where each template keeps its accent. */
+function brandAccent(template: Template, props: Record<string, any>, hex: string) {
+  if (template === 'ServiceReel') props.accent = hex;
+  else if (template === 'SaaSPromo' || template === 'ProductShine' || template === 'ExperienceFilm') {
+    if (props.palette && typeof props.palette === 'object') props.palette.accent = hex;
+  } else if (template === 'EffectsReel') {
+    if (props.palette && typeof props.palette === 'object') props.palette.accent = hex;
+    for (const s of props.segments ?? []) if (s.style?.color) s.style.color = hex;
+  }
 }
 
 /** Renders use a bundle made once at startup, so media made later is passed as URLs to this server. */
@@ -665,6 +678,23 @@ const server = http.createServer(async (req, res) => {
         if (avatar !== undefined) a.avatar = avatar || undefined;
       });
       return json(res, 200, { displayName: a.displayName, avatar: a.avatar });
+    }
+    // Brand kit: name, Instagram handle, main colour and logo, saved with the account and filled into new reels.
+    if (p === '/api/me/brand' && req.method === 'GET') {
+      const a = await getAccount(user!.uid, user!.email);
+      return json(res, 200, a.brand ?? {});
+    }
+    if (p === '/api/me/brand' && req.method === 'PUT') {
+      const { name, handle, color, logo } = await readBody(req);
+      const mine = `/uploads/${userDir(user!)}/`;
+      if (logo !== undefined && logo !== null && logo !== '' && !(typeof logo === 'string' && logo.startsWith(mine) && /^[\w.-]+\.(jpe?g|png|webp)$/i.test(logo.slice(mine.length))))
+        return json(res, 400, { error: '画像はJPG / PNG / WebPを選んでください' });
+      if (color !== undefined && color !== null && color !== '' && !(typeof color === 'string' && /^#[0-9a-f]{6}$/i.test(color))) return json(res, 400, { error: 'color must be #rrggbb' });
+      const text = (v: unknown, n: number) => (typeof v === 'string' ? v.trim().slice(0, n) || undefined : undefined);
+      const h = text(handle, 31)?.replace(/^@*/, '@').slice(0, 30);
+      const brand: Brand = { name: text(name, 24), handle: h && h !== '@' ? h : undefined, color: color ? String(color).toUpperCase() : undefined, logo: logo || undefined };
+      const a = await update(user!.uid, (a) => void (a.brand = Object.values(brand).some(Boolean) ? brand : undefined));
+      return json(res, 200, a.brand ?? {});
     }
     // Free tokens: the browser links a phone number by SMS first, so the ID token carries it.
     if (p === '/api/free-tokens' && req.method === 'POST') {

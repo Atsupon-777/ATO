@@ -507,6 +507,37 @@ const newJobCrumbs = (template: TemplateId, fx?: EffectId, mix?: string) => {
   return [{ label: tr("ホーム"), href: '#/' }, ...(g ? [{ label: g.name, href: `#/?g=${g.id}` }] : []), { label: it?.name ?? TEMPLATES[template].name, href: '#/' }, { label: tr("素材を入れる") }];
 };
 
+// ---------- brand kit: saved with the account, filled into every new reel's form ----------
+
+type Brand = { name?: string; handle?: string; color?: string; logo?: string };
+let brandLoad: Promise<Brand> | null = null;
+const loadBrand = () => (brandLoad ??= DEMO ? Promise.resolve({}) : api<Brand>('/api/me/brand').catch(() => ({})));
+const saveBrand = async (b: Brand) => {
+  const saved = await api<Brand>('/api/me/brand', { method: 'PUT', body: JSON.stringify(b) });
+  brandLoad = Promise.resolve(saved);
+  return saved;
+};
+const hasBrand = (b: Brand | null) => Boolean(b && (b.name || b.handle || b.color || b.logo));
+/** Which form field holds the brand name, the handle and the logo, per template (and its length limit). */
+const BRAND_FIELDS: Partial<Record<TemplateId, { name?: [string, number]; handle?: boolean; logo?: boolean }>> = {
+  ProductShine: { name: ['brand', 16], handle: true },
+  ExperienceFilm: { name: ['name', 24], handle: true },
+  ServiceReel: { name: ['name', 24], logo: true },
+  SaaSPromo: { name: ['name', 20], logo: true },
+  PhotoReel: { handle: true },
+};
+const logoInput = (url?: string) => (url ? { file: url.split('/').pop()!, url, name: tr("ブランドのロゴ") } : undefined);
+/** The form with the brand kit filled into the fields that are still empty; the colour always rides along. */
+const withBrand = (s: Record<string, any>, b: Brand, t: TemplateId) => {
+  const f = BRAND_FIELDS[t] ?? {};
+  const x = { ...s };
+  if (f.name && b.name && !x[f.name[0]]) x[f.name[0]] = b.name.slice(0, f.name[1]);
+  if (f.handle && b.handle && !x.handle) x.handle = b.handle;
+  if (f.logo && b.logo && !x.logo) x.logo = logoInput(b.logo);
+  if (b.color) x.accent = b.color;
+  return x;
+};
+
 /** Language the AI writes the video's copy and captions in. Talk videos can keep the spoken language. */
 const VideoLang: React.FC<{ template: TemplateId; value: string; onChange: (v: string) => void }> = ({ template, value, onChange }) => {
   const talk = template === 'TalkCaptions' || template === 'EffectsReel' || template === 'FivePass';
@@ -535,6 +566,15 @@ const NewJob: React.FC<{ template: TemplateId; fx?: EffectId; mixArg?: string; t
   const [busy, setBusy] = useState(false);
   const set = (k: string) => (v: any) => setInput((s) => ({ ...s, [k]: v }));
   const t = TEMPLATES[template];
+  // the brand kit fills the name, handle and logo; with none saved yet, offer to keep what is typed here
+  const [brand, setBrand] = useState<Brand | null>(null);
+  const [remember, setRemember] = useState(true);
+  useEffect(() => {
+    loadBrand().then((b) => (setBrand(b), setInput((s) => withBrand(s, b, template))));
+  }, []);
+  const bf = BRAND_FIELDS[template] ?? {};
+  const typedBrand: Brand = { name: bf.name ? input[bf.name[0]] || undefined : undefined, handle: bf.handle ? input.handle || undefined : undefined, logo: bf.logo ? input.logo?.url : undefined };
+  const offerSave = brand !== null && !hasBrand(brand) && Boolean(typedBrand.name || typedBrand.handle) && !DEMO;
   const ready =
     template === 'ExperienceFilm' ? input.name && input.description : template === 'ProductShine' ? input.photo && input.brand && input.name : template === 'SaaSPromo' ? input.desktop && input.name : template === 'ServiceReel' ? input.name && input.description : template === 'PhotoReel' ? input.photo1 : input.video;
   const submit = async () => {
@@ -543,6 +583,7 @@ const NewJob: React.FC<{ template: TemplateId; fx?: EffectId; mixArg?: string; t
     try {
       const body: Record<string, any> = Object.fromEntries(Object.entries(input).map(([k, v]) => [k, v && typeof v === 'object' ? v.file : v]));
       body.photos = Array.from({ length: 10 }, (_, i) => body[`photo${i + 1}`]).filter(Boolean);
+      if (offerSave && remember) await saveBrand({ ...typedBrand, handle: typedBrand.handle?.replace(/^@*/, '@') }).catch(() => null);
       onStarted(await api<Job>('/api/jobs', { method: 'POST', body: JSON.stringify({ template, input: body }) }));
       // In the app: ask once whether to send a notification when it's ready (the reason is obvious right now).
       enablePush(registerPushToken);
@@ -714,6 +755,21 @@ const NewJob: React.FC<{ template: TemplateId; fx?: EffectId; mixArg?: string; t
             </>
           )}
           <VideoLang template={template} value={input.lang} onChange={set('lang')} />
+          {hasBrand(brand) ? (
+            <p className="brandnote">
+              {brand!.color ? <i style={{ background: brand!.color }} /> : null}
+              {tr("ブランドキットの内容を入れています")} <a href="#/me">{tr("変更")}</a>
+            </p>
+          ) : null}
+          {offerSave ? (
+            <label className="check brandsave">
+              <input type="checkbox" checked={remember} onChange={(e) => setRemember(e.target.checked)} />
+              <span>
+                {tr("次回から自動で入れる")}
+                <small>{tr("名前とアカウント名をブランドキットに保存します。アカウントのページでいつでも変えられます。")}</small>
+              </span>
+            </label>
+          ) : null}
           <div className="actions">
             <button className="btn" disabled={!ready || busy || !!DEMO} onClick={submit}>
               {busy ? tr("送信中…") : input.video && template !== 'ProductShine' ? tr("作成する") : tr("AIで作成する")}
@@ -4710,6 +4766,69 @@ const ProfileSheet: React.FC<{ me: Me; onClose: () => void; onSaved: () => void 
   );
 };
 
+/** The brand kit on the account page: name, Instagram handle, main colour and logo, filled into every new reel. */
+const BrandKit: React.FC = () => {
+  const [b, setB] = useState<Brand | null>(null);
+  const [saved, setSaved] = useState<Brand | null>(null);
+  const [busy, setBusy] = useState(false);
+  const [msg, setMsg] = useState('');
+  useEffect(() => void loadBrand().then((x) => (setB(x), setSaved(x))), []);
+  if (!b) return null;
+  const set = (k: keyof Brand) => (v: string | undefined) => (setB({ ...b, [k]: v }), setMsg(''));
+  const dirty = JSON.stringify(b) !== JSON.stringify(saved);
+  const save = async () => {
+    setBusy(true);
+    setMsg('');
+    try {
+      const x = await saveBrand(b);
+      setB(x);
+      setSaved(x);
+      setMsg(tr("保存しました"));
+    } catch (e: any) {
+      setMsg(e.message);
+    }
+    setBusy(false);
+  };
+  return (
+    <section className="brandkit">
+      <div className="thead">
+        <h2>{tr("ブランド")}</h2>
+        <span className="cost">{tr("新しい動画に自動で入ります")}</span>
+      </div>
+      <div className="grid2">
+        <Field label={tr("ブランド名・お店の名前")} max={24} value={b.name ?? ''} onChange={set('name')} placeholder="Lumina" />
+        <Field label={tr("Instagramのアカウント名")} max={30} value={b.handle ?? ''} onChange={set('handle')} placeholder="@lumina" />
+      </div>
+      <div className="brandrow">
+        <div className="field">
+          <label>{tr("メインカラー")}</label>
+          <div className="brandcolor">
+            <input type="color" value={b.color ?? '#DFFF4F'} onChange={(e) => set('color')(e.target.value.toUpperCase())} aria-label={tr("メインカラー")} />
+            <span>{b.color ?? tr("未設定")}</span>
+            {b.color ? (
+              <button className="linkbtn" onClick={() => set('color')(undefined)}>
+                {tr("消す")}
+              </button>
+            ) : null}
+          </div>
+        </div>
+        <Drop label={tr("ロゴ（任意）")} hint={tr("透過PNGがおすすめ")} accept="image/png,image/jpeg,image/webp" value={logoInput(b.logo)} onChange={(v: { url: string }) => set('logo')(v?.url)} />
+      </div>
+      {b.logo ? (
+        <button className="linkbtn" onClick={() => set('logo')(undefined)}>
+          {tr("ロゴを外す")}
+        </button>
+      ) : null}
+      <div className="row" style={{ gap: 10, marginTop: 10 }}>
+        <button className="btn small" disabled={busy || !dirty} onClick={save}>
+          {busy ? tr("保存中…") : tr("保存")}
+        </button>
+        {msg ? <span className="cost">{msg}</span> : null}
+      </div>
+    </section>
+  );
+};
+
 const Account: React.FC<{ go: (h: string) => void }> = ({ go }) => {
   const [jobs, setJobs] = useState<Job[]>([]);
   const [me, setMe] = useState<Me | null>(null);
@@ -4791,6 +4910,7 @@ const Account: React.FC<{ go: (h: string) => void }> = ({ go }) => {
           <span>{tr("書き出した動画")}</span>
         </div>
       </div>
+      {me ? <BrandKit /> : null}
       <h2>{tr("プラン")}</h2>
       {isNative ? (
         <StorePlans me={me} onChanged={loadMe} />
