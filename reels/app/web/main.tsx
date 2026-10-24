@@ -2007,25 +2007,67 @@ const productSeconds = (p: ProductShineProps) => productShineFrames(p, FPS) / FP
 
 const lengthNote = (a: number, b: number) => (Math.round(b) < Math.round(a) ? tr("{0}秒 → {1}秒", Math.round(a), Math.round(b)) : tr("これ以上は短くできません"));
 
+/**
+ * The same four moods for a service reel: luxe / fun switch the style (noir / vivid) and its accent and nudge the
+ * tempo; short plays faster and, with three points, keeps the first two; less drops the body text under each point.
+ * The layout and the words the owner wrote stay.
+ */
+const applyServiceMood = (x: ServiceReelProps, mood: MoodId) => {
+  if (mood === 'luxe' || mood === 'fun') {
+    x.style = mood === 'luxe' ? 'noir' : 'vivid';
+    x.accent = mood === 'luxe' ? '#E2B66E' : '#FF6FB5';
+    x.accent2 = mood === 'luxe' ? '#FFD49A' : '#FFC542';
+    x.bpm = clampN(x.bpm + (mood === 'luxe' ? -12 : 12), 90, 150);
+  } else if (mood === 'short') {
+    x.bpm = clampN(x.bpm + 16, 90, 150);
+    if (x.features.length > 2) x.features = x.features.slice(0, 2);
+    if (x.steps && x.steps.length > 2) x.steps = x.steps.slice(0, 2);
+  } else {
+    x.features = x.features.map((f) => ({ ...f, body: undefined }));
+    if (x.steps) x.steps = x.steps.map((s) => ({ ...s, body: undefined }));
+  }
+};
+const serviceSeconds = (p: ServiceReelProps) => serviceReelDuration(p, FPS) / FPS;
+
+/** The four moods for a SaaS promo: colours and tempo, a faster cut, or no floating chips. Hook, features and stats stay. */
+const applySaasMood = (x: SaaSPromoProps, mood: MoodId) => {
+  if (mood === 'luxe') {
+    x.palette = { bg: '#0B0907', ink: '#F5EFE3', accent: '#E2B66E', accent2: '#FFD49A', panel: '#17130E' };
+    x.bpm = clampN(x.bpm - 12, 90, 160);
+  } else if (mood === 'fun') {
+    x.palette = { bg: '#1E0F18', ink: '#FFFFFF', accent: '#FF6FB5', accent2: '#FFC542', panel: '#2A1622' };
+    x.bpm = clampN(x.bpm + 12, 90, 160);
+  } else if (mood === 'short') {
+    x.bpm = clampN(x.bpm + 20, 90, 160);
+  } else {
+    x.chips = [];
+  }
+};
+const saasSeconds = (p: SaaSPromoProps) => (saasPromoBeats * beatFrames(p.bpm, FPS)) / FPS;
+
+type EditorMoodDef = { apply: (x: any, m: MoodId) => void; seconds: (p: any) => number; luxe: string; fun: string; less: string };
+const COLOUR_LUXE = () => tr("色を落ち着いた金と黒に、テンポを少しゆったりにしました");
+const COLOUR_FUN = () => tr("色を明るく、テンポを少し速くしました");
+const EDITOR_MOOD_DEFS: Partial<Record<TemplateId, () => EditorMoodDef>> = {
+  PhotoAdFilm: () => ({
+    apply: applyPhotoAdMood,
+    seconds: photoAdSeconds,
+    luxe: tr("つなぎをやわらかく、動きを少しゆっくりにしました"),
+    fun: tr("カットでテンポよくつなぐようにしました"),
+    less: tr("最初と最後の言葉だけ残しました"),
+  }),
+  ProductShine: () => ({ apply: applyProductMood, seconds: productSeconds, luxe: COLOUR_LUXE(), fun: COLOUR_FUN(), less: tr("最初と最後の言葉だけ残しました") }),
+  ServiceReel: () => ({ apply: applyServiceMood, seconds: serviceSeconds, luxe: COLOUR_LUXE(), fun: COLOUR_FUN(), less: tr("細かい文字を外しました") }),
+  SaaSPromo: () => ({ apply: applySaasMood, seconds: saasSeconds, luxe: COLOUR_LUXE(), fun: COLOUR_FUN(), less: tr("細かい文字を外しました") }),
+};
+
 /** The mood chips at the top of the regular editor, for the templates that have them. */
 const EditorMood: React.FC<{ template: TemplateId; p: any; update: (fn: (x: any) => any) => void }> = ({ template, p, update }) => {
-  const photo = template === 'PhotoAdFilm';
-  const mood = useMood<any>(p, update, (x, m) => (photo ? applyPhotoAdMood(x, m) : applyProductMood(x, m)), (a, b, m) =>
-    m === 'short'
-      ? lengthNote(photo ? photoAdSeconds(a) : productSeconds(a), photo ? photoAdSeconds(b) : productSeconds(b))
-      : m === 'less'
-        ? tr("最初と最後の言葉だけ残しました")
-        : m === 'luxe'
-          ? photo
-            ? tr("つなぎをやわらかく、動きを少しゆっくりにしました")
-            : tr("色を落ち着いた金と黒に、テンポを少しゆったりにしました")
-          : photo
-            ? tr("カットでテンポよくつなぐようにしました")
-            : tr("色を明るく、テンポを少し速くしました"),
-  );
+  const d = EDITOR_MOOD_DEFS[template]!();
+  const mood = useMood<any>(p, update, d.apply, (a, b, m) => (m === 'short' ? lengthNote(d.seconds(a), d.seconds(b)) : d[m]));
   return <MoodChips p={p} {...mood} />;
 };
-const EDITOR_MOODS = new Set<TemplateId>(['PhotoAdFilm', 'ProductShine']);
+const EDITOR_MOODS = new Set<TemplateId>(Object.keys(EDITOR_MOOD_DEFS) as TemplateId[]);
 
 // ---------- effect mixing: labels, mix picker, per-beat style ----------
 
