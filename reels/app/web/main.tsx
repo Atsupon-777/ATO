@@ -1434,7 +1434,7 @@ const Editor: React.FC<{ id: string }> = ({ id }) => {
             {tr("かんたんに選ぶ画面に戻る")}
           </button>
         ) : null}
-        <div style={{ height: 16 }} />
+        {EDITOR_MOODS.has(job.template) ? <EditorMood key={job.id} template={job.template} p={props} update={update} /> : <div style={{ height: 16 }} />}
         {job.template === 'ProductShine' ? (
           <ProductPanel p={props} update={update} />
         ) : job.template === 'ExperienceFilm' ? (
@@ -1947,6 +1947,85 @@ const PhotoAdPanel: React.FC<PanelProps<PhotoAdProps>> = ({ p, update }) => {
     </>
   );
 };
+
+// ---------- mood quick picks in the regular editor (photo ads, product reels) ----------
+
+const clampN = (v: number, lo: number, hi: number) => Math.min(hi, Math.max(lo, v));
+/** Keep only the first and last lines that say something; every small label goes. */
+const fewerLines = <S extends { line: string; kicker: string }>(shots: S[], skip: (s: S) => boolean = () => false) => {
+  const said = shots.map((s, i) => (!skip(s) && s.line ? i : -1)).filter((i) => i >= 0);
+  const keep = new Set([said[0], said[said.length - 1]]);
+  return shots.map((s, i) => ({ ...s, kicker: '', line: keep.has(i) ? s.line : '' }));
+};
+
+/**
+ * What each mood does to a photo ad. Only free options: how shots join, how fast they play, how long they hold,
+ * and how many lines are on screen. The colour of the type (ink) stays: it was picked to read on this film.
+ * The pack shot keeps its length so the end card still fits.
+ */
+const applyPhotoAdMood = (x: PhotoAdProps, mood: MoodId) => {
+  const last = x.shots.length - 1;
+  if (mood === 'luxe') {
+    // soft dissolves and a touch of slow motion (playing slower never runs past the end of a clip)
+    x.shots = x.shots.map((s, i) => ({ ...s, enter: i ? 'dissolve' : s.enter, rate: clampN(Math.round(s.rate * 0.85 * 100) / 100, 0.25, 2) }));
+    x.musicVolume = Math.min(x.musicVolume, 0.5);
+  } else if (mood === 'fun') {
+    // hard cuts on motion, a little quicker: each shot uses no more of its clip than before (0.85 × 1.15 < 1)
+    x.shots = x.shots.map((s, i) => ({
+      ...s,
+      enter: 'cut',
+      seconds: i === last ? s.seconds : clampN(Math.round(s.seconds * 0.85 * 10) / 10, 0.8, 8),
+      rate: i === last ? s.rate : clampN(Math.round(s.rate * 1.15 * 100) / 100, 0.25, 2),
+    }));
+  } else if (mood === 'short') {
+    x.shots = x.shots.map((s, i) => (i === last ? s : { ...s, seconds: clampN(Math.round(s.seconds * 0.75 * 10) / 10, 0.8, 8) }));
+  } else {
+    x.shots = fewerLines(x.shots, (s) => s.beat === 'pack');
+  }
+};
+const photoAdSeconds = (p: PhotoAdProps) => photoAdDuration(p, FPS) / FPS;
+
+/** The same four moods for a product reel: its colours and tempo, or (story mode) the film's look and shots. */
+const applyProductMood = (x: ProductShineProps, mood: MoodId) => {
+  const f = x.film;
+  if (mood === 'luxe' || mood === 'fun') {
+    const look = FILM_LOOKS.find((l) => l.id === (mood === 'luxe' ? 'night' : 'airy'))!;
+    if (f) (f.grade = look.grade), (f.palette = { ...look.palette });
+    x.palette =
+      mood === 'luxe' ? { accent: '#E2B66E', glow: '#FFD49A', base: '#0B0907' } : { accent: '#FF6FB5', glow: '#FFC542', base: '#1E0F18' };
+    x.bpm = clampN(x.bpm + (mood === 'luxe' ? -12 : 12), 90, 150);
+  } else if (mood === 'short') {
+    if (f) f.shots = f.shots.map((s) => ({ ...s, seconds: clampN(Math.round(s.seconds * 0.8 * 10) / 10, 1, 8) }));
+    else x.bpm = clampN(x.bpm + 20, 90, 150);
+  } else {
+    x.details = x.details.map((d) => ({ ...d, kicker: '' }));
+    if (f) f.shots = fewerLines(f.shots);
+    if (x.story) x.story = x.story.map((s, i) => ({ ...s, kicker: '', line: i === 0 ? s.line : '' }));
+  }
+};
+const productSeconds = (p: ProductShineProps) => productShineFrames(p, FPS) / FPS;
+
+const lengthNote = (a: number, b: number) => (Math.round(b) < Math.round(a) ? tr("{0}秒 → {1}秒", Math.round(a), Math.round(b)) : tr("これ以上は短くできません"));
+
+/** The mood chips at the top of the regular editor, for the templates that have them. */
+const EditorMood: React.FC<{ template: TemplateId; p: any; update: (fn: (x: any) => any) => void }> = ({ template, p, update }) => {
+  const photo = template === 'PhotoAdFilm';
+  const mood = useMood<any>(p, update, (x, m) => (photo ? applyPhotoAdMood(x, m) : applyProductMood(x, m)), (a, b, m) =>
+    m === 'short'
+      ? lengthNote(photo ? photoAdSeconds(a) : productSeconds(a), photo ? photoAdSeconds(b) : productSeconds(b))
+      : m === 'less'
+        ? tr("最初と最後の言葉だけ残しました")
+        : m === 'luxe'
+          ? photo
+            ? tr("つなぎをやわらかく、動きを少しゆっくりにしました")
+            : tr("色を落ち着いた金と黒に、テンポを少しゆったりにしました")
+          : photo
+            ? tr("カットでテンポよくつなぐようにしました")
+            : tr("色を明るく、テンポを少し速くしました"),
+  );
+  return <MoodChips p={p} {...mood} />;
+};
+const EDITOR_MOODS = new Set<TemplateId>(['PhotoAdFilm', 'ProductShine']);
 
 // ---------- effect mixing: labels, mix picker, per-beat style ----------
 

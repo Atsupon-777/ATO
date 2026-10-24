@@ -984,5 +984,9 @@
  "使うシーン": "In use",
  "商品カット": "Pack shot",
  "商品名（ブランド名と同じなら出ません）": "Product name (hidden if the same as the brand)",
- "水の音の音量": "Water sound volume"
+ "水の音の音量": "Water sound volume",
+ "つなぎをやわらかく、動きを少しゆっくりにしました": "Softer transitions and slightly slower motion",
+ "色を落ち着いた金と黒に、テンポを少しゆったりにしました": "Calm gold-and-black colours and a slightly slower tempo",
+ "カットでテンポよくつなぐようにしました": "Snappy hard cuts between shots",
+ "色を明るく、テンポを少し速くしました": "Brighter colours and a slightly faster tempo"
 }

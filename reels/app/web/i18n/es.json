@@ -984,5 +984,9 @@
  "使うシーン": "En uso",
  "商品カット": "Plano del producto",
  "商品名（ブランド名と同じなら出ません）": "Nombre del producto (no se muestra si es igual a la marca)",
- "水の音の音量": "Volumen del sonido del agua"
+ "水の音の音量": "Volumen del sonido del agua",
+ "つなぎをやわらかく、動きを少しゆっくりにしました": "Transiciones más suaves y movimiento un poco más lento",
+ "色を落ち着いた金と黒に、テンポを少しゆったりにしました": "Colores dorado y negro sobrios y un tempo algo más pausado",
+ "カットでテンポよくつなぐようにしました": "Cortes directos y con ritmo entre planos",
+ "色を明るく、テンポを少し速くしました": "Colores más vivos y un tempo algo más rápido"
 }
