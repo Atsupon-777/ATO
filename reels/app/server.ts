@@ -257,6 +257,7 @@ async function startJob(template: Template, input: Record<string, any>, user: Us
           facts: String(input.facts || '').slice(0, 300),
           cta: String(input.cta || '').slice(0, 16),
           handle: String(input.handle || '').slice(0, 30),
+          goal,
           lang,
           jobId: id,
           onStep,
@@ -378,7 +379,7 @@ async function startJob(template: Template, input: Record<string, any>, user: Us
 
 /** Puts the brand colour where each template keeps its accent. */
 function brandAccent(template: Template, props: Record<string, any>, hex: string) {
-  if (template === 'ServiceReel') props.accent = hex;
+  if (template === 'ServiceReel' || template === 'PhotoAdFilm') props.accent = hex;
   else if (template === 'SaaSPromo' || template === 'ProductShine' || template === 'ExperienceFilm') {
     if (props.palette && typeof props.palette === 'object') props.palette.accent = hex;
   } else if (template === 'EffectsReel') {

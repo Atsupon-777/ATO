@@ -534,6 +534,7 @@ const hasBrand = (b: Brand | null) => Boolean(b && (b.name || b.handle || b.colo
 const BRAND_FIELDS: Partial<Record<TemplateId, { name?: [string, number]; handle?: boolean; logo?: boolean }>> = {
   ProductShine: { name: ['brand', 16], handle: true },
   ExperienceFilm: { name: ['name', 24], handle: true },
+  PhotoAdFilm: { name: ['brand', 24], handle: true },
   ServiceReel: { name: ['name', 24], logo: true },
   SaaSPromo: { name: ['name', 20], logo: true },
   PhotoReel: { handle: true },
@@ -1925,7 +1926,11 @@ const PhotoAdPanel: React.FC<PanelProps<PhotoAdProps>> = ({ p, update }) => {
       </div>
       <div className="panel">
         <h2>{tr("色と音")}</h2>
-        <Colors value={{ ink: p.ink }} labels={{ ink: tr("文字") }} onChange={(v) => set((x) => void (x.ink = (v as { ink: string }).ink))} />
+        <Colors
+          value={{ ink: p.ink, ...(p.accent ? { accent: p.accent } : {}) }}
+          labels={{ ink: tr("文字"), ...(p.accent ? { accent: tr("メインカラー") } : {}) }}
+          onChange={(v) => set((x) => void ((x.ink = v.ink), v.accent && (x.accent = v.accent.toUpperCase())))}
+        />
         {[
           { k: 'musicVolume' as const, label: tr("音楽の音量") },
           { k: 'sfxVolume' as const, label: tr("水の音の音量") },

@@ -424,6 +424,8 @@ export const photoAdSchema = z.object({
   /** Latin copy in a display serif; Japanese / Chinese in a light mincho. */
   serif: z.boolean(),
   ink: zColor(),
+  /** The brand kit's main colour: the thin rule under the brand and the CTA's underline. Type stays in `ink`. */
+  accent: zColor().optional(),
 });
 
 export type PhotoAdProps = z.infer<typeof photoAdSchema>;

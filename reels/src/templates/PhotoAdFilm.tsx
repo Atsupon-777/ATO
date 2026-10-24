@@ -204,8 +204,8 @@ const EndCard: React.FC<PhotoAdProps & { font: string }> = (p) => {
             margin: '26px auto 0',
             height: 1,
             width: 180 * textIn(8),
-            background: p.ink,
-            opacity: 0.6,
+            background: p.accent ?? p.ink,
+            opacity: p.accent ? 0.9 : 0.6,
           }}
         />
         {showName ? (
@@ -258,7 +258,7 @@ const EndCard: React.FC<PhotoAdProps & { font: string }> = (p) => {
               letterSpacing: '0.24em',
               display: 'inline-block',
               paddingBottom: 10,
-              borderBottom: `1px solid ${p.ink}99`,
+              borderBottom: p.accent ? `2px solid ${p.accent}` : `1px solid ${p.ink}99`,
             }}
           >
             {p.cta}

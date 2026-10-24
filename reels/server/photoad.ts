@@ -12,6 +12,7 @@ import { z } from 'zod';
 import { photoAdBeats, photoAdSchema, type PhotoAdProps } from '../src/schemas.ts';
 import { copyLanguage, fit, isCJK, type Lang } from '../src/lang.ts';
 import { askJson, editImage, generateMusic, imageToVideo } from './gemini.ts';
+import { goalLine } from './goals.ts';
 import { calmTrim, jumpsOf } from './experience.ts';
 import { publicDir } from './paths.ts';
 import { renderLocal } from './render.ts';
@@ -80,6 +81,8 @@ export type PhotoAdBrief = {
   facts?: string;
   cta?: string;
   handle?: string;
+  /** What the reel is for (server/goals.ts), picked on the home screen: shapes the lines, tagline and CTA. */
+  goal?: string;
   lang?: Lang;
   jobId?: string;
   onStep?: (step: number, total: number, label: string) => void;
@@ -135,6 +138,7 @@ export async function buildPhotoAd(brief: PhotoAdBrief) {
             'It must look like a real commercial shoot, not a slideshow: the product\'s substance really moves (pours, drips, splashes, spreads), then a real person uses it, then the pack shot.',
             `Brand: ${brief.brand}. ${brief.description ? `Product: ${brief.description}.` : ''}`,
             `Facts you may use in copy (claim nothing else: no effects, numbers, awards or ingredients that are not listed): ${brief.facts || '(none)'}`,
+            goalLine(brief.goal),
             copyLanguage(lang),
             'Keep every shot simple enough for a video model to render cleanly: one subject, one motion, plain set, nothing tiny or intricate. Never ask for text in the image.',
           ].join('\n'),
