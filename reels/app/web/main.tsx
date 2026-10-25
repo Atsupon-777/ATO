@@ -4520,6 +4520,7 @@ const UploadTile: React.FC<{ value?: { file: string; url: string; name: string }
 
 /** Upload, then one button. Everything else is a pick after the AI has made the takes. */
 const Start: React.FC<{ go: (h: string) => void }> = ({ go }) => {
+  useAmbientPhoto('matcha');
   const [video, setVideo] = useState<{ file: string; url: string; name: string } | undefined>();
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState('');
@@ -4644,6 +4645,11 @@ const goalOfHash = (): GoalId | undefined => {
 
 /** The blurred photo behind the whole app: a page sets it (the card in front on the home screen), and it fades between photos. */
 const AmbientContext = React.createContext<(url: string | null) => void>(() => {});
+/** Puts one of the app's sample photos behind the page while it is open. */
+const useAmbientPhoto = (name: string) => {
+  const setAmbient = React.useContext(AmbientContext);
+  useEffect(() => (setAmbient(apiUrl(`/samples/photos/${name}.jpg`)), () => setAmbient(null)), [name]);
+};
 const Ambient: React.FC<{ url: string | null }> = ({ url }) => {
   // the previous photo stays underneath while the new one fades in
   const [layers, setLayers] = useState<string[]>([]);
@@ -4731,8 +4737,7 @@ const StackPicker: React.FC<{ go: (h: string) => void }> = ({ go }) => {
 
 /** All templates and effects (the テンプレ tab). */
 const Templates: React.FC<{ go: (h: string) => void }> = ({ go }) => {
-  const setAmbient = React.useContext(AmbientContext);
-  useEffect(() => (setAmbient(apiUrl('/samples/photos/florist.jpg')), () => setAmbient(null)), []);
+  useAmbientPhoto('florist');
   const { setOpen, sheet } = useCatalogPicker(go);
   const keys = useShowcaseKeys();
   const catalog = keys ? CATALOG.filter((c) => keys.has(c.key)) : CATALOG.filter((c) => c.group !== 'mix');
@@ -5132,6 +5137,7 @@ const BrandKit: React.FC = () => {
 };
 
 const Account: React.FC<{ go: (h: string) => void }> = ({ go }) => {
+  useAmbientPhoto('beauty');
   const [jobs, setJobs] = useState<Job[]>([]);
   const [me, setMe] = useState<Me | null>(null);
   const [busy, setBusy] = useState('');
