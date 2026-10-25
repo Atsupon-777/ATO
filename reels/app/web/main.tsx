@@ -569,6 +569,139 @@ const VideoLang: React.FC<{ template: TemplateId; value: string; onChange: (v: s
   );
 };
 
+/** How each photo style looks on the customer's own photo while choosing (an impression; the AI shoots the real one). */
+const STYLE_LOOK: Record<string, { filter: string; tint: string }> = {
+  luxury: { filter: 'contrast(1.25) brightness(0.62) sepia(0.45) saturate(0.8)', tint: 'linear-gradient(160deg, rgba(20,16,8,.55), rgba(160,120,48,.35))' },
+  clean: { filter: 'brightness(1.18) saturate(0.35) contrast(0.92)', tint: 'linear-gradient(160deg, rgba(255,255,255,.35), rgba(210,214,224,.2))' },
+  cosmetic: { filter: 'saturate(1.3) hue-rotate(-20deg) brightness(1.05)', tint: 'linear-gradient(160deg, rgba(255,120,180,.35), rgba(255,200,220,.2))' },
+  natural: { filter: 'sepia(0.25) saturate(1.1) brightness(0.95)', tint: 'linear-gradient(160deg, rgba(90,110,60,.35), rgba(220,200,150,.2))' },
+};
+
+/** 商品を魅せる in three screens over the photo itself: choose the photo, choose the mood on it, then the words. */
+const ProductSteps: React.FC<{ step: number; setStep: (n: number) => void; input: Record<string, any>; set: (k: string) => (v: any) => void; onBack: () => void; children: React.ReactNode }> = ({ step, setStep, input, set, onBack, children }) => {
+  const setAmbient = React.useContext(AmbientContext);
+  const photo = input.photo ? media(input.photo.url) : apiUrl('/samples/photos/matcha.jpg');
+  useEffect(() => setAmbient(photo), [photo]);
+  useEffect(() => () => setAmbient(null), []);
+  useEffect(() => window.scrollTo({ top: 0 }), [step]);
+  const [busy, setBusy] = useState(false);
+  const [err, setErr] = useState('');
+  const fileRef = useRef<HTMLInputElement>(null);
+  const take = async (f?: File | null) => {
+    if (!f) return;
+    setBusy(true);
+    setErr('');
+    try {
+      set('photo')({ ...(await uploadFile(f)), name: f.name });
+    } catch (e: any) {
+      setErr(e.message);
+    }
+    setBusy(false);
+  };
+  const choose = () => (isNative ? pickFromLibrary('image/*').then(take, (e) => setErr(e?.message ?? String(e))) : fileRef.current?.click());
+  const n = STYLE_OPTIONS.length;
+  const si = Math.max(0, STYLE_OPTIONS.findIndex((o) => o.id === input.style));
+  const at = (k: number) => STYLE_OPTIONS[((k % n) + n) % n];
+  const pick = (k: number) => set('style')(at(k).id);
+  const start = useRef<number | null>(null);
+  const swipe = {
+    onPointerDown: (e: React.PointerEvent) => (start.current = e.clientX),
+    onPointerUp: (e: React.PointerEvent) => {
+      if (start.current === null) return;
+      const dx = e.clientX - start.current;
+      start.current = null;
+      if (Math.abs(dx) > 40) pick(si + (dx < 0 ? 1 : -1));
+    },
+  };
+  const look = (id: string) => ({ filter: STYLE_LOOK[id]?.filter });
+  const titles = [tr("主役の写真を選ぶ"), tr("雰囲気を選ぶ"), tr("仕上げの言葉")];
+  return (
+    <div className="steps3">
+      <div className="stepbar">
+        <button className="glassbtn" onClick={() => (step ? setStep(step - 1) : onBack())} aria-label={step ? tr("戻る") : tr("閉じる")}>
+          <Glyph d={step ? 'M15 5l-7 7 7 7' : 'M6 6l12 12M18 6L6 18'} size={18} />
+        </button>
+        <div className="stepdots" aria-label={tr("{0} / {1}", step + 1, 3)}>
+          {[0, 1, 2].map((k) => (
+            <span key={k} className={k === step ? 'on' : k < step ? 'done' : ''} />
+          ))}
+        </div>
+        <span style={{ width: 44 }} />
+      </div>
+      <p className="stackkicker">{TEMPLATES.ProductShine.name}</p>
+      <h1 className="steptitle">{titles[step]}</h1>
+      {step === 0 ? (
+        <>
+          <button className="stepphoto" onClick={choose} aria-label={tr("写真を選ぶ")}>
+            {input.photo ? (
+              <img src={photo} alt="" />
+            ) : (
+              <span className="stepphotoempty">
+                <Glyph d="M3 7h3l2-3h8l2 3h3v12H3zM12 17a4 4 0 100-8 4 4 0 000 8z" size={30} />
+                <b>{busy ? tr("アップロード中…") : isNative ? tr("写真ライブラリから選ぶ") : tr("タップして選ぶ")}</b>
+                <small>{tr("スマホで撮った写真でOK。商品全体が写っているもの")}</small>
+              </span>
+            )}
+            {input.photo ? <span className="stepchange">{busy ? tr("アップロード中…") : tr("写真を変える")}</span> : null}
+          </button>
+          <input ref={fileRef} type="file" accept="image/*" hidden onChange={(e) => take(e.target.files?.[0])} />
+          {err ? <div className="err">{err}</div> : null}
+          <div className="stepfoot">
+            <button className="stepcta" disabled={!input.photo || busy} onClick={() => setStep(1)}>
+              {tr("次へ：雰囲気を選ぶ")}
+            </button>
+          </div>
+        </>
+      ) : step === 1 ? (
+        <>
+          <div className="stackcards moods" {...swipe}>
+            <img className="stackside l" src={photo} alt="" style={look(at(si - 1).id)} />
+            <img className="stackside r" src={photo} alt="" style={look(at(si + 1).id)} />
+            <div className="stackfront" key={at(si).id}>
+              <img src={photo} alt="" style={look(at(si).id)} />
+              <span className="moodtint" style={{ background: STYLE_LOOK[at(si).id]?.tint }} />
+              <span className="stackglass">
+                <b>{at(si).name}</b>
+                <small>{at(si).note}</small>
+              </span>
+            </div>
+            <button className="stackarrow l" onClick={() => pick(si - 1)} aria-label={tr("前へ")}>
+              <Glyph d="M15 5l-7 7 7 7" size={18} />
+            </button>
+            <button className="stackarrow r" onClick={() => pick(si + 1)} aria-label={tr("次へ")}>
+              <Glyph d="M9 5l7 7-7 7" size={18} />
+            </button>
+          </div>
+          <p className="stepnote">{tr("仕上がりのイメージです。実際の映像はAIが撮り下ろします。")}</p>
+          <label className="glassrow">
+            <span>
+              <b>{tr("AI動画クリップを入れる（Veo・8秒）")}</b>
+              <small>{tr("カメラがゆっくり回り込む映像が入り、ぐっと高級感が出ます。生成に1〜3分ほどかかります。")}</small>
+            </span>
+            <input type="checkbox" className="switch" checked={!!input.video} onChange={(e) => set('video')(e.target.checked)} />
+          </label>
+          {input.style === 'cosmetic' && input.video ? (
+            <label className="glassrow">
+              <span>
+                <b>{tr("モデルが使っているシーンにする")}</b>
+                <small>{tr("化粧品向け。AIが生成したモデルが商品を肌にのせる映像になります。")}</small>
+              </span>
+              <input type="checkbox" className="switch" checked={!!input.onSkin} onChange={(e) => set('onSkin')(e.target.checked)} />
+            </label>
+          ) : null}
+          <div className="stepfoot">
+            <button className="stepcta" onClick={() => setStep(2)}>
+              {tr("この雰囲気で次へ")}
+            </button>
+          </div>
+        </>
+      ) : (
+        children
+      )}
+    </div>
+  );
+};
+
 const NewJob: React.FC<{ template: TemplateId; fx?: EffectId; mixArg?: string; tplArg?: string; onStarted: (job: Job) => void; onBack: () => void }> = ({ template, fx, mixArg, tplArg, onStarted, onBack }) => {
   // tplArg is a catalog template ("tpl-<id>"), which is also the key of its sample render.
   const tplId = tplArg?.slice(4);
@@ -578,6 +711,8 @@ const NewJob: React.FC<{ template: TemplateId; fx?: EffectId; mixArg?: string; t
   const [busy, setBusy] = useState(false);
   const set = (k: string) => (v: any) => setInput((s) => ({ ...s, [k]: v }));
   const t = TEMPLATES[template];
+  // 商品を魅せる is asked one thing per screen: photo, mood, then the words
+  const [step, setStep] = useState(0);
   // the brand kit fills the name, handle and logo; with none saved yet, offer to keep what is typed here
   const [brand, setBrand] = useState<Brand | null>(null);
   const [remember, setRemember] = useState(true);
@@ -609,6 +744,53 @@ const NewJob: React.FC<{ template: TemplateId; fx?: EffectId; mixArg?: string; t
       setBusy(false);
     }
   };
+  const costLine = (
+    <span className="cost">
+      {freeFirst === 'available' ? (
+        <>
+          {tr("消費:")} <s>{fmtN(tokensFor(template, input))}</s> <b>0{tr("トークン")}</b> <span className="freefirst">{tr("初回の商品動画は無料")}</span>
+        </>
+      ) : (
+        <>
+          {tr("消費:")}{' '}<b>{fmtN(tokensFor(template, input))}{tr("トークン")}</b>
+        </>
+      )}
+    </span>
+  );
+  if (template === 'ProductShine')
+    return (
+      <ProductSteps step={step} setStep={setStep} input={input} set={set} onBack={onBack}>
+        <div className="form glassform">
+          <div className="grid2">
+            <Field label={tr("ブランド名")} max={16} value={input.brand ?? ''} onChange={set('brand')} placeholder="FUJI ASAHIEN" />
+            <Field label={tr("商品名")} max={24} value={input.name ?? ''} onChange={set('name')} placeholder={tr("静寂")} />
+          </div>
+          <Field label={tr("商品の特徴（コピーはここに書いたことだけを使います）")} multiline value={input.facts ?? ''} onChange={set('facts')} placeholder={tr("例: 静岡県産の一番茶、石臼挽き、濃茶向け")} />
+          <div className="grid2">
+            <Field label={tr("最後のひとこと（CTA）")} max={16} value={input.cta ?? ''} onChange={set('cta')} />
+            <Field label={tr("アカウント名")} max={30} value={input.handle ?? ''} onChange={set('handle')} placeholder="@your_brand" />
+          </div>
+          {offerSave ? (
+            <label className="check brandsave">
+              <input type="checkbox" checked={remember} onChange={(e) => setRemember(e.target.checked)} />
+              <span>
+                {tr("次回から自動で入れる")}
+                <small>{tr("名前とアカウント名をブランドキットに保存します。アカウントのページでいつでも変えられます。")}</small>
+              </span>
+            </label>
+          ) : null}
+        </div>
+        <div className="stepfoot">
+          {costLine}
+          <button className="stepcta" disabled={!ready || busy || !!DEMO} onClick={submit}>
+            {busy ? tr("送信中…") : tr("動画を作る")}
+          </button>
+          {freeFirst === 'needs_phone' ? <p className="cost">{tr("初回の商品動画は無料です。アカウントのページで電話番号を確認すると使えます。")}</p> : null}
+          {err ? <div className="err">{err}</div> : null}
+          {DEMO ? <div className="warn">{DEMO_BLOCKED}</div> : null}
+        </div>
+      </ProductSteps>
+    );
   return (
     <div className={`editor ${goal ? 'goalfirst' : ''}`}>
       <div className="stage">
@@ -625,53 +807,7 @@ const NewJob: React.FC<{ template: TemplateId; fx?: EffectId; mixArg?: string; t
         <h1 style={{ marginTop: goal ? 8 : 16 }}>{t.name}</h1>
         <p className="sub">{t.desc}</p>
         <div className="form">
-          {template === 'ProductShine' ? (
-            <>
-              <Drop label={tr("商品写真")} hint={tr("スマホで撮った写真でOK。商品全体が写っているもの")} accept="image/*" value={input.photo} onChange={set('photo')} />
-              <div className="grid2">
-                <Field label={tr("ブランド名")} max={16} value={input.brand ?? ''} onChange={set('brand')} placeholder="FUJI ASAHIEN" />
-                <Field label={tr("商品名")} max={24} value={input.name ?? ''} onChange={set('name')} placeholder={tr("静寂")} />
-              </div>
-              <Field
-                label={tr("商品の特徴（コピーはここに書いたことだけを使います）")}
-                multiline
-                value={input.facts ?? ''}
-                onChange={set('facts')}
-                placeholder={tr("例: 静岡県産の一番茶、石臼挽き、濃茶向け")}
-              />
-              <div className="field">
-                <label>{tr("撮影スタイル")}</label>
-                <div className="chips">
-                  {STYLE_OPTIONS.map((s) => (
-                    <button key={s.id} className={`chip ${input.style === s.id ? 'on' : ''}`} onClick={() => set('style')(s.id)}>
-                      {s.name}
-                      <small>{s.note}</small>
-                    </button>
-                  ))}
-                </div>
-              </div>
-              <label className="check">
-                <input type="checkbox" checked={!!input.video} onChange={(e) => set('video')(e.target.checked)} />
-                <span>
-                  {tr("AI動画クリップを入れる（Veo・8秒）")}
-                  <small>{tr("カメラがゆっくり回り込む映像が入り、ぐっと高級感が出ます。生成に1〜3分ほどかかります。")}</small>
-                </span>
-              </label>
-              {input.style === 'cosmetic' && input.video ? (
-                <label className="check">
-                  <input type="checkbox" checked={!!input.onSkin} onChange={(e) => set('onSkin')(e.target.checked)} />
-                  <span>
-                    {tr("モデルが使っているシーンにする")}
-                    <small>{tr("化粧品向け。AIが生成したモデルが商品を肌にのせる映像になります。")}</small>
-                  </span>
-                </label>
-              ) : null}
-              <div className="grid2">
-                <Field label={tr("最後のひとこと（CTA）")} max={16} value={input.cta ?? ''} onChange={set('cta')} />
-                <Field label={tr("アカウント名")} max={30} value={input.handle ?? ''} onChange={set('handle')} placeholder="@your_brand" />
-              </div>
-            </>
-          ) : template === 'ExperienceFilm' ? (
+          {template === 'ExperienceFilm' ? (
             <>
               <div className="grid2">
                 <Field label={tr("お店・ブランドの名前")} max={24} value={input.name ?? ''} onChange={set('name')} placeholder="Rinrin Cycling Kyoto" />
@@ -809,19 +945,9 @@ const NewJob: React.FC<{ template: TemplateId; fx?: EffectId; mixArg?: string; t
           ) : null}
           <div className="actions">
             <button className="btn" disabled={!ready || busy || !!DEMO} onClick={submit}>
-              {busy ? tr("送信中…") : input.video && template !== 'ProductShine' ? tr("作成する") : tr("AIで作成する")}
+              {busy ? tr("送信中…") : input.video ? tr("作成する") : tr("AIで作成する")}
             </button>
-            <span className="cost">
-              {freeFirst === 'available' ? (
-                <>
-                  {tr("消費:")} <s>{fmtN(tokensFor(template, input))}</s> <b>0{tr("トークン")}</b> <span className="freefirst">{tr("初回の商品動画は無料")}</span>
-                </>
-              ) : (
-                <>
-                  {tr("消費:")}{' '}<b>{fmtN(tokensFor(template, input))}{tr("トークン")}</b>
-                </>
-              )}
-            </span>
+            {costLine}
           </div>
           {freeFirst === 'needs_phone' ? <p className="cost">{tr("初回の商品動画は無料です。アカウントのページで電話番号を確認すると使えます。")}</p> : null}
           {err ? <div className="err">{err}</div> : null}
