@@ -4863,7 +4863,7 @@ const FAQ = [
 
 const jobTokens = (j: Job) => j.tokens ?? (j.template === 'ExperienceFilm' || j.template === 'PhotoAdFilm' ? 12 : j.template === 'ProductShine' ? (j.props?.clip ? 12 : 5) : j.template === 'EffectsReel' || j.template === 'FivePass' || j.template === 'SaaSPromo' ? 5 : 2);
 
-type Me = { freeFirst?: 'available' | 'needs_phone' | 'used'; admin?: boolean; email?: string; plan: 'free' | 'starter' | 'standard' | 'pro'; tokens: number; extra: number; balance: number; billing: boolean; subscribed: boolean; store?: 'stripe' | 'app_store' | 'play_store'; pastDue?: boolean; freePending?: boolean; displayName?: string; avatar?: string; auth: boolean };
+type Me = { freeFirst?: 'available' | 'needs_phone' | 'used'; admin?: boolean; email?: string; plan: 'free' | 'starter' | 'standard' | 'pro'; tokens: number; extra: number; balance: number; billing: boolean; subscribed: boolean; store?: 'stripe' | 'app_store' | 'play_store'; pastDue?: boolean; pendingPlan?: 'starter' | 'standard' | 'pro'; pendingPlanAt?: string; freePending?: boolean; displayName?: string; avatar?: string; auth: boolean };
 const PLAN_NAMES: Record<Me['plan'], string> = { free: tr("無料"), starter: tr("スターター"), standard: tr("スタンダード"), pro: tr("プロ") };
 
 // Free tokens are claimed once per phone number: SMS code, then the server checks the number is new.
@@ -5625,12 +5625,14 @@ const StorePlans: React.FC<{ me: Me | null; onChanged: () => Promise<unknown> }>
   const webPlan = me?.store === 'stripe' || (me?.subscribed && !me?.store);
   /** The webhook usually lands within seconds; watch the balance until it moves. */
   const waitForTokens = async (before: number, plan?: string) => {
-    for (let i = 0; i < 15; i++) {
+    let moved = false;
+    for (let i = 0; i < 15 && !moved; i++) {
       await new Promise((r) => setTimeout(r, 2000));
       const m = await api<Me>('/api/me').catch(() => null);
-      if (m && (m.balance !== before || (plan && m.plan === plan))) break;
+      moved = !!m && (m.balance !== before || (!!plan && m.plan === plan));
     }
     await onChanged();
+    return moved;
   };
   const buy = (key: 'topup' | 'small' | 'starter' | 'standard' | 'pro') => async () => {
     const p = products?.[key];
@@ -5639,9 +5641,19 @@ const StorePlans: React.FC<{ me: Me | null; onChanged: () => Promise<unknown> }>
     setMsg('');
     try {
       const before = me?.balance ?? 0;
+      const plan = PLANS.find((x) => x.id === key);
+      const cur = PLANS.find((x) => x.id === me?.plan);
+      // Apple switches to a smaller plan at the next renewal, so nothing arrives now: say so instead of waiting.
+      const later = !!plan && !!cur && plan.tokens < cur.tokens && (me?.store === 'app_store' || me?.store === 'play_store');
       if (await iapBuy(p)) {
-        setMsg(tr("お支払いありがとうございます。トークンは数秒で反映されます。"));
-        await waitForTokens(before, key === 'topup' || key === 'small' ? undefined : key);
+        if (later) {
+          setMsg(tr("次の更新日から{0}に切り替わります。今のトークンはそのまま使えます。", plan!.name));
+          await new Promise((r) => setTimeout(r, 3000));
+          await onChanged();
+        } else {
+          setMsg(tr("お支払いありがとうございます。トークンは数秒で反映されます。"));
+          if (!(await waitForTokens(before, plan ? key : undefined))) setMsg(tr("反映に少し時間がかかっています。しばらくしてからこの画面を開き直してください。"));
+        }
       }
     } catch (e: any) {
       setMsg(e?.message ?? String(e));
@@ -5678,6 +5690,8 @@ const StorePlans: React.FC<{ me: Me | null; onChanged: () => Promise<unknown> }>
               </div>
               {current ? (
                 <button className="btn ghost small" disabled>{tr("利用中")}</button>
+              ) : me?.pendingPlan === p.id ? (
+                <button className="btn ghost small" disabled>{tr("次の更新日から")}</button>
               ) : webPlan ? (
                 <button className="btn ghost small" disabled>{tr("アプリ以外で契約中")}</button>
               ) : (

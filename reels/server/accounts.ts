@@ -52,6 +52,11 @@ export type Account = {
   store?: 'stripe' | 'app_store' | 'play_store';
   /** The App Store / Google Play product of the current in-app subscription. */
   storeProduct?: string;
+  /** The plan `tokens` was last filled from; a refill from another plan carries what is left into `extra`. */
+  tokensPlan?: PlanId;
+  /** A switch to a smaller in-app plan the store applies at the next renewal, and when that is. */
+  pendingPlan?: PlanId;
+  pendingPlanAt?: string;
   /** The last renewal payment failed and Stripe is retrying it. */
   pastDue?: boolean;
   /** Shown on the account page instead of the email; set by the user. */
@@ -125,6 +130,20 @@ export async function getAccount(uid: string, email?: string): Promise<Account> 
 }
 
 export const balance = (a: Account) => a.tokens + a.extra;
+
+/**
+ * Fills the monthly allowance of `plan` (first month, renewal or plan change). On a switch from another plan
+ * what is left of the old allowance was paid for, so it moves to `extra` and is kept, and the new one comes on top.
+ */
+export function refillPlan(a: Account, plan: PlanId) {
+  const from = a.tokensPlan ?? a.plan;
+  if (from !== plan && from !== 'free') a.extra += a.tokens;
+  a.plan = plan;
+  a.tokens = PLAN_TOKENS[plan];
+  a.tokensPlan = plan;
+  a.pendingPlan = undefined;
+  a.pendingPlanAt = undefined;
+}
 
 export class NotEnoughTokens extends Error {}
 

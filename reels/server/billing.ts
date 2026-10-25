@@ -5,7 +5,7 @@
 //   Pay as you go needs no Stripe price: each Checkout carries PAYG_UNIT_YEN per PAYG_UNIT tokens inline.
 //   STRIPE_TAX=1             turn on Stripe Tax (prices are tax-inclusive either way)
 import { createHmac, timingSafeEqual } from 'node:crypto';
-import { PAYG_MAX, PAYG_MIN, PAYG_UNIT, PAYG_UNIT_YEN, PLAN_TOKENS, TOPUP_TOKENS, findByCustomer, update, type Account, type PlanId } from './accounts.ts';
+import { PAYG_MAX, PAYG_MIN, PAYG_UNIT, PAYG_UNIT_YEN, PLAN_TOKENS, TOPUP_TOKENS, findByCustomer, refillPlan, update, type Account, type PlanId } from './accounts.ts';
 import { readLedger, recordSale, type SaleEntry } from './ledger.ts';
 
 // A restricted key (rk_...) with only Checkout, Customer portal, Customers and Subscriptions is enough.
@@ -174,8 +174,7 @@ export async function webhook(raw: Buffer, signature: string | undefined) {
         const prices: string[] = (o.lines?.data ?? []).map((l: any) => l.price?.id ?? l.pricing?.price_details?.price).filter(Boolean);
         const plan = prices.map(planOfPrice).find(Boolean);
         if (plan) {
-          a.plan = plan;
-          a.tokens = PLAN_TOKENS[plan];
+          refillPlan(a, plan);
           a.store = 'stripe';
           a.storeProduct = undefined;
         }

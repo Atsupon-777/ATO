@@ -9,7 +9,7 @@
 //   IAP_SMALL_TOKENS             tokens in it (default 3)
 //   IAP_PRODUCT_STARTER / _STANDARD / _PRO   monthly auto-renewing subscriptions (default reels_<plan>_monthly)
 import { timingSafeEqual } from 'node:crypto';
-import { PLAN_TOKENS, getAccount, update, type PlanId } from './accounts.ts';
+import { PLAN_TOKENS, getAccount, refillPlan, update, type PlanId } from './accounts.ts';
 import { USD_JPY, recordSale } from './ledger.ts';
 
 const pct = (x: unknown) => (typeof x === 'number' && Number.isFinite(x) && x >= 0 && x <= 1 ? x : undefined);
@@ -101,6 +101,9 @@ export async function revenuecatWebhook(body: any, auth: string | undefined) {
           a.store = undefined;
           a.storeProduct = undefined;
           a.pastDue = undefined;
+          a.tokensPlan = undefined;
+          a.pendingPlan = undefined;
+          a.pendingPlanAt = undefined;
         }
         sale = saleOf(ev, uid, store, plan ?? (ev.product_id === IAP_PRODUCTS.small ? 'topup_small' : ev.product_id === IAP_PRODUCTS.topup ? 'topup' : String(ev.product_id ?? 'unknown')), 0, true);
         break;
@@ -109,14 +112,22 @@ export async function revenuecatWebhook(body: any, auth: string | undefined) {
       case 'RENEWAL':
       case 'UNCANCELLATION':
         if (!plan) break;
-        a.plan = plan;
-        if (ev.type !== 'UNCANCELLATION') a.tokens = PLAN_TOKENS[plan];
+        if (ev.type !== 'UNCANCELLATION') refillPlan(a, plan);
+        else a.plan = plan;
         // A free trial has no price, so it books nothing.
         if (ev.type !== 'UNCANCELLATION') sale = saleOf(ev, uid, store, plan, PLAN_TOKENS[plan]);
         a.store = store;
         a.storeProduct = ev.product_id;
         a.pastDue = undefined;
         break;
+      // A switch to a smaller plan waits for the next renewal (Apple's rule); a bigger one arrives as a purchase now.
+      case 'PRODUCT_CHANGE': {
+        const next = planOfProduct(ev.new_product_id);
+        if (!next || a.store !== store || PLAN_TOKENS[next] >= PLAN_TOKENS[a.plan]) break;
+        a.pendingPlan = next;
+        a.pendingPlanAt = ev.expiration_at_ms ? new Date(Number(ev.expiration_at_ms)).toISOString() : undefined;
+        break;
+      }
       case 'BILLING_ISSUE':
         if (a.store === store) a.pastDue = true;
         break;
@@ -128,6 +139,9 @@ export async function revenuecatWebhook(body: any, auth: string | undefined) {
           a.store = undefined;
           a.storeProduct = undefined;
           a.pastDue = undefined;
+          a.tokensPlan = undefined;
+          a.pendingPlan = undefined;
+          a.pendingPlanAt = undefined;
         }
         break;
     }
