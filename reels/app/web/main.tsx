@@ -4642,22 +4642,125 @@ const goalOfHash = (): GoalId | undefined => {
   return isGoalId(g) ? g : undefined;
 };
 
-const GoalPicker: React.FC<{ go: (h: string) => void }> = ({ go }) => (
-  <section className="goals" aria-labelledby="goals-h">
-    <h2 id="goals-h">{tr("何を伝えたいですか？")}</h2>
-    <div className="goalgrid">
-      {GOAL_CHOICES.map((g) => (
-        <button key={g.id} className={`goal goal-${g.id}`} onClick={() => go(`${g.href}?goal=${g.id}`)}>
-          <span className="goalicon" aria-hidden>
-            <Glyph d={g.icon} size={22} />
-          </span>
-          <b>{g.name}</b>
-          <small>{g.note}</small>
-        </button>
+/** The blurred photo behind the whole app: a page sets it (the card in front on the home screen), and it fades between photos. */
+const AmbientContext = React.createContext<(url: string | null) => void>(() => {});
+const Ambient: React.FC<{ url: string | null }> = ({ url }) => {
+  // the previous photo stays underneath while the new one fades in
+  const [layers, setLayers] = useState<string[]>([]);
+  useEffect(() => {
+    if (url) setLayers((l) => [...l.filter((x) => x !== url).slice(-1), url]);
+  }, [url]);
+  if (!url) return null;
+  return (
+    <div className="ambient" aria-hidden>
+      {layers.map((u) => (
+        <img key={u} src={u} alt="" className={u === url ? 'on' : ''} />
       ))}
     </div>
-  </section>
-);
+  );
+};
+
+/** A photo for each goal on the home screen's cards (the app's own samples). */
+const GOAL_POSTER: Record<GoalId, string> = {
+  launch: 'matcha',
+  visit: 'cafe',
+  sale: 'fashion',
+  experience: 'travel',
+  talk: 'creator',
+  service: 'interior',
+};
+const goalPoster = (id: GoalId) => apiUrl(`/samples/photos/${GOAL_POSTER[id]}.jpg`);
+
+/**
+ * The goals as a stack of cards: one in front, its neighbours tilted behind. Swipe, the arrows or the dots change
+ * the card, and the app's background takes the colours of the photo in front.
+ */
+const StackPicker: React.FC<{ go: (h: string) => void }> = ({ go }) => {
+  const setAmbient = React.useContext(AmbientContext);
+  const n = GOAL_CHOICES.length;
+  const [i, setI] = useState(0);
+  const at = (k: number) => GOAL_CHOICES[((k % n) + n) % n];
+  const cur = at(i);
+  useEffect(() => setAmbient(goalPoster(cur.id)), [cur.id]);
+  useEffect(() => () => setAmbient(null), []);
+  const start = useRef<number | null>(null);
+  const open = () => go(`${cur.href}?goal=${cur.id}`);
+  return (
+    <section className="stack" aria-roledescription={tr("カルーセル")} aria-label={tr("何を作る？")}>
+      <p className="stackkicker">{tr("スワイプで選ぶ")}</p>
+      <h1>{tr("何を作る？")}</h1>
+      <div
+        className="stackcards"
+        onPointerDown={(e) => (start.current = e.clientX)}
+        onPointerUp={(e) => {
+          if (start.current === null) return;
+          const dx = e.clientX - start.current;
+          start.current = null;
+          if (Math.abs(dx) > 40) setI(i + (dx < 0 ? 1 : -1));
+        }}
+      >
+        <img className="stackside l" src={goalPoster(at(i - 1).id)} alt="" />
+        <img className="stackside r" src={goalPoster(at(i + 1).id)} alt="" />
+        <button className="stackfront" key={cur.id} onClick={open} aria-label={`${cur.name}: ${cur.note}`}>
+          <img src={goalPoster(cur.id)} alt="" />
+          <span className="stackglass">
+            <b>{cur.name}</b>
+            <small>{cur.note}</small>
+          </span>
+        </button>
+        <button className="stackarrow l" onClick={() => setI(i - 1)} aria-label={tr("前へ")}>
+          <Glyph d="M15 5l-7 7 7 7" size={18} />
+        </button>
+        <button className="stackarrow r" onClick={() => setI(i + 1)} aria-label={tr("次へ")}>
+          <Glyph d="M9 5l7 7-7 7" size={18} />
+        </button>
+      </div>
+      <div className="stackdots">
+        {GOAL_CHOICES.map((g, k) => (
+          <button key={g.id} className={k === ((i % n) + n) % n ? 'on' : ''} onClick={() => setI(k)} aria-label={g.name}>
+            <span />
+          </button>
+        ))}
+      </div>
+      <button className="stackcta" onClick={open}>
+        {tr("これで作る")}
+      </button>
+    </section>
+  );
+};
+
+/** All templates and effects (the テンプレ tab). */
+const Templates: React.FC<{ go: (h: string) => void }> = ({ go }) => {
+  const setAmbient = React.useContext(AmbientContext);
+  useEffect(() => (setAmbient(apiUrl('/samples/photos/florist.jpg')), () => setAmbient(null)), []);
+  const { setOpen, sheet } = useCatalogPicker(go);
+  const keys = useShowcaseKeys();
+  const catalog = keys ? CATALOG.filter((c) => keys.has(c.key)) : CATALOG.filter((c) => c.group !== 'mix');
+  const has = (g: Group) => catalog.some((c) => c.group === g);
+  const effectGroups = GROUPS.filter((g) => g.id !== 'base' && g.id !== 'mix' && has(g.id));
+  return (
+    <>
+      <h1 className="pagetitle">{tr("テンプレ")}</h1>
+      <TemplateBrowser onOpen={setOpen} featured={catalog.filter((c) => c.group === 'base')} />
+      {effectGroups.length ? (
+        <section className="tsection">
+          <div className="thead">
+            <h2>{tr("エフェクト")}</h2>
+            <span className="cost">{tr("{0}種", catalog.filter((c) => effectGroups.some((g) => g.id === c.group)).length)}</span>
+          </div>
+          <div className="chipbar">
+            {effectGroups.map((g) => (
+              <button key={g.id} className="fchip" onClick={() => go(`#/?g=${g.id}`)}>
+                {g.name} <small>{catalog.filter((c) => c.group === g.id).length}</small>
+              </button>
+            ))}
+          </div>
+        </section>
+      ) : null}
+      {sheet}
+    </>
+  );
+};
 
 const Home: React.FC<{ go: (h: string) => void; initialGroup?: string }> = ({ go, initialGroup }) => {
   const [group, setGroupState] = useState<Group | 'all'>(GROUPS.some((g) => g.id === initialGroup) ? (initialGroup as Group) : 'all');
@@ -4669,8 +4772,6 @@ const Home: React.FC<{ go: (h: string) => void; initialGroup?: string }> = ({ go
   const { setOpen, sheet } = useCatalogPicker(go);
   const keys = useShowcaseKeys();
   const catalog = keys ? CATALOG.filter((c) => keys.has(c.key)) : CATALOG.filter((c) => c.group !== 'mix');
-  const has = (g: Group) => catalog.some((c) => c.group === g);
-  const effectGroups = GROUPS.filter((g) => g.id !== 'base' && g.id !== 'mix' && has(g.id));
   const section = (g: (typeof GROUPS)[number]) => (
     <section key={g.id} className="tsection">
       <div className="thead">
@@ -4690,28 +4791,8 @@ const Home: React.FC<{ go: (h: string) => void; initialGroup?: string }> = ({ go
     );
   return (
     <>
-      <div className="hero">
-        <h1>{tr("載せたら、あとは選ぶだけ。")}</h1>
-        <p className="sub">{tr("編集しない、動画編集アプリ。")}</p>
-      </div>
-      <GoalPicker go={go} />
+      <StackPicker go={go} />
       <RecentReels go={go} />
-      <TemplateBrowser onOpen={setOpen} featured={catalog.filter((c) => c.group === 'base')} />
-      {effectGroups.length ? (
-        <section className="tsection">
-          <div className="thead">
-            <h2>{tr("エフェクト")}</h2>
-            <span className="cost">{tr("{0}種", catalog.filter((c) => effectGroups.some((g) => g.id === c.group)).length)}</span>
-          </div>
-          <div className="chipbar">
-            {effectGroups.map((g) => (
-              <button key={g.id} className="fchip" onClick={() => setGroup(g.id)}>
-                {g.name} <small>{catalog.filter((c) => c.group === g.id).length}</small>
-              </button>
-            ))}
-          </div>
-        </section>
-      ) : null}
       {sheet}
     </>
   );
@@ -5817,7 +5898,7 @@ const LangSheet: React.FC<{ onClose: () => void }> = ({ onClose }) => (
   </Sheet>
 );
 
-const Icon: React.FC<{ name: 'home' | 'reels' | 'plus' | 'search' | 'me' }> = ({ name }) => {
+const Icon: React.FC<{ name: 'home' | 'reels' | 'plus' | 'search' | 'me' | 'grid' }> = ({ name }) => {
   const p = { fill: 'none', stroke: 'currentColor', strokeWidth: 2, strokeLinecap: 'round' as const, strokeLinejoin: 'round' as const };
   return (
     <svg width="26" height="26" viewBox="0 0 24 24" aria-hidden>
@@ -5829,6 +5910,14 @@ const Icon: React.FC<{ name: 'home' | 'reels' | 'plus' | 'search' | 'me' }> = ({
         </>
       ) : null}
       {name === 'plus' ? <path {...p} d="M12 5v14M5 12h14" /> : null}
+      {name === 'grid' ? (
+        <>
+          <rect {...p} x="4" y="4" width="7" height="7" rx="2" />
+          <rect {...p} x="13" y="4" width="7" height="7" rx="2" />
+          <rect {...p} x="4" y="13" width="7" height="7" rx="2" />
+          <rect {...p} x="13" y="13" width="7" height="7" rx="2" />
+        </>
+      ) : null}
       {name === 'search' ? (
         <>
           <circle {...p} cx="11" cy="11" r="6.5" />
@@ -5864,13 +5953,15 @@ const App = () => {
   const go = (h: string) => (location.hash = h);
   const [, route, arg, arg2] = hash.split('?')[0].split('/');
   const query = new URLSearchParams(hash.split('?')[1] ?? '');
-  const tab = route === 'reels' || route === 'job' ? 'reels' : route === 'me' || route === 'history' || route === 'admin' ? 'me' : route === 'new' || route === 'start' ? 'new' : 'home';
+  const tab = route === 'reels' || route === 'job' ? 'reels' : route === 'me' || route === 'history' || route === 'admin' ? 'me' : route === 'new' || route === 'start' ? 'new' : route === 'templates' ? 'templates' : 'home';
   const tabs = [
     { id: 'home', label: tr("ホーム"), icon: 'home', onClick: () => go('#/') },
+    { id: 'templates', label: tr("テンプレ"), icon: 'grid', onClick: () => go('#/templates') },
     { id: 'new', label: tr("作成"), icon: 'plus', onClick: () => go('#/start') },
     { id: 'reels', label: tr("マイ動画"), icon: 'reels', onClick: () => go('#/reels') },
     { id: 'me', label: tr("アカウント"), icon: 'me', onClick: () => go('#/me') },
   ] as const;
+  const [ambient, setAmbient] = useState<string | null>(null);
   // While picking, the reel takes the whole screen.
   const immersive = route === 'job';
   // Pages sized to the screen (the feed) need the header's height, which includes the notch.
@@ -5884,6 +5975,8 @@ const App = () => {
   }, []);
   return (
     <SelContext.Provider value={{ sel, setSel }}>
+    <AmbientContext.Provider value={setAmbient}>
+      <Ambient url={ambient} />
       <div className={`top ${immersive ? 'away' : ''}`} ref={top}>
         <div className="logo" onClick={() => go('#/')}>
           <img className="mark" src="/icons/icon.svg" alt="" /> Edit<span>less</span>
@@ -5904,7 +5997,7 @@ const App = () => {
           <Globe /> <span className="lname">{LANG_NAMES[lang].native}</span>
         </button>
       </div>
-      <main className={route === 'reels' ? 'wide' : immersive ? 'immersive' : ''}>
+      <main className={`${route === 'reels' ? 'wide' : immersive ? 'immersive' : ''} ${ambient ? 'onambient' : ''}`}>
         <div className="page" key={`${route ?? ''}/${arg ?? ''}`}>
         {route === 'new' && arg in TEMPLATES ? (
           <NewJob key={hash} template={arg as TemplateId} fx={effectIds.includes(arg2 as EffectId) ? (arg2 as EffectId) : undefined} mixArg={arg2?.startsWith('mix-') ? arg2.slice(4) : undefined} tplArg={arg2?.startsWith('tpl-') ? arg2 : undefined} onBack={() => history.back()} onStarted={(j) => go(`#/job/${j.id}`)} />
@@ -5920,6 +6013,8 @@ const App = () => {
           <Search go={go} />
         ) : route === 'start' ? (
           <Start go={go} />
+        ) : route === 'templates' ? (
+          <Templates go={go} />
         ) : (
           <Home go={go} initialGroup={query.get('g') ?? undefined} />
         )}
@@ -5934,6 +6029,7 @@ const App = () => {
         ))}
       </nav>
       {langOpen ? <LangSheet onClose={() => setLangOpen(false)} /> : null}
+    </AmbientContext.Provider>
     </SelContext.Provider>
   );
 };

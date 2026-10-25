@@ -493,7 +493,7 @@
     .tabbar button { position: relative; z-index: 1; }
     .tabbar button.on { background: none; color: var(--accent); }
     .tabbar button.on svg { animation: pop .4s var(--spring); }
-    .tabglow { position: absolute; top: 6px; bottom: 6px; left: 6px; width: calc((100% - 12px) / 4); border-radius: 999px; background: rgba(245,243,238,.1); transform: translateX(calc(var(--tab, 0) * 100%)); transition: transform .45s var(--spring); pointer-events: none; }
+    .tabglow { position: absolute; top: 6px; bottom: 6px; left: 6px; width: calc((100% - 12px) / 5); border-radius: 999px; background: rgba(255,255,255,.18); transform: translateX(calc(var(--tab, 0) * 100%)); transition: transform .45s var(--spring); pointer-events: none; }
     .plans { display: flex; overflow-x: auto; scroll-snap-type: x mandatory; scrollbar-width: none; margin-inline: -16px; padding: 0 16px 6px; }
     .plans::-webkit-scrollbar { display: none; }
     .plan { flex: 0 0 74%; scroll-snap-align: center; }
@@ -1050,6 +1050,41 @@
   .admerrors code { font-size: 11.5px; line-height: 1.45; color: var(--ink); opacity: .85; overflow-wrap: anywhere; white-space: pre-wrap; }
   .freefirst { display: inline-block; margin-left: 6px; font-size: 11.5px; font-weight: 800; padding: 2px 8px; border-radius: 999px; background: var(--accent); color: var(--accent-ink); }
   .freefirstmsg b { font-size: 14px; }
+  /* ---- liquid glass: a blurred photo behind the app, stacked cards on the home screen ---- */
+  .ambient { position: fixed; inset: 0; z-index: 0; overflow: hidden; pointer-events: none; background: #0b0c10; }
+  .ambient img { position: absolute; inset: -60px; width: calc(100% + 120px); height: calc(100% + 120px); object-fit: cover; filter: blur(46px) saturate(1.6) brightness(.62); opacity: 0; transition: opacity .7s ease; }
+  .ambient img.on { opacity: 1; }
+  .ambient::after { content: ""; position: absolute; inset: 0; background: linear-gradient(180deg, rgba(0,0,0,.15), rgba(0,0,0,0) 30%, rgba(0,0,0,.3)); }
+  .top, main { position: relative; z-index: 1; }
+  :root:has(.ambient) .top { background: transparent; border-color: transparent; color: #fff; --accent-text: #fff; }
+  main.onambient { color: #fff; --bg: #0b0c10; --accent: #fff; --accent-ink: #0b0c10; --accent-text: #fff; --accent-line: #fff; --ink: #fff; --mute: rgba(255,255,255,.72); --panel: rgba(255,255,255,.12); --panel2: rgba(255,255,255,.18); --line: rgba(255,255,255,.28); }
+  .stack { text-align: center; color: #fff; padding-top: 8px; }
+  .stackkicker { margin: 0; font-size: 12px; font-weight: 600; letter-spacing: .15em; opacity: .75; }
+  .stack h1 { margin: 4px 0 0; font-size: 26px; font-weight: 700; }
+  .stackcards { position: relative; height: 430px; margin-top: 18px; touch-action: pan-y; user-select: none; }
+  .stackside { position: absolute; top: 34px; width: 186px; height: 330px; object-fit: cover; border-radius: 30px; border: 1px solid rgba(255,255,255,.35); opacity: .55; pointer-events: none; }
+  .stackside.l { left: 50%; margin-left: -214px; transform: rotate(-10deg); }
+  .stackside.r { left: 50%; margin-left: 28px; transform: rotate(10deg); }
+  .stackfront { position: absolute; left: 50%; top: 0; width: 244px; height: 404px; margin-left: -122px; padding: 0; border-radius: 34px; overflow: hidden; border: 1px solid rgba(255,255,255,.5); box-shadow: 0 30px 60px rgba(0,0,0,.45); background: #000; cursor: pointer; animation: stackin .45s var(--spring, cubic-bezier(.2,.9,.3,1.2)); }
+  .stackfront img { width: 100%; height: 100%; object-fit: cover; display: block; pointer-events: none; }
+  @keyframes stackin { from { transform: scale(.92) translateY(12px); opacity: .4; } }
+  .stackglass { position: absolute; left: 10px; right: 10px; bottom: 10px; border-radius: 24px; padding: 14px; text-align: left; color: #fff; background: rgba(255,255,255,.18); border: 1px solid rgba(255,255,255,.45); backdrop-filter: blur(22px); -webkit-backdrop-filter: blur(22px); box-shadow: inset 0 1px 0 rgba(255,255,255,.5); }
+  .stackglass b { display: block; font-size: 19px; }
+  .stackglass small { display: block; font-size: 12px; opacity: .85; margin-top: 2px; }
+  .stackarrow { position: absolute; top: 182px; width: 44px; height: 44px; border-radius: 999px; display: grid; place-items: center; color: #fff; cursor: pointer; background: rgba(255,255,255,.16); border: 1px solid rgba(255,255,255,.35); backdrop-filter: blur(20px); -webkit-backdrop-filter: blur(20px); }
+  .stackarrow.l { left: 0; } .stackarrow.r { right: 0; }
+  .stackdots { display: flex; justify-content: center; gap: 2px; margin-top: 8px; }
+  .stackdots button { width: 28px; height: 28px; border: 0; background: none; padding: 0; display: grid; place-items: center; cursor: pointer; }
+  .stackdots span { display: block; width: 6px; height: 6px; border-radius: 99px; background: rgba(255,255,255,.45); transition: width .25s; }
+  .stackdots .on span { width: 20px; background: #fff; }
+  .stackcta { display: block; width: min(250px, 70%); height: 52px; margin: 10px auto 28px; border: 0; border-radius: 999px; background: #fff; color: #0b0c10; font-weight: 700; font-size: 15px; cursor: pointer; }
+  .onambient .tsection h2, .onambient .recent small { color: #fff; }
+  .pagetitle { font-size: 26px; margin: 8px 0 14px; }
+  @media (max-width: 900px) {
+    .tabbar { background: rgba(28,28,34,.5); border-color: rgba(255,255,255,.22); backdrop-filter: blur(28px) saturate(1.5); -webkit-backdrop-filter: blur(28px) saturate(1.5); box-shadow: inset 0 1px 0 rgba(255,255,255,.25), var(--shadow); color: #fff; }
+    .tabbar button { color: #fff; }
+    .tabbar button.make svg { background: #fff; color: #0b0c10; border-radius: 999px; padding: 6px; width: 40px; height: 40px; }
+  }
 </style>
 </head>
 <body>
