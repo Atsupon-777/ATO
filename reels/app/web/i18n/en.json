@@ -989,5 +989,9 @@
  "色を落ち着いた金と黒に、テンポを少しゆったりにしました": "Calm gold-and-black colours and a slightly slower tempo",
  "カットでテンポよくつなぐようにしました": "Snappy hard cuts between shots",
  "色を明るく、テンポを少し速くしました": "Brighter colours and a slightly faster tempo",
- "細かい文字を外しました": "Removed the small text"
+ "細かい文字を外しました": "Removed the small text",
+ "字幕の色を落ち着いた金と白にしました": "Captions in calm white and gold",
+ "字幕を明るい色にして、背景を付けました": "Brighter captions with a box behind them",
+ "一度に出す字幕を短くしました": "Fewer characters on screen at a time",
+ "字幕を個別に直しているため、区切りは変えていません": "Some captions were edited by hand, so the breaks were left as they are"
 }

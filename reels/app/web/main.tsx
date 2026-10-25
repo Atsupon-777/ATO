@@ -2045,7 +2045,62 @@ const applySaasMood = (x: SaaSPromoProps, mood: MoodId) => {
 };
 const saasSeconds = (p: SaaSPromoProps) => (saasPromoBeats * beatFrames(p.bpm, FPS)) / FPS;
 
-type EditorMoodDef = { apply: (x: any, m: MoodId) => void; seconds: (p: any) => number; luxe: string; fun: string; less: string };
+/**
+ * The four moods for a photo reel: luxe / fun switch the caption look (editorial / bold) and the colours and nudge the
+ * tempo; short plays the same photos faster; less drops the per-photo captions and the subtitle. The photos, their
+ * order, the motion, the title and the CTA stay.
+ */
+const applyPhotoReelMood = (x: PhotoReelProps, mood: MoodId) => {
+  if (mood === 'luxe') {
+    x.style = 'editorial';
+    x.palette = { bg: '#0B0907', ink: '#F5EFE3', accent: '#E2B66E' };
+    x.bpm = clampN(x.bpm - 12, 70, 170);
+  } else if (mood === 'fun') {
+    x.style = 'bold';
+    x.palette = { bg: '#1E0F18', ink: '#FFFFFF', accent: '#FF6FB5' };
+    x.bpm = clampN(x.bpm + 12, 70, 170);
+  } else if (mood === 'short') {
+    x.bpm = clampN(x.bpm + 16, 70, 170);
+  } else {
+    x.photos = x.photos.map((ph) => ({ ...ph, caption: undefined }));
+    x.subtitle = undefined;
+  }
+};
+const photoReelSeconds = (p: PhotoReelProps) => photoReelDuration(p, FPS) / FPS;
+
+/**
+ * The four moods for talk captions: luxe / fun recolour the captions (gold on white / bright with a box behind);
+ * short trims the pauses harder; less shows fewer characters per caption. The words and the footage stay. When single
+ * captions were edited by hand (overrides are per page), less leaves the page breaks alone so those edits keep their place.
+ */
+const applyTalkMood = (x: TalkCaptionsProps, mood: MoodId) => {
+  if (mood === 'luxe') {
+    x.captions = { ...x.captions, color: '#FFFFFF', highlight: '#E2B66E', stroke: '#000000', box: false };
+    x.accent = '#E2B66E';
+  } else if (mood === 'fun') {
+    x.captions = { ...x.captions, color: '#FFFFFF', highlight: '#FFC542', stroke: '#1E0F18', box: true };
+    x.accent = '#FF6FB5';
+  } else if (mood === 'short') {
+    x.cutSilence = {
+      enabled: true,
+      minGap: clampN(Math.round(x.cutSilence.minGap * 0.6 * 100) / 100, 0.1, 2),
+      pad: clampN(Math.round(Math.min(x.cutSilence.pad, 0.06) * 100) / 100, 0, 0.5),
+    };
+  } else if (!x.overrides.length) {
+    x.captions = { ...x.captions, maxChars: clampN(Math.round(x.captions.maxChars * 0.6), 6, 40) };
+  }
+};
+const talkSeconds = (p: TalkCaptionsProps) => talkCaptionsDuration(p, FPS) / FPS;
+
+type EditorMoodDef = {
+  apply: (x: any, m: MoodId) => void;
+  seconds: (p: any) => number;
+  luxe: string;
+  fun: string;
+  less: string;
+  /** A note that overrides the usual one for this tap, when the template has a special case. */
+  note?: (before: any, after: any, m: MoodId) => string | undefined;
+};
 const COLOUR_LUXE = () => tr("色を落ち着いた金と黒に、テンポを少しゆったりにしました");
 const COLOUR_FUN = () => tr("色を明るく、テンポを少し速くしました");
 const EDITOR_MOOD_DEFS: Partial<Record<TemplateId, () => EditorMoodDef>> = {
@@ -2059,12 +2114,21 @@ const EDITOR_MOOD_DEFS: Partial<Record<TemplateId, () => EditorMoodDef>> = {
   ProductShine: () => ({ apply: applyProductMood, seconds: productSeconds, luxe: COLOUR_LUXE(), fun: COLOUR_FUN(), less: tr("最初と最後の言葉だけ残しました") }),
   ServiceReel: () => ({ apply: applyServiceMood, seconds: serviceSeconds, luxe: COLOUR_LUXE(), fun: COLOUR_FUN(), less: tr("細かい文字を外しました") }),
   SaaSPromo: () => ({ apply: applySaasMood, seconds: saasSeconds, luxe: COLOUR_LUXE(), fun: COLOUR_FUN(), less: tr("細かい文字を外しました") }),
+  PhotoReel: () => ({ apply: applyPhotoReelMood, seconds: photoReelSeconds, luxe: COLOUR_LUXE(), fun: COLOUR_FUN(), less: tr("細かい文字を外しました") }),
+  TalkCaptions: () => ({
+    apply: applyTalkMood,
+    seconds: talkSeconds,
+    luxe: tr("字幕の色を落ち着いた金と白にしました"),
+    fun: tr("字幕を明るい色にして、背景を付けました"),
+    less: tr("一度に出す字幕を短くしました"),
+    note: (a: TalkCaptionsProps, _b, m) => (m === 'less' && a.overrides.length ? tr("字幕を個別に直しているため、区切りは変えていません") : undefined),
+  }),
 };
 
 /** The mood chips at the top of the regular editor, for the templates that have them. */
 const EditorMood: React.FC<{ template: TemplateId; p: any; update: (fn: (x: any) => any) => void }> = ({ template, p, update }) => {
   const d = EDITOR_MOOD_DEFS[template]!();
-  const mood = useMood<any>(p, update, d.apply, (a, b, m) => (m === 'short' ? lengthNote(d.seconds(a), d.seconds(b)) : d[m]));
+  const mood = useMood<any>(p, update, d.apply, (a, b, m) => d.note?.(a, b, m) ?? (m === 'short' ? lengthNote(d.seconds(a), d.seconds(b)) : d[m]));
   return <MoodChips p={p} {...mood} />;
 };
 const EDITOR_MOODS = new Set<TemplateId>(Object.keys(EDITOR_MOOD_DEFS) as TemplateId[]);
