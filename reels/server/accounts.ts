@@ -42,8 +42,10 @@ export type Account = {
   email?: string;
   createdAt: string;
   plan: PlanId;
-  /** Left from this month's plan allowance; reset when the subscription renews. */
+  /** Left from this month's plan allowance; what is unused moves to `carried` at the next refill or when the plan ends. */
   tokens: number;
+  /** Unused plan allowance from earlier months, each lot kept for CARRY_DAYS. Used after `tokens`, oldest first. */
+  carried?: { n: number; until: string }[];
   /** Bought with top-ups or given at sign-up; never expires. Used after `tokens`. */
   extra: number;
   customerId?: string;
@@ -52,8 +54,6 @@ export type Account = {
   store?: 'stripe' | 'app_store' | 'play_store';
   /** The App Store / Google Play product of the current in-app subscription. */
   storeProduct?: string;
-  /** The plan `tokens` was last filled from; a refill from another plan carries what is left into `extra`. */
-  tokensPlan?: PlanId;
   /** A switch to a smaller in-app plan the store applies at the next renewal, and when that is. */
   pendingPlan?: PlanId;
   pendingPlanAt?: string;
@@ -129,18 +129,30 @@ export async function getAccount(uid: string, email?: string): Promise<Account> 
   return a;
 }
 
-export const balance = (a: Account) => a.tokens + a.extra;
+/** Days unused plan tokens stay usable after their month ends. */
+export const CARRY_DAYS = Number(process.env.CARRY_DAYS ?? 365);
+const liveCarried = (a: Account) => (a.carried ?? []).filter((c) => c.n > 0 && Date.parse(c.until) > Date.now());
+export const carriedTokens = (a: Account) => liveCarried(a).reduce((n, c) => n + c.n, 0);
+/** When the oldest carried lot runs out, for the account page. */
+export const carriedUntil = (a: Account) => liveCarried(a)[0]?.until;
+export const balance = (a: Account) => a.tokens + carriedTokens(a) + a.extra;
+
+/** The plan month is over (refill or plan end): its unused tokens were paid for, so they carry over for CARRY_DAYS. */
+export function carryOver(a: Account) {
+  const lots = liveCarried(a);
+  if (a.tokens > 0) lots.push({ n: a.tokens, until: new Date(Date.now() + CARRY_DAYS * 86400_000).toISOString() });
+  a.carried = lots.length ? lots : undefined;
+  a.tokens = 0;
+}
 
 /**
- * Fills the monthly allowance of `plan` (first month, renewal or plan change). On a switch from another plan
- * what is left of the old allowance was paid for, so it moves to `extra` and is kept, and the new one comes on top.
+ * Fills the monthly allowance of `plan` (first month, renewal or plan change). What is left of the previous
+ * allowance carries over (carryOver), and the new allowance comes on top.
  */
 export function refillPlan(a: Account, plan: PlanId) {
-  const from = a.tokensPlan ?? a.plan;
-  if (from !== plan && from !== 'free') a.extra += a.tokens;
+  carryOver(a);
   a.plan = plan;
   a.tokens = PLAN_TOKENS[plan];
-  a.tokensPlan = plan;
   a.pendingPlan = undefined;
   a.pendingPlanAt = undefined;
 }
@@ -151,9 +163,19 @@ export class NotEnoughTokens extends Error {}
 export async function charge(uid: string, n: number) {
   const a = await getAccount(uid);
   if (balance(a) < n) throw new NotEnoughTokens(`トークンが足りません（必要: ${n.toLocaleString('en-US')} / 残り: ${balance(a).toLocaleString('en-US')}）`);
-  const fromPlan = Math.min(a.tokens, n);
+  let left = n;
+  const fromPlan = Math.min(a.tokens, left);
   a.tokens -= fromPlan;
-  a.extra -= n - fromPlan;
+  left -= fromPlan;
+  const lots = liveCarried(a);
+  for (const c of lots) {
+    const k = Math.min(c.n, left);
+    c.n -= k;
+    left -= k;
+  }
+  a.carried = lots.filter((c) => c.n > 0);
+  if (!a.carried.length) a.carried = undefined;
+  a.extra -= left;
   await persist();
   return a;
 }

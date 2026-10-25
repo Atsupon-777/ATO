@@ -31,7 +31,7 @@ import { isGoal, type Goal } from '../server/goals.ts';
 import { takePostKitTurn, writePostKit, type PostKit } from '../server/postkit.ts';
 import { isLang, type Lang } from '../src/lang.ts';
 import { authEnabled, LOCAL_USER, verifyIdToken, webConfig, type User } from '../server/auth.ts';
-import { type Brand, freeFirstState, giveBackFreeFirst, takeFreeFirst, FreeClaimError, NotEnoughTokens, balance, charge, claimFree, getAccount, refund, removeAccount, update, allAccounts, PLAN_TOKENS, FREE_TOKENS, PAYG_UNIT, PAYG_UNIT_YEN, PAYG_MIN, PAYG_MAX } from '../server/accounts.ts';
+import { type Brand, freeFirstState, giveBackFreeFirst, takeFreeFirst, FreeClaimError, NotEnoughTokens, balance, carriedTokens, carriedUntil, charge, claimFree, getAccount, refund, removeAccount, update, allAccounts, PLAN_TOKENS, FREE_TOKENS, PAYG_UNIT, PAYG_UNIT_YEN, PAYG_MIN, PAYG_MAX } from '../server/accounts.ts';
 import { billingEnabled, cancelSubscription, checkout, isPurchase, paygUnits, portal, webhook } from '../server/billing.ts';
 import { iapConfig, revenuecatWebhook } from '../server/appstore.ts';
 import { deleteFirebaseUser } from '../server/google.ts';
@@ -664,7 +664,7 @@ const server = http.createServer(async (req, res) => {
 
     if (p === '/api/me' && req.method === 'GET') {
       const a = await getAccount(user!.uid, user!.email);
-      return json(res, 200, { admin: isAdmin(user!, a.email) || undefined, email: a.email, plan: a.plan, tokens: a.tokens, extra: a.extra, balance: balance(a), billing: billingEnabled, subscribed: Boolean(a.subscriptionId), store: a.store ?? (a.subscriptionId ? 'stripe' : undefined), pastDue: Boolean(a.pastDue), pendingPlan: a.pendingPlan, pendingPlanAt: a.pendingPlanAt, freePending: Boolean(a.freePending), displayName: a.displayName, avatar: a.avatar, auth: authEnabled, freeFirst: freeFirstState(a) });
+      return json(res, 200, { admin: isAdmin(user!, a.email) || undefined, email: a.email, plan: a.plan, tokens: a.tokens, carried: carriedTokens(a), carriedUntil: carriedUntil(a), extra: a.extra, balance: balance(a), billing: billingEnabled, subscribed: Boolean(a.subscriptionId), store: a.store ?? (a.subscriptionId ? 'stripe' : undefined), pastDue: Boolean(a.pastDue), pendingPlan: a.pendingPlan, pendingPlanAt: a.pendingPlanAt, freePending: Boolean(a.freePending), displayName: a.displayName, avatar: a.avatar, auth: authEnabled, freeFirst: freeFirstState(a) });
     }
     // Account deletion (App Store guideline 5.1.1(v)): web plan cancelled, jobs, uploads, account and login removed.
     // An App Store subscription can only be cancelled by the customer in their Apple ID settings; the app says so.

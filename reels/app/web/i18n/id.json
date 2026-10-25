@@ -460,6 +460,8 @@
  "次の更新日から{0}に切り替わります。今のトークンはそのまま使えます。": "Paket akan berganti ke {0} pada tanggal perpanjangan berikutnya. Token Anda saat ini tetap bisa dipakai.",
  "反映に少し時間がかかっています。しばらくしてからこの画面を開き直してください。": "Prosesnya sedikit lebih lama. Silakan buka ulang layar ini sebentar lagi.",
  "次の更新日から": "Mulai perpanjangan berikutnya",
+ "その月に使い切れなかったトークンは1年間持ち越せます。プランを変えても残りはそのままです。": "Token yang tidak terpakai dalam sebulan bisa dibawa selama satu tahun. Ganti paket pun sisa token tetap ada.",
+ "前の月から持ち越した{0}トークンを含みます（古い分から使い、{1}まで有効）": "Termasuk {0} token yang dibawa dari bulan sebelumnya (dipakai dari yang terlama, berlaku sampai {1}).",
  "プラン: {0}": "Paket: {0}",
  "うまくいきませんでした。もう一度お試しください。": "Terjadi kesalahan. Silakan coba lagi.",
  "パスワード（6文字以上）": "Kata sandi (min. 6 karakter)",

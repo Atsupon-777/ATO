@@ -4863,7 +4863,7 @@ const FAQ = [
 
 const jobTokens = (j: Job) => j.tokens ?? (j.template === 'ExperienceFilm' || j.template === 'PhotoAdFilm' ? 12 : j.template === 'ProductShine' ? (j.props?.clip ? 12 : 5) : j.template === 'EffectsReel' || j.template === 'FivePass' || j.template === 'SaaSPromo' ? 5 : 2);
 
-type Me = { freeFirst?: 'available' | 'needs_phone' | 'used'; admin?: boolean; email?: string; plan: 'free' | 'starter' | 'standard' | 'pro'; tokens: number; extra: number; balance: number; billing: boolean; subscribed: boolean; store?: 'stripe' | 'app_store' | 'play_store'; pastDue?: boolean; pendingPlan?: 'starter' | 'standard' | 'pro'; pendingPlanAt?: string; freePending?: boolean; displayName?: string; avatar?: string; auth: boolean };
+type Me = { freeFirst?: 'available' | 'needs_phone' | 'used'; admin?: boolean; email?: string; plan: 'free' | 'starter' | 'standard' | 'pro'; tokens: number; carried?: number; carriedUntil?: string; extra: number; balance: number; billing: boolean; subscribed: boolean; store?: 'stripe' | 'app_store' | 'play_store'; pastDue?: boolean; pendingPlan?: 'starter' | 'standard' | 'pro'; pendingPlanAt?: string; freePending?: boolean; displayName?: string; avatar?: string; auth: boolean };
 const PLAN_NAMES: Record<Me['plan'], string> = { free: tr("無料"), starter: tr("スターター"), standard: tr("スタンダード"), pro: tr("プロ") };
 
 // Free tokens are claimed once per phone number: SMS code, then the server checks the number is new.
@@ -5131,6 +5131,9 @@ const Account: React.FC<{ go: (h: string) => void }> = ({ go }) => {
           <span>{tr("書き出した動画")}</span>
         </div>
       </div>
+      {me?.carried && me.carriedUntil ? (
+        <p className="cost">{tr("前の月から持ち越した{0}トークンを含みます（古い分から使い、{1}まで有効）", fmtN(me.carried), new Date(me.carriedUntil).toLocaleDateString())}</p>
+      ) : null}
       {me ? <BrandKit /> : null}
       <h2>{tr("プラン")}</h2>
       {me && me.freeFirst && me.freeFirst !== 'used' ? (
@@ -5705,6 +5708,7 @@ const StorePlans: React.FC<{ me: Me | null; onChanged: () => Promise<unknown> }>
       </div>
       {webPlan ? <p className="cost">{tr("このプランはアプリ以外で契約しています。")}</p> : null}
       <p className="cost">{tr("消費トークン: 自分の素材だけ 2 ／ AI写真・エフェクト 5 ／ AI動画あり 12 ／ 書き出し 1")}</p>
+      <p className="cost">{tr("その月に使い切れなかったトークンは1年間持ち越せます。プランを変えても残りはそのままです。")}</p>
       <div className="row" style={{ flexWrap: 'wrap', gap: 8, marginTop: 8 }}>
         {products?.small ? (
           <button className="btn ghost small" disabled={!!busy} onClick={buy('small')}>

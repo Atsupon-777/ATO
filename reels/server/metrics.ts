@@ -5,7 +5,7 @@
 //   SERVER_COST_JPY_MONTH    fixed server cost per month, an estimate (default 35000)
 //   SERVER_COST_SINCE        first month (YYYY-MM) the server cost counts from (default: the first account, job or ledger line)
 // Only owners ever get this: the "never show cost to customers" rule is why it lives behind isAdmin.
-import { PLAN_PRICE_JPY, allAccounts, type PlanId } from './accounts.ts';
+import { PLAN_PRICE_JPY, allAccounts, balance, type PlanId } from './accounts.ts';
 import { authEnabled, type User } from './auth.ts';
 import { USD_JPY, readLedger, type AiEntry, type SaleEntry, type TokenEntry } from './ledger.ts';
 
@@ -197,7 +197,7 @@ export async function metrics(jobs: JobLike[], month = thisMonth()) {
     granted: sumOp('grant'),
     /** First product ad films made free this month (less those that failed and gave the right back). */
     freeFirst: monthToks.filter((e) => e.op === 'free_first').length - monthToks.filter((e) => e.op === 'free_first_back').length,
-    outstanding: accounts.reduce((a, x) => a + (x.tokens ?? 0) + (x.extra ?? 0), 0),
+    outstanding: accounts.reduce((a, x) => a + balance(x), 0),
   };
 
   // Subscriptions right now. A store plan is valued at what the store last charged for it, else the web price.

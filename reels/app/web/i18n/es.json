@@ -460,6 +460,8 @@
  "次の更新日から{0}に切り替わります。今のトークンはそのまま使えます。": "Cambiarás a {0} en tu próxima fecha de renovación. Tus tokens actuales se mantienen.",
  "反映に少し時間がかかっています。しばらくしてからこの画面を開き直してください。": "Está tardando un poco más de lo normal. Vuelve a abrir esta pantalla en un momento.",
  "次の更新日から": "Desde la próxima renovación",
+ "その月に使い切れなかったトークンは1年間持ち越せます。プランを変えても残りはそのままです。": "Los tokens que no uses en un mes se acumulan durante un año. Si cambias de plan, conservas lo que te queda.",
+ "前の月から持ち越した{0}トークンを含みます（古い分から使い、{1}まで有効）": "Incluye {0} tokens acumulados de meses anteriores (se usan primero los más antiguos, válidos hasta el {1}).",
  "プラン: {0}": "Plan: {0}",
  "うまくいきませんでした。もう一度お試しください。": "Algo salió mal. Inténtalo de nuevo.",
  "パスワード（6文字以上）": "Contraseña (mín. 6 caracteres)",

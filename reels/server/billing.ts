@@ -5,7 +5,7 @@
 //   Pay as you go needs no Stripe price: each Checkout carries PAYG_UNIT_YEN per PAYG_UNIT tokens inline.
 //   STRIPE_TAX=1             turn on Stripe Tax (prices are tax-inclusive either way)
 import { createHmac, timingSafeEqual } from 'node:crypto';
-import { PAYG_MAX, PAYG_MIN, PAYG_UNIT, PAYG_UNIT_YEN, PLAN_TOKENS, TOPUP_TOKENS, findByCustomer, refillPlan, update, type Account, type PlanId } from './accounts.ts';
+import { PAYG_MAX, PAYG_MIN, PAYG_UNIT, PAYG_UNIT_YEN, PLAN_TOKENS, TOPUP_TOKENS, carryOver, findByCustomer, refillPlan, update, type Account, type PlanId } from './accounts.ts';
 import { readLedger, recordSale, type SaleEntry } from './ledger.ts';
 
 // A restricted key (rk_...) with only Checkout, Customer portal, Customers and Subscriptions is enough.
@@ -191,15 +191,15 @@ export async function webhook(raw: Buffer, signature: string | undefined) {
         a.subscriptionId = o.id;
         // A plan bought in the iPhone app is the App Store's to end, not Stripe's.
         if (a.store === 'app_store' || a.store === 'play_store') break;
-        if (['canceled', 'unpaid', 'incomplete_expired'].includes(o.status)) (a.plan = 'free'), (a.tokens = 0);
+        if (['canceled', 'unpaid', 'incomplete_expired'].includes(o.status)) carryOver(a), (a.plan = 'free');
         else if (plan) a.plan = plan;
         break;
       }
       case 'customer.subscription.deleted':
         a.subscriptionId = undefined;
         if (a.store === 'app_store' || a.store === 'play_store') break;
+        carryOver(a);
         a.plan = 'free';
-        a.tokens = 0;
         a.store = undefined;
         break;
     }

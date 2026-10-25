@@ -9,7 +9,7 @@
 //   IAP_SMALL_TOKENS             tokens in it (default 3)
 //   IAP_PRODUCT_STARTER / _STANDARD / _PRO   monthly auto-renewing subscriptions (default reels_<plan>_monthly)
 import { timingSafeEqual } from 'node:crypto';
-import { PLAN_TOKENS, getAccount, refillPlan, update, type PlanId } from './accounts.ts';
+import { PLAN_TOKENS, carryOver, getAccount, refillPlan, update, type PlanId } from './accounts.ts';
 import { USD_JPY, recordSale } from './ledger.ts';
 
 const pct = (x: unknown) => (typeof x === 'number' && Number.isFinite(x) && x >= 0 && x <= 1 ? x : undefined);
@@ -101,7 +101,6 @@ export async function revenuecatWebhook(body: any, auth: string | undefined) {
           a.store = undefined;
           a.storeProduct = undefined;
           a.pastDue = undefined;
-          a.tokensPlan = undefined;
           a.pendingPlan = undefined;
           a.pendingPlanAt = undefined;
         }
@@ -133,13 +132,13 @@ export async function revenuecatWebhook(body: any, auth: string | undefined) {
         break;
       // Only the subscription that is current ends the plan (a switch to a web plan in between wins).
       case 'EXPIRATION':
+        // The month was paid for, so its unused tokens carry over like at a renewal.
         if (a.store === store && a.storeProduct === ev.product_id) {
+          carryOver(a);
           a.plan = 'free';
-          a.tokens = 0;
           a.store = undefined;
           a.storeProduct = undefined;
           a.pastDue = undefined;
-          a.tokensPlan = undefined;
           a.pendingPlan = undefined;
           a.pendingPlanAt = undefined;
         }

@@ -460,6 +460,8 @@
  "次の更新日から{0}に切り替わります。今のトークンはそのまま使えます。": "You'll switch to {0} on your next renewal date. Your current tokens stay as they are.",
  "反映に少し時間がかかっています。しばらくしてからこの画面を開き直してください。": "This is taking a little longer than usual. Please reopen this screen in a moment.",
  "次の更新日から": "From next renewal",
+ "その月に使い切れなかったトークンは1年間持ち越せます。プランを変えても残りはそのままです。": "Tokens you don't use in a month carry over for a year. Changing plans keeps what you have left.",
+ "前の月から持ち越した{0}トークンを含みます（古い分から使い、{1}まで有効）": "Includes {0} tokens carried over from earlier months (used oldest first, valid until {1}).",
  "プラン: {0}": "Plan: {0}",
  "うまくいきませんでした。もう一度お試しください。": "Something went wrong. Please try again.",
  "パスワード（6文字以上）": "Password (6+ characters)",
