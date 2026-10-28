@@ -46,8 +46,8 @@ def send_mail(subject, body, reply_to=''):
 
 
 SITE = 'https://ato-sns.com'
-SERVICES = ('video', 'reels', 'sns', 'ec')
-LASTMOD = '2026-10-10'
+SERVICES = ('video', 'reels', 'sns', 'ec', 'apps')
+LASTMOD = '2026-10-25'
 
 
 def page(template, lang=None, path='/', **kw):
