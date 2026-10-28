@@ -1,7 +1,7 @@
 {#- Shared building blocks. Import with: {% import 'partials/macros.html' as m with context %} -#}
 
-{#- The four services as numbered tiles: a picture on top, then number, name and one line.
-    `skip` leaves one out (each service page lists the other three). -#}
+{#- The five services as numbered tiles: a picture on top, then number, name and one line.
+    `skip` leaves one out (each service page lists the other four). -#}
 {% macro tiles(skip=None, hx='h3') -%}
 <ol class="tiles{% if skip %} tiles-3{% endif %}" data-tiles>
   {%- if skip != 'video' %}
@@ -40,6 +40,16 @@
     <span class="t-body">
       <span class="t-head"><span class="t-no">04</span><{{ hx }} class="t-name"><span class="ja">ECサイト<wbr>強化</span><span class="en">E-commerce growth</span></{{ hx }}></span>
       <span class="t-line"><span class="ja">売れる売り場づくりから、越境EC・集客・アフィリエイトまで。</span><span class="en">From a store that sells to cross-border launch, traffic and affiliates.</span></span>
+      <span class="t-more mono"><span class="ja">詳しく見る</span><span class="en">See the service</span><i aria-hidden="true">→</i></span>
+    </span>
+  </a></li>
+  {%- endif %}
+  {%- if skip != 'apps' %}
+  <li{% if not skip %} class="t-wide"{% endif %}><a class="tile" href="{{ P }}/services/apps">
+    <span class="t-media" aria-hidden="true"><img src="/static/media/apps-trio.jpg" alt="" width="1280" height="720" loading="lazy" decoding="async"></span>
+    <span class="t-body">
+      <span class="t-head"><span class="t-no">05</span><{{ hx }} class="t-name"><span class="ja">アプリ制作</span><span class="en">App development</span><small><span class="ja">iPhone・Android</span><span class="en">iPhone and Android</span></small></{{ hx }}><span class="t-new" aria-label="new">NEW</span></span>
+      <span class="t-line"><span class="ja">企画・デザインから、App Store・Google Play の公開まで。19言語にも対応します。</span><span class="en">From the idea and design to launch on the App Store and Google Play, in 19 languages.</span></span>
       <span class="t-more mono"><span class="ja">詳しく見る</span><span class="en">See the service</span><i aria-hidden="true">→</i></span>
     </span>
   </a></li>
@@ -89,7 +99,7 @@
     <li data-reveal><span class="n mono">02</span><div><h3><span class="ja">無料相談(30分)</span><span class="en">Free consultation</span></h3><p class="ja">オンラインで、今の課題とこれからの打ち手を一緒に整理します。</p><p class="en">A 30-minute online call to sort out where you are and what to do next.</p></div></li>
     <li data-reveal><span class="n mono">03</span><div><h3><span class="ja">ご提案・お見積り</span><span class="en">Proposal</span></h3><p class="ja">目標とご予算に合わせたプランをご提案します。</p><p class="en">A plan and quote built around your goals and budget.</p></div></li>
     <li data-reveal><span class="n mono">04</span><div><h3><span class="ja">ご契約</span><span class="en">Agreement</span></h3><p class="ja">内容にご納得いただいてからスタートします。</p><p class="en">We begin once everything is agreed.</p></div></li>
-    <li data-reveal><span class="n mono">05</span><div><h3><span class="ja">スタート</span><span class="en">Launch</span></h3><p class="ja">動画の制作やECサイトの強化、SNSのサポートを進めます。毎月の数字を見て改善します。</p><p class="en">We get to work on your videos, your online store or your social media, then improve from each month’s numbers.</p></div></li>
+    <li data-reveal><span class="n mono">05</span><div><h3><span class="ja">スタート</span><span class="en">Launch</span></h3><p class="ja">動画やアプリの制作、ECサイトの強化、SNSのサポートを進めます。毎月の数字を見て改善します。</p><p class="en">We get to work on your videos, your online store or your social media, then improve from each month’s numbers.</p></div></li>
   </ol>
 </section>
 {%- endmacro %}
