@@ -1,6 +1,6 @@
 {% extends "base.html" %}
 {% import 'partials/macros.html' as m with context %}
-{#- Shared layout for the four service pages. Each page fills the blocks below. -#}
+{#- Shared layout for the five service pages. Each page fills the blocks below. -#}
 {% block bodyclass %}page-inner page-service svc-{{ slug }}{% endblock %}
 {% block hudfirst %}{% block svc_hud %}SERVICE{% endblock %}{% endblock %}
 {% block jsonld %}
@@ -10,7 +10,7 @@
 <section class="sub-hero svc-hero" id="top" aria-labelledby="svcH1" data-hud="{{ self.svc_hud() }}">
   <div class="wrap svc-hero-grid">
     <div class="svc-hero-copy">
-      <nav class="crumbs mono" aria-label="Breadcrumb"><a href="{{ P or '/' }}"><span class="ja">ホーム</span><span class="en">Home</span></a><i aria-hidden="true">/</i><a href="{{ P or '' }}/#services"><span class="ja">4つの事業</span><span class="en">Services</span></a><i aria-hidden="true">/</i><span aria-current="page">{% block crumb %}{% endblock %}</span></nav>
+      <nav class="crumbs mono" aria-label="Breadcrumb"><a href="{{ P or '/' }}"><span class="ja">ホーム</span><span class="en">Home</span></a><i aria-hidden="true">/</i><a href="{{ P or '' }}/#services"><span class="ja">5つの事業</span><span class="en">Services</span></a><i aria-hidden="true">/</i><span aria-current="page">{% block crumb %}{% endblock %}</span></nav>
       <p class="svc-no" aria-hidden="true">{% block svc_no %}{% endblock %}</p>
       <p class="kicker">{% block svc_kicker %}{% endblock %}</p>
       <h1 class="sub-title svc-title" id="svcH1">{% block svc_title %}{% endblock %}</h1>
@@ -43,13 +43,13 @@
   </div>
 </section>
 
-{#- then the other three services, so people can keep browsing -#}
+{#- then the other four services, so people can keep browsing -#}
 <section class="more wrap" aria-labelledby="moreTitle" data-hud="OTHER SERVICES">
   <div class="sec-head" data-reveal>
     <p class="kicker"><span class="k-no">03</span>OTHER SERVICES</p>
     <h2 id="moreTitle"><span class="ja" data-split>ほかの事業</span><span class="en" data-split>Our other services</span></h2>
-    <p class="d ja">ほかの3つの事業も、あわせてご覧ください。</p>
-    <p class="d en">Take a look at our other three services too.</p>
+    <p class="d ja">ほかの4つの事業も、あわせてご覧ください。</p>
+    <p class="d en">Take a look at our other four services too.</p>
   </div>
   {{ m.tiles(skip=slug) }}
 </section>

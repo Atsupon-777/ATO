@@ -1,0 +1,62 @@
+{% extends "services/_service.html" %}
+{% import "partials/macros.html" as m with context %}
+{% block meta %}
+{% if lang == 'en' %}
+<title>App development (iPhone and Android) | ATO Digital Marketing</title>
+<meta name="description" content="ATO builds iPhone and Android apps, from the idea and design to launch on the App Store and Google Play. 19 languages, in-app purchases, friends and widgets. We build and run our own apps too: OKITE!, GORI GORI and Editless.">
+<meta property="og:title" content="App development (iPhone and Android) | ATO Digital Marketing">
+<meta property="og:description" content="iPhone and Android apps, from the idea to launch on the stores, in 19 languages.">
+{% else %}
+<title>アプリ制作（iPhone・Android）｜ATO Digital Marketing</title>
+<meta name="description" content="iPhone・Androidのアプリを、企画・デザインから App Store・Google Play の公開までつくります。19言語、アプリ内課金、友だち機能、ウィジェットにも対応。ATOは自社アプリ（OKITE!・GORI GORI・Editless）も開発しています。">
+<meta property="og:title" content="アプリ制作（iPhone・Android）｜ATO Digital Marketing">
+<meta property="og:description" content="iPhone・Androidのアプリを、企画からストアの公開まで。19言語にも対応します。">
+{% endif %}
+{% endblock %}
+{% block ld_name %}{{ 'App development' if lang == 'en' else 'アプリ制作' }}{% endblock %}
+{% block ld_desc %}{{ 'iPhone and Android apps, from the idea and design to launch on the App Store and Google Play, in 19 languages.' if lang == 'en' else 'iPhone・Androidのアプリを、企画・デザインから App Store・Google Play の公開まで。19言語にも対応。' }}{% endblock %}
+{% block ld_type %}Mobile app development{% endblock %}
+{% block svc_hud %}05 APPS{% endblock %}
+{% block crumb %}<span class="ja">アプリ制作</span><span class="en">App development</span>{% endblock %}
+{% block svc_no %}05{% endblock %}
+{% block svc_kicker %}APP DEVELOPMENT{% endblock %}
+{% block svc_title %}<span class="ja" data-split>アプリ制作</span><span class="en" data-split>App development</span>{% endblock %}
+{% block svc_lede %}<span class="ja">iPhone と Android のアプリを、企画から公開まで。</span><span class="en">iPhone and Android apps, from the idea to launch.</span>{% endblock %}
+{% block svc_body %}
+<p class="svc-body ja">何をつくるか、だれに使ってもらうかから一緒に決めて、デザイン、開発、App Store・Google Play への申請まで進めます。ATOは自分たちのアプリもつくっているので、同じやり方でお手伝いします。</p>
+<p class="svc-body en">We start with what to build and who it is for, then take it through design, development and review on the App Store and Google Play. We build our own apps too, and we work on yours the same way.</p>
+{% endblock %}
+{% block svc_media %}
+<figure class="apps-hero">
+  <img src="/static/media/apps-trio.jpg" alt="{{ 'Our apps OKITE!, GORI GORI and Editless on phone screens' if lang == 'en' else 'ATOの自社アプリ OKITE!・GORI GORI・Editless の画面' }}" width="1280" height="720" decoding="async">
+  <figcaption><span class="ja">ATOの自社アプリ（左から OKITE!・GORI GORI・Editless）</span><span class="en">Our own apps (from left: OKITE!, GORI GORI, Editless)</span></figcaption>
+</figure>
+{% endblock %}
+{% block pt_title %}<span class="ja" data-split>つくるところから、届けるところまで。</span><span class="en" data-split>From the first sketch to the store.</span>{% endblock %}
+{% block pts_class %} pts-rows{% endblock %}
+{% block points %}
+<li data-reveal><span class="pt-no">01</span><h3><span class="ja">企画・デザイン</span><span class="en">Idea and design</span></h3><p class="ja">何をつくるか、だれに使ってもらうかから一緒に決めます。画面のデザインまで担当します。</p><p class="en">We decide together what to build and who it is for, then design every screen.</p></li>
+<li data-reveal><span class="pt-no">02</span><h3><span class="ja">iPhone と Android</span><span class="en">iPhone and Android</span></h3><p class="ja">どちらのスマホでも使えるアプリにします。</p><p class="en">Your app works on both kinds of phone.</p></li>
+<li data-reveal><span class="pt-no">03</span><h3><span class="ja">19言語</span><span class="en">19 languages</span></h3><p class="ja">アプリの中で言語を切り替えられます。海外のお客さまにも、そのまま届きます。</p><p class="en">People switch languages inside the app, so it reaches customers abroad as it is.</p></li>
+<li data-reveal><span class="pt-no">04</span><h3><span class="ja">課金・友だち・ウィジェット</span><span class="en">Purchases, friends, widgets</span></h3><p class="ja">アプリ内課金、友だちとのランキング、ホーム画面のウィジェットまでつくれます。</p><p class="en">In-app purchases, rankings with friends and home-screen widgets.</p></li>
+<li data-reveal><span class="pt-no">05</span><h3><span class="ja">ストアへの申請</span><span class="en">Store review</span></h3><p class="ja">App Store と Google Play の申請・審査の対応まで行います。</p><p class="en">We handle submission and review on the App Store and Google Play.</p></li>
+{% endblock %}
+{% block pt_extra %}
+<div class="apps-own" data-reveal>
+  <h3 class="apps-own-h"><span class="ja">ATOが開発しているアプリ</span><span class="en">Apps we build ourselves</span></h3>
+  <div class="apps-own-row">
+    <figure>
+      <span class="ph"><img src="/static/media/app-okite.jpg" alt="{{ 'OKITE! home screen' if lang == 'en' else 'OKITE! のホーム画面' }}" width="600" height="1304" loading="lazy" decoding="async"></span>
+      <figcaption><b>OKITE!</b><span class="ja">見つけて撮るまで鳴りやまない、ゲームみたいな目覚まし</span><span class="en">An alarm that keeps ringing until you find and photograph your item</span></figcaption>
+    </figure>
+    <figure>
+      <span class="ph ph-gori"><img src="/static/media/app-gori.png" alt="{{ 'The GORI GORI gorilla buddy' if lang == 'en' else 'GORI GORI の相棒のゴリラ' }}" loading="lazy" decoding="async"></span>
+      <figcaption><b>GORI GORI</b><span class="ja">続けるほど相棒が育つ、筋トレの記録アプリ</span><span class="en">A workout log where your buddy grows the longer you keep at it</span></figcaption>
+    </figure>
+    <figure>
+      <span class="ph"><img src="/static/media/app-editless.jpg" alt="{{ 'Editless screen' if lang == 'en' else 'Editless の画面' }}" width="600" height="1305" loading="lazy" decoding="async"></span>
+      <figcaption><b>Editless</b><span class="ja">写真を選ぶだけで、ショート動画に</span><span class="en">Pick a photo and get a short video</span></figcaption>
+    </figure>
+  </div>
+</div>
+{% endblock %}
