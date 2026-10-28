@@ -6137,6 +6137,10 @@ const StorePlans: React.FC<{ me: Me | null; onChanged: () => Promise<unknown> }>
           ? tr("プランは1か月ごとの自動更新です。Google Playの定期購入からいつでも解約できます。")
           : tr("プランは1か月ごとの自動更新です。お支払いはApple IDに請求されます。期間終了の24時間前までに解約しない限り自動で更新され、解約はiPhoneの「設定」→ Apple ID →「サブスクリプション」からいつでもできます。")}
       </p>
+      <p className="legal">
+        <a href="/legal/terms.html" target="_blank" rel="noreferrer">{tr("利用規約")}</a>
+        <a href="/legal/privacy.html" target="_blank" rel="noreferrer">{tr("プライバシーポリシー")}</a>
+      </p>
     </>
   );
 };
