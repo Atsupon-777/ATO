@@ -1,0 +1,27 @@
+{
+  "layout": "stats",
+  "screen": "none",
+  "style": "noir",
+  "name": "Pulse Fit",
+  "tagline": "Boxing-based training that keeps you coming back.",
+  "category": "Fitness studio · Shibuya",
+  "photos": ["samples/photos/fitness.jpg"],
+  "hook": ["Results,", "not promises."],
+  "hookEmphasis": "not promises.",
+  "features": [
+    { "title": "45-min boxing HIIT" },
+    { "title": "Coach in every class" },
+    { "title": "Open 6am to 11pm" }
+  ],
+  "stats": [
+    { "value": 94, "suffix": "%", "label": "of members still training after 6 months" },
+    { "value": 2800, "suffix": "+", "label": "members across 3 studios" },
+    { "value": 6.2, "suffix": "kg", "label": "average loss in the first 12 weeks" }
+  ],
+  "offer": "First class free",
+  "cta": "Book a free class",
+  "ctaNote": "Details in our profile",
+  "accent": "#FF2D7A",
+  "accent2": "#7A5CFF",
+  "bpm": 128
+}

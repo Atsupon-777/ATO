@@ -1,0 +1,17 @@
+{
+  "brand": "LUMINA",
+  "name": "LUMINA",
+  "tagline": "肌に、澄んだうるおいを。",
+  "cta": "詳しく見る",
+  "handle": "",
+  "lang": "ja",
+  "shots": [
+    { "src": "samples/photos/serum.jpg", "beat": "splash", "seconds": 3, "trimStart": 0, "rate": 1, "enter": "cut", "line": "あふれる、透明感。", "kicker": "Pure hydration" },
+    { "src": "samples/photos/beauty.jpg", "beat": "ritual", "seconds": 3, "trimStart": 0, "rate": 1, "enter": "dissolve", "line": "深く、満ちていく", "kicker": "Daily care" },
+    { "src": "samples/photos/serum.jpg", "beat": "pack", "seconds": 4, "trimStart": 0, "rate": 1, "enter": "dissolve", "line": "", "kicker": "" }
+  ],
+  "musicVolume": 0.8,
+  "sfxVolume": 0.35,
+  "serif": false,
+  "ink": "#FFFFFF"
+}

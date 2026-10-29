@@ -1,0 +1,36 @@
+{
+  "photos": [
+    {
+      "src": "samples/photos/travel.jpg",
+      "caption": "Cliffside mornings"
+    },
+    {
+      "src": "samples/photos/matcha.jpg",
+      "caption": "Mist over the tea fields"
+    },
+    {
+      "src": "samples/photos/puppy.jpg",
+      "caption": "Golden hour, always"
+    },
+    {
+      "src": "samples/photos/cafe.jpg",
+      "caption": "Coffee, slowly"
+    },
+    {
+      "src": "samples/photos/florist.jpg",
+      "caption": "Bringing it home"
+    }
+  ],
+  "title": "Somewhere Slower",
+  "subtitle": "A week of soft light and long walks",
+  "cta": "Save for your next trip",
+  "handle": "@slowdays.journal",
+  "motion": "cinematic",
+  "style": "editorial",
+  "palette": {
+    "bg": "#0F0D0B",
+    "ink": "#F5EFE4",
+    "accent": "#C9A97C"
+  },
+  "bpm": 96
+}

@@ -1,0 +1,180 @@
+{
+ "video": "samples/talk-voice.mp4",
+ "sourceDuration": 26.45,
+ "layout": "cover",
+ "focusX": 0.5,
+ "words": [
+  {
+   "text": "リール動画、",
+   "start": 0.24,
+   "end": 0.98
+  },
+  {
+   "text": "毎日",
+   "start": 1.29,
+   "end": 1.7
+  },
+  {
+   "text": "作るのって",
+   "start": 1.7,
+   "end": 2.5
+  },
+  {
+   "text": "正直",
+   "start": 2.5,
+   "end": 3.1
+  },
+  {
+   "text": "大変ですよね。",
+   "start": 3.1,
+   "end": 3.9
+  },
+  {
+   "text": "えっと、",
+   "start": 4.71,
+   "end": 5.1
+  },
+  {
+   "text": "撮影して、",
+   "start": 5.1,
+   "end": 6.2
+  },
+  {
+   "text": "カットして、",
+   "start": 6.2,
+   "end": 7.15
+  },
+  {
+   "text": "字幕を入れて、",
+   "start": 7.46,
+   "end": 8.52
+  },
+  {
+   "text": "それだけで",
+   "start": 9.12,
+   "end": 9.6
+  },
+  {
+   "text": "1時間",
+   "start": 9.6,
+   "end": 10.3
+  },
+  {
+   "text": "かかることも",
+   "start": 10.3,
+   "end": 10.9
+  },
+  {
+   "text": "あります。",
+   "start": 10.9,
+   "end": 11.34
+  },
+  {
+   "text": "このアプリなら、",
+   "start": 12.23,
+   "end": 13.5
+  },
+  {
+   "text": "話した動画を",
+   "start": 13.5,
+   "end": 14.8
+  },
+  {
+   "text": "アップするだけ。",
+   "start": 14.8,
+   "end": 15.81
+  },
+  {
+   "text": "無音の部分は",
+   "start": 16.49,
+   "end": 17.2
+  },
+  {
+   "text": "自動でカット、",
+   "start": 17.2,
+   "end": 18.35
+  },
+  {
+   "text": "字幕も",
+   "start": 18.74,
+   "end": 19.1
+  },
+  {
+   "text": "自動で入ります。",
+   "start": 19.1,
+   "end": 20.13
+  },
+  {
+   "text": "テンプレートを",
+   "start": 20.89,
+   "end": 21.3
+  },
+  {
+   "text": "選べば",
+   "start": 21.3,
+   "end": 21.9
+  },
+  {
+   "text": "あとはお任せ。",
+   "start": 21.9,
+   "end": 23.23
+  },
+  {
+   "text": "まずは",
+   "start": 23.97,
+   "end": 24.2
+  },
+  {
+   "text": "無料で",
+   "start": 24.2,
+   "end": 24.9
+  },
+  {
+   "text": "試してみて",
+   "start": 24.9,
+   "end": 25.7
+  },
+  {
+   "text": "ください。",
+   "start": 25.7,
+   "end": 26.03
+  }
+ ],
+ "cutSilence": {
+  "enabled": true,
+  "minGap": 0.45,
+  "pad": 0.12
+ },
+ "fillers": [
+  "えー",
+  "えーと",
+  "えっと",
+  "あの",
+  "あのー",
+  "まあ",
+  "うーん",
+  "um",
+  "uh",
+  "erm"
+ ],
+ "captions": {
+  "x": 0.5,
+  "y": 0.7,
+  "fontSize": 76,
+  "maxChars": 14,
+  "color": "#FFFFFF",
+  "highlight": "#FFD84D",
+  "stroke": "#000000",
+  "box": false,
+  "uppercase": false
+ },
+ "overrides": [],
+ "emphasis": [
+  "自動でカット",
+  "自動で入ります",
+  "無料で"
+ ],
+ "title": "リール動画を自動化！",
+ "titleY": 0.16,
+ "accent": "#FFD84D"
+}

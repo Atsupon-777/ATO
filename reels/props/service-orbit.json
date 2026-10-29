@@ -1,0 +1,64 @@
+{
+  "layout": "orbit",
+  "screen": "both",
+  "style": "noir",
+  "name": "Lumina",
+  "tagline": "Bookings, reminders and sales in one calm app.",
+  "category": "Salon booking app",
+  "logo": "samples/lumina-logo.png",
+  "url": "lumina.app",
+  "phone": "samples/lumina-mobile.jpg",
+  "desktop": "samples/lumina-desktop.jpg",
+  "hook": [
+    "Still taking",
+    "bookings by phone?"
+  ],
+  "hookEmphasis": "by phone",
+  "features": [
+    {
+      "title": "24/7 online booking",
+      "body": "Clients pick a slot themselves, day or night.",
+      "focus": {
+        "x": 0.42,
+        "y": 0.5,
+        "zoom": 1.8
+      }
+    },
+    {
+      "title": "Auto reminders",
+      "body": "No-shows drop when everyone gets a nudge.",
+      "focus": {
+        "x": 0.82,
+        "y": 0.6,
+        "zoom": 2.0
+      }
+    },
+    {
+      "title": "Sales at a glance",
+      "body": "See what grows your salon, week by week.",
+      "focus": {
+        "x": 0.5,
+        "y": 0.18,
+        "zoom": 1.8
+      }
+    }
+  ],
+  "stats": [
+    {
+      "value": 86,
+      "suffix": "%",
+      "label": "of bookings made online"
+    },
+    {
+      "value": 72,
+      "suffix": "%",
+      "label": "repeat rate"
+    }
+  ],
+  "cta": "Try it free",
+  "ctaNote": "Details in our profile",
+  "accent": "#7C5CFF",
+  "accent2": "#FF7A59",
+  "bpm": 124,
+  "photos": []
+}

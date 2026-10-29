@@ -1,0 +1,221 @@
+// Stripe billing over its REST API: monthly plans, token top-ups, the customer portal and the webhook.
+//   STRIPE_SECRET_KEY        sk_live_... / sk_test_...
+//   STRIPE_WEBHOOK_SECRET    whsec_... (endpoint: /api/stripe/webhook)
+//   STRIPE_PRICE_STARTER, STRIPE_PRICE_STANDARD, STRIPE_PRICE_PRO   monthly prices
+//   Pay as you go needs no Stripe price: each Checkout carries PAYG_UNIT_YEN per PAYG_UNIT tokens inline.
+//   STRIPE_TAX=1             turn on Stripe Tax (prices are tax-inclusive either way)
+import { createHmac, timingSafeEqual } from 'node:crypto';
+import { PAYG_MAX, PAYG_MIN, PAYG_UNIT, PAYG_UNIT_YEN, PLAN_TOKENS, TOPUP_TOKENS, carryOver, findByCustomer, refillPlan, update, type Account, type PlanId } from './accounts.ts';
+import { readLedger, recordSale, type SaleEntry } from './ledger.ts';
+
+// A restricted key (rk_...) with only Checkout, Customer portal, Customers and Subscriptions is enough.
+const key = process.env.STRIPE_SECRET_KEY || '';
+/** Pinned so a Dashboard upgrade never changes what the webhook receives. */
+export const STRIPE_VERSION = '2026-08-26.dahlia';
+/** Tags our Checkout sessions in the Dashboard. */
+const CHECKOUT_LABEL = 'reels-studio-checkout-qkvhzmwt';
+export const billingEnabled = Boolean(key);
+
+const PRICES: Record<Exclude<PlanId, 'free'> | 'topup', string> = {
+  starter: process.env.STRIPE_PRICE_STARTER || '',
+  standard: process.env.STRIPE_PRICE_STANDARD || '',
+  pro: process.env.STRIPE_PRICE_PRO || '',
+  // Not a Stripe price: pay as you go is priced inline (see checkout), so the app's label and the charge can't drift apart.
+  topup: 'inline',
+};
+const planOfPrice = (price?: string): PlanId | undefined =>
+  (Object.entries(PRICES).find(([k, v]) => v && v === price && k !== 'topup')?.[0] as PlanId | undefined) ?? undefined;
+
+/** Stripe wants form encoding with bracketed keys. */
+const form = (o: Record<string, unknown>, prefix = ''): string[] =>
+  Object.entries(o).flatMap(([k, v]) => {
+    const name = prefix ? `${prefix}[${k}]` : k;
+    if (v === undefined || v === null) return [];
+    if (typeof v === 'object') return form(v as Record<string, unknown>, name);
+    return [`${encodeURIComponent(name)}=${encodeURIComponent(String(v))}`];
+  });
+
+async function stripe<T = any>(pathname: string, body: Record<string, unknown>): Promise<T> {
+  const r = await fetch(`https://api.stripe.com/v1/${pathname}`, {
+    method: 'POST',
+    headers: { Authorization: `Bearer ${key}`, 'Content-Type': 'application/x-www-form-urlencoded', 'Stripe-Version': STRIPE_VERSION },
+    body: form(body).join('&'),
+  });
+  const j = await r.json();
+  if (!r.ok) throw new Error(j.error?.message ?? `Stripe ${r.status}`);
+  return j;
+}
+
+export type Purchase = Exclude<PlanId, 'free'> | 'topup';
+export const isPurchase = (x: unknown): x is Purchase => typeof x === 'string' && x in PRICES;
+
+/** Pay-as-you-go units the customer asked for, kept within PAYG_MIN..PAYG_MAX. */
+export const paygUnits = (tokens: unknown) => {
+  const n = Math.round(Number(tokens) / PAYG_UNIT);
+  if (!Number.isFinite(n) || n < PAYG_MIN || n > PAYG_MAX) throw new Error(`${(PAYG_MIN * PAYG_UNIT).toLocaleString('en-US')}〜${(PAYG_MAX * PAYG_UNIT).toLocaleString('en-US')}トークンの間で選んでください`);
+  return n;
+};
+
+/** A Stripe Checkout page for a plan or a top-up of `tokens` tokens. Returns its URL. */
+export async function checkout(a: Account, what: Purchase, origin: string, tokens?: unknown) {
+  const price = PRICES[what];
+  if (!price) throw new Error(`STRIPE_PRICE_${what.toUpperCase()} is not set`);
+  const sub = what !== 'topup';
+  const units = sub ? 1 : paygUnits(tokens);
+  const line = sub
+    ? { price, quantity: 1 }
+    : {
+        quantity: units,
+        price_data: {
+          currency: 'jpy',
+          unit_amount: PAYG_UNIT_YEN,
+          tax_behavior: 'inclusive',
+          product_data: { name: `Editless トークン（${PAYG_UNIT.toLocaleString('en-US')}トークン）`, description: '都度購入・期限なし' },
+        },
+      };
+  const s = await stripe('checkout/sessions', {
+    mode: sub ? 'subscription' : 'payment',
+    line_items: { 0: line },
+    success_url: `${origin}/#/me?paid=${what}`,
+    cancel_url: `${origin}/#/me`,
+    client_reference_id: a.uid,
+    customer: a.customerId,
+    customer_email: a.customerId ? undefined : a.email,
+    customer_creation: !sub && !a.customerId ? 'always' : undefined,
+    metadata: { uid: a.uid, kind: what, tokens: sub ? undefined : units * PAYG_UNIT },
+    subscription_data: sub ? { metadata: { uid: a.uid } } : undefined,
+    allow_promotion_codes: 'true',
+    locale: 'auto',
+    integration_identifier: CHECKOUT_LABEL,
+    // Only after Stripe Tax has an active Japan registration; until then it would silently collect nothing.
+    automatic_tax: process.env.STRIPE_TAX === '1' ? { enabled: 'true' } : undefined,
+  });
+  return String(s.url);
+}
+
+/** Ends a web subscription at once (account deletion). Later invoices stop; nothing is refunded. */
+export async function cancelSubscription(a: Account) {
+  if (!key || !a.subscriptionId) return;
+  const r = await fetch(`https://api.stripe.com/v1/subscriptions/${encodeURIComponent(a.subscriptionId)}`, {
+    method: 'DELETE',
+    headers: { Authorization: `Bearer ${key}`, 'Stripe-Version': STRIPE_VERSION },
+  });
+  // Already cancelled is fine.
+  if (!r.ok && r.status !== 404) throw new Error(`Stripe ${r.status}: ${(await r.json()).error?.message ?? ''}`);
+}
+
+/** Stripe's own page for changing plan, card and invoices, or cancelling. */
+export async function portal(a: Account, origin: string) {
+  if (!a.customerId) throw new Error('まだお支払いの記録がありません');
+  const s = await stripe('billing_portal/sessions', { customer: a.customerId, return_url: `${origin}/#/me` });
+  return String(s.url);
+}
+
+function verify(raw: Buffer, header: string | undefined) {
+  const secret = process.env.STRIPE_WEBHOOK_SECRET || '';
+  if (!secret || !header) throw new Error('webhook not configured');
+  const parts = Object.fromEntries(header.split(',').map((kv) => kv.split('=') as [string, string]));
+  const t = Number(parts.t);
+  if (!t || Math.abs(Date.now() / 1000 - t) > 300) throw new Error('stale webhook');
+  const want = createHmac('sha256', secret).update(`${t}.${raw.toString('utf8')}`).digest();
+  const sigs = header.split(',').filter((kv) => kv.startsWith('v1=')).map((kv) => Buffer.from(kv.slice(3), 'hex'));
+  if (!sigs.some((s) => s.length === want.length && timingSafeEqual(s, want))) throw new Error('bad webhook signature');
+}
+
+/** Applies one Stripe event to the matching account. Each event is applied at most once. */
+export async function webhook(raw: Buffer, signature: string | undefined) {
+  verify(raw, signature);
+  const ev = JSON.parse(raw.toString('utf8'));
+  const o = ev.data?.object ?? {};
+  const uidOf = async () =>
+    o.client_reference_id ||
+    o.metadata?.uid ||
+    o.parent?.subscription_details?.metadata?.uid ||
+    o.subscription_details?.metadata?.uid ||
+    (o.customer ? (await findByCustomer(o.customer))?.uid : undefined);
+  const uid: string | undefined = await uidOf();
+  if (!uid) return { ignored: ev.type };
+  let applied = false;
+  /** What this event earned, for the owner's ledger; written once the event is known to be new. */
+  let sale = null as Parameters<typeof recordSale>[0] | null;
+  const base = { channel: 'stripe' as const, uid, eventId: String(ev.id), test: ev.livemode === false || undefined, at: ev.created ? new Date(ev.created * 1000).toISOString() : undefined };
+  /** Tax Stripe reports on a session or an invoice (only with Stripe Tax on). */
+  const taxOf = () => {
+    const t = o.total_details?.amount_tax ?? o.tax ?? (Array.isArray(o.total_taxes) ? o.total_taxes.reduce((n: number, x: any) => n + (x.amount ?? 0), 0) : undefined);
+    return typeof t === 'number' && t > 0 ? t : undefined;
+  };
+  await update(uid, (a) => {
+    if (a.events?.includes(ev.id)) return;
+    a.events = [...(a.events ?? []), ev.id].slice(-200);
+    applied = true;
+    if (o.customer && typeof o.customer === 'string') a.customerId = o.customer;
+    switch (ev.type) {
+      case 'checkout.session.completed':
+      // Konbini and bank transfer finish later: completed arrives unpaid, async_payment_succeeded once the money is in.
+      case 'checkout.session.async_payment_succeeded':
+        if (o.mode === 'subscription' && o.subscription) a.subscriptionId = String(o.subscription);
+        // Pay as you go carries its token count; a session from before that was the fixed 30-token pack.
+        if (o.mode === 'payment' && o.metadata?.kind === 'topup' && o.payment_status === 'paid') {
+          // A Checkout opened while counts were 1000x larger (until 2026-10-21) carries 2,000-500,000.
+          const t = Number(o.metadata.tokens);
+          const added = t >= 1000 ? Math.round(t / 1000) : t || TOPUP_TOKENS;
+          a.extra += added;
+          // JPY is a zero-decimal currency in Stripe, so amounts are whole yen.
+          if (o.currency === 'jpy' || !o.currency) sale = { ...base, product: 'payg', tokens: added, grossJpy: Number(o.amount_total ?? 0), taxJpy: taxOf() };
+        }
+        break;
+      case 'invoice.payment_failed':
+        // Stripe retries the card; the account page asks the customer to update it meanwhile.
+        if (o.subscription || o.parent?.subscription_details) a.pastDue = true;
+        break;
+      case 'invoice.paid': {
+        a.pastDue = undefined;
+        // A paid subscription invoice (first month, renewal or plan change) refills the monthly allowance.
+        const prices: string[] = (o.lines?.data ?? []).map((l: any) => l.price?.id ?? l.pricing?.price_details?.price).filter(Boolean);
+        const plan = prices.map(planOfPrice).find(Boolean);
+        if (plan) {
+          refillPlan(a, plan);
+          a.store = 'stripe';
+          a.storeProduct = undefined;
+        }
+        if (Number(o.amount_paid) > 0 && (o.currency === 'jpy' || !o.currency))
+          sale = { ...base, product: plan ?? 'subscription', tokens: plan ? PLAN_TOKENS[plan] : 0, grossJpy: Number(o.amount_paid), taxJpy: taxOf() };
+        break;
+      }
+      // A refund from the Dashboard. amount_refunded is the running total, so only the new part is booked.
+      case 'charge.refunded':
+        if (o.currency === 'jpy' || !o.currency) sale = { ...base, product: 'refund', tokens: 0, grossJpy: -Number(o.amount_refunded ?? 0), refund: true, ref: String(o.id) };
+        break;
+      case 'customer.subscription.updated': {
+        const plan = planOfPrice(o.items?.data?.[0]?.price?.id);
+        a.subscriptionId = o.id;
+        // A plan bought in the iPhone app is the App Store's to end, not Stripe's.
+        if (a.store === 'app_store' || a.store === 'play_store') break;
+        if (['canceled', 'unpaid', 'incomplete_expired'].includes(o.status)) carryOver(a), (a.plan = 'free');
+        else if (plan) a.plan = plan;
+        break;
+      }
+      case 'customer.subscription.deleted':
+        a.subscriptionId = undefined;
+        if (a.store === 'app_store' || a.store === 'play_store') break;
+        carryOver(a);
+        a.plan = 'free';
+        a.store = undefined;
+        break;
+    }
+  });
+  if (applied && sale) await bookSale(sale);
+  return { type: ev.type, uid, applied };
+}
+
+/** Writes a Stripe sale or refund to the ledger. A refund books only what earlier refunds of the same charge didn't. */
+async function bookSale(sale: Parameters<typeof recordSale>[0]) {
+  if (sale.refund && sale.ref) {
+    const before = (await readLedger()).filter((e): e is SaleEntry => e.kind === 'sale' && e.refund === true && e.ref === sale.ref).reduce((n, e) => n + e.grossJpy, 0);
+    const gross = sale.grossJpy - before;
+    if (gross >= 0) return;
+    // Stripe keeps its fee on a refund, so the fee doesn't come back: the refund is money out at face value.
+    return recordSale({ ...sale, grossJpy: gross, feeJpy: 0 });
+  }
+  if (sale.grossJpy > 0) return recordSale(sale);
+}

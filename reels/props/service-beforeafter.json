@@ -1,0 +1,22 @@
+{
+  "layout": "beforeafter",
+  "screen": "none",
+  "style": "clean",
+  "name": "Haven Homes",
+  "tagline": "Homes picked for how you actually live.",
+  "category": "Real estate · Tokyo",
+  "photos": ["samples/photos/interior.jpg"],
+  "hook": ["House hunting", "shouldn't hurt."],
+  "hookEmphasis": "hurt.",
+  "pains": ["200 listings, zero fit", "Weekends lost to viewings", "Pushy agents, hidden fees"],
+  "features": [
+    { "title": "5 homes matched to you" },
+    { "title": "Video tours first" },
+    { "title": "One flat fee, no surprises" }
+  ],
+  "cta": "Book a free consult",
+  "ctaNote": "Details in our profile",
+  "accent": "#2E6B4F",
+  "accent2": "#C9A46A",
+  "bpm": 112
+}

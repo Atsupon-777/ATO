@@ -1,0 +1,354 @@
+{
+ "video": "samples/talk-voice.mp4",
+ "focusX": 0.5,
+ "duration": 26.45,
+ "pass": 5,
+ "words": [
+  {
+   "text": "リール動画、",
+   "start": 0.24,
+   "end": 0.98
+  },
+  {
+   "text": "毎日",
+   "start": 1.29,
+   "end": 1.7
+  },
+  {
+   "text": "作るのって",
+   "start": 1.7,
+   "end": 2.5
+  },
+  {
+   "text": "正直",
+   "start": 2.5,
+   "end": 3.1
+  },
+  {
+   "text": "大変ですよね。",
+   "start": 3.1,
+   "end": 3.9
+  },
+  {
+   "text": "撮影して、",
+   "start": 5.1,
+   "end": 6.2
+  },
+  {
+   "text": "カットして、",
+   "start": 6.2,
+   "end": 7.15
+  },
+  {
+   "text": "字幕を入れて、",
+   "start": 7.46,
+   "end": 8.52
+  },
+  {
+   "text": "それだけで",
+   "start": 9.12,
+   "end": 9.6
+  },
+  {
+   "text": "1時間",
+   "start": 9.6,
+   "end": 10.3
+  },
+  {
+   "text": "かかることも",
+   "start": 10.3,
+   "end": 10.9
+  },
+  {
+   "text": "あります。",
+   "start": 10.9,
+   "end": 11.34
+  },
+  {
+   "text": "このアプリなら、",
+   "start": 12.23,
+   "end": 13.5
+  },
+  {
+   "text": "話した動画を",
+   "start": 13.5,
+   "end": 14.8
+  },
+  {
+   "text": "アップするだけ。",
+   "start": 14.8,
+   "end": 15.81
+  },
+  {
+   "text": "無音の部分は",
+   "start": 16.49,
+   "end": 17.2
+  },
+  {
+   "text": "自動でカット、",
+   "start": 17.2,
+   "end": 18.35
+  },
+  {
+   "text": "字幕も",
+   "start": 18.74,
+   "end": 19.1
+  },
+  {
+   "text": "自動で入ります。",
+   "start": 19.1,
+   "end": 20.13
+  },
+  {
+   "text": "テンプレートを",
+   "start": 20.89,
+   "end": 21.3
+  },
+  {
+   "text": "選べば",
+   "start": 21.3,
+   "end": 21.9
+  },
+  {
+   "text": "あとはお任せ。",
+   "start": 21.9,
+   "end": 23.23
+  },
+  {
+   "text": "まずは",
+   "start": 23.97,
+   "end": 24.2
+  },
+  {
+   "text": "無料で",
+   "start": 24.2,
+   "end": 24.9
+  },
+  {
+   "text": "試してみて",
+   "start": 24.9,
+   "end": 25.7
+  },
+  {
+   "text": "ください。",
+   "start": 25.7,
+   "end": 26.03
+  }
+ ],
+ "captions": [
+  {
+   "start": 0.24,
+   "end": 1.29,
+   "text": "リール動画、",
+   "echo": false
+  },
+  {
+   "start": 1.29,
+   "end": 2.5,
+   "text": "毎日作るのって",
+   "key": "毎日",
+   "echo": false
+  },
+  {
+   "start": 2.5,
+   "end": 5.1,
+   "text": "正直大変ですよね。",
+   "key": "大変",
+   "echo": true
+  },
+  {
+   "start": 5.1,
+   "end": 6.2,
+   "text": "撮影して、",
+   "key": "撮影",
+   "echo": false
+  },
+  {
+   "start": 6.2,
+   "end": 7.46,
+   "text": "カットして、",
+   "key": "カット",
+   "echo": false
+  },
+  {
+   "start": 7.46,
+   "end": 9.12,
+   "text": "字幕を入れて、",
+   "key": "字幕",
+   "echo": false
+  },
+  {
+   "start": 9.12,
+   "end": 10.3,
+   "text": "それだけで1時間",
+   "key": "1時間",
+   "echo": true
+  },
+  {
+   "start": 10.3,
+   "end": 12.23,
+   "text": "かかることもあります。",
+   "echo": false
+  },
+  {
+   "start": 12.23,
+   "end": 13.5,
+   "text": "このアプリなら、",
+   "key": "アプリ",
+   "echo": false
+  },
+  {
+   "start": 13.5,
+   "end": 16.49,
+   "text": "話した動画をアップするだけ。",
+   "key": "アップするだけ",
+   "echo": false
+  },
+  {
+   "start": 16.49,
+   "end": 18.74,
+   "text": "無音の部分は自動でカット、",
+   "key": "自動",
+   "echo": false
+  },
+  {
+   "start": 18.74,
+   "end": 20.89,
+   "text": "字幕も自動で入ります。",
+   "echo": false
+  },
+  {
+   "start": 20.89,
+   "end": 21.9,
+   "text": "テンプレートを選べば",
+   "key": "テンプレート",
+   "echo": false
+  },
+  {
+   "start": 21.9,
+   "end": 23.97,
+   "text": "あとはお任せ。",
+   "key": "お任せ",
+   "echo": true
+  },
+  {
+   "start": 23.97,
+   "end": 24.9,
+   "text": "まずは無料で",
+   "key": "無料",
+   "echo": false
+  },
+  {
+   "start": 24.9,
+   "end": 26.45,
+   "text": "試してみてください。",
+   "echo": false
+  }
+ ],
+ "scenes": [
+  {
+   "type": "notifications",
+   "trigger": "撮影して",
+   "start": 5.1,
+   "end": 12.23,
+   "items": [
+    "🎬 撮影がまだ終わらない",
+    "✂️ カット作業 あと40本",
+    "💬 字幕の誤字を直して"
+   ],
+   "text": "1時間",
+   "place": "top"
+  },
+  {
+   "type": "tiles",
+   "trigger": "話した動画を",
+   "start": 13.5,
+   "end": 20.89,
+   "items": [
+    "🎙️ 話す",
+    "✂️ 無音カット",
+    "💬 字幕"
+   ],
+   "text": "アップするだけ",
+   "place": "top"
+  },
+  {
+   "type": "kineticType",
+   "trigger": "テンプレートを",
+   "start": 20.89,
+   "end": 23.97,
+   "items": [],
+   "text": "あとはお任せ"
+  },
+  {
+   "type": "sourceCard",
+   "trigger": "無料で",
+   "start": 23.97,
+   "end": 26.45,
+   "items": [
+    "分",
+    "テンプレートを選んで書き出すまで"
+   ],
+   "text": "このアプリで作った場合",
+   "value": 3,
+   "place": "top"
+  }
+ ],
+ "sfx": [
+  {
+   "kind": "whoosh",
+   "at": 0
+  },
+  {
+   "kind": "whoosh",
+   "at": 20.74
+  },
+  {
+   "kind": "tap",
+   "at": 5.1
+  },
+  {
+   "kind": "tap",
+   "at": 5.8
+  },
+  {
+   "kind": "tap",
+   "at": 6.5
+  },
+  {
+   "kind": "tap",
+   "at": 13.5
+  },
+  {
+   "kind": "tap",
+   "at": 13.85
+  },
+  {
+   "kind": "tap",
+   "at": 14.2
+  },
+  {
+   "kind": "tap",
+   "at": 14.55
+  },
+  {
+   "kind": "tap",
+   "at": 14.9
+  },
+  {
+   "kind": "tap",
+   "at": 15.25
+  },
+  {
+   "kind": "tap",
+   "at": 23.97
+  },
+  {
+   "kind": "chime",
+   "at": 25.05
+  }
+ ],
+ "style": "midnight",
+ "lang": "ja",
+ "notes": []
+}

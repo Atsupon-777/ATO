@@ -1,0 +1,27 @@
+{
+  "layout": "voice",
+  "screen": "none",
+  "style": "clean",
+  "name": "Salon Mirai",
+  "tagline": "Hair and makeup for the days that matter.",
+  "category": "Hair & beauty salon · Ginza",
+  "photos": ["samples/photos/beauty.jpg"],
+  "hook": ["Loved by", "1,200 clients."],
+  "features": [{ "title": "Bridal hair & makeup" }, { "title": "Colour specialists" }, { "title": "Private styling rooms" }],
+  "stats": [
+    { "value": 4.9, "suffix": "/5", "label": "average from 1,200 reviews" },
+    { "value": 92, "suffix": "%", "label": "of clients rebook" }
+  ],
+  "testimonial": {
+    "quote": "I walked in nervous and walked out feeling like the best version of me. They listened to every detail.",
+    "name": "Emma K.",
+    "role": "Client since 2022",
+    "rating": 5,
+    "avatar": "samples/photos/blonde.jpg"
+  },
+  "cta": "Book your visit",
+  "ctaNote": "Details in our profile",
+  "accent": "#C2577A",
+  "accent2": "#E8A87C",
+  "bpm": 104
+}

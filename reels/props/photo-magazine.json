@@ -1,0 +1,36 @@
+{
+  "photos": [
+    {
+      "src": "samples/photos/fashion.jpg",
+      "caption": "The coat that ate the city"
+    },
+    {
+      "src": "samples/photos/blonde.jpg",
+      "caption": "Knitwear, revisited"
+    },
+    {
+      "src": "samples/photos/beauty.jpg",
+      "caption": "Gloss is back"
+    },
+    {
+      "src": "samples/photos/creator.jpg",
+      "caption": "Studio talks"
+    },
+    {
+      "src": "samples/photos/fitness.jpg",
+      "caption": "Strong is the new chic"
+    }
+  ],
+  "title": "Muse",
+  "subtitle": "The new soft power",
+  "cta": "Read the issue",
+  "handle": "@muse.edit",
+  "motion": "magazine",
+  "style": "editorial",
+  "palette": {
+    "bg": "#0E0C0B",
+    "ink": "#FFFFFF",
+    "accent": "#E9C46A"
+  },
+  "bpm": 108
+}

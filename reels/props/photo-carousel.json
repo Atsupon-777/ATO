@@ -1,0 +1,36 @@
+{
+  "photos": [
+    {
+      "src": "samples/photos/cafe.jpg",
+      "caption": "Latte art that holds its shape"
+    },
+    {
+      "src": "samples/photos/matcha.jpg",
+      "caption": "Matcha straight from the farm"
+    },
+    {
+      "src": "samples/photos/ramen.jpg",
+      "caption": "Late-night ramen next door"
+    },
+    {
+      "src": "samples/photos/sushi.jpg",
+      "caption": "Counter lunch, ten seats"
+    },
+    {
+      "src": "samples/photos/florist.jpg",
+      "caption": "Flowers with your flat white"
+    }
+  ],
+  "title": "5 Cafés Worth the Trip",
+  "subtitle": "Swipe for the list",
+  "cta": "Save this list",
+  "handle": "@weekend.cafes",
+  "motion": "carousel",
+  "style": "minimal",
+  "palette": {
+    "bg": "#F4F1EC",
+    "ink": "#1C1B19",
+    "accent": "#B08D6A"
+  },
+  "bpm": 112
+}
