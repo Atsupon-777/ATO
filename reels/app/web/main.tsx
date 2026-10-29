@@ -5244,9 +5244,9 @@ const FeedItem: React.FC<{ job: Job; onEdit: () => void }> = ({ job: row, onEdit
 };
 
 const PLANS = [
-  { id: 'starter', name: tr("スターター"), price: tr("9,800円"), yen: 9800, tokens: 60, note: tr("週3投稿の目安") },
-  { id: 'standard', name: tr("スタンダード"), price: tr("29,800円"), yen: 29800, tokens: 200, note: tr("毎日投稿の目安") },
-  { id: 'pro', name: tr("プロ"), price: tr("79,800円"), yen: 79800, tokens: 600, note: tr("複数ブランド・優先書き出し") },
+  { id: 'starter', name: tr("スターター"), price: tr("2,900円"), yen: 2900, tokens: 60, note: tr("週3投稿の目安") },
+  { id: 'standard', name: tr("スタンダード"), price: tr("9,800円"), yen: 9800, tokens: 200, note: tr("毎日投稿の目安") },
+  { id: 'pro', name: tr("プロ"), price: tr("29,800円"), yen: 29800, tokens: 600, note: tr("複数ブランド・優先書き出し") },
 ] as const;
 /** The cheapest reel (2 tokens, own footage with captions) on a plan, rounded to 10 yen. */
 const perReel = (p: { yen: number; tokens: number }) => Math.round(((p.yen / p.tokens) * 2) / 10) * 10;

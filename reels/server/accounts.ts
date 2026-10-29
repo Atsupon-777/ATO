@@ -19,9 +19,9 @@ export const PLAN_TOKENS: Record<PlanId, number> = { free: 0, starter: 60, stand
 /** Monthly price of each plan on the website, tax included (the same figures as the account page). For the owner's MRR. */
 export const PLAN_PRICE_JPY: Record<PlanId, number> = {
   free: 0,
-  starter: Number(process.env.PLAN_PRICE_STARTER_JPY ?? 9800),
-  standard: Number(process.env.PLAN_PRICE_STANDARD_JPY ?? 29800),
-  pro: Number(process.env.PLAN_PRICE_PRO_JPY ?? 79800),
+  starter: Number(process.env.PLAN_PRICE_STARTER_JPY ?? 2900),
+  standard: Number(process.env.PLAN_PRICE_STANDARD_JPY ?? 9800),
+  pro: Number(process.env.PLAN_PRICE_PRO_JPY ?? 29800),
 };
 /** Free tokens a new account can claim once, after confirming a phone number by SMS. */
 export const FREE_TOKENS = Number(process.env.FREE_TOKENS ?? 10);
