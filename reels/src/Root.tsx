@@ -1,5 +1,6 @@
 import React from 'react';
 import { Composition } from 'remotion';
+import { MotionReel, motionReelFrames, motionReelSchema, motionSample } from './motion/MotionReel';
 import { FPS, beatFrames } from './lib/timing';
 import { ProductShine, productShineFrames } from './templates/ProductShine';
 import {
@@ -66,6 +67,17 @@ const serviceDefault: ServiceReelProps = {
 
 export const RemotionRoot: React.FC = () => (
   <>
+    <Composition
+      id="MotionReel"
+      component={MotionReel}
+      schema={motionReelSchema}
+      defaultProps={motionSample}
+      fps={FPS}
+      width={1080}
+      height={1920}
+      durationInFrames={motionReelFrames(motionSample, FPS)}
+      calculateMetadata={({ props }) => ({ durationInFrames: motionReelFrames(props, FPS) })}
+    />
     <Composition
       id="ProductShine"
       component={ProductShine}
