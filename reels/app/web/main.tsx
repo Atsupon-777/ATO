@@ -35,6 +35,7 @@ import { ServiceReel, serviceReelDuration } from '../../src/templates/ServiceRee
 import { LANG_NAMES, langs, type Lang } from '../../src/lang';
 import { lang, setLang, tr } from './i18n';
 import { authHeader, checkVerified, config as appConfig, confirmPhoneCode, deleteAccount, linkedPhone, registerPushToken, resendVerification, sendPhoneCode, resetPassword, signInApple, signInEmail, signInGoogle, signOut, signUpEmail, startAuth, useAuth } from './auth';
+import { ShootGame } from './ShootGame';
 import { apiUrl, enablePush, iapBuy, iapProducts, iapRestore, isNative, manageStoreSubscription, mediaQuery, pickFromLibrary, platform, saveToCameraRoll, shareVideo, type IapProduct } from './native';
 import { PreviewMode, asset, posterOf } from '../../src/lib/assets';
 import { FRAMING_LABEL, LAYOUT_LABEL, UNFRAMED_SCENES, directShots, framings, showsSpeaker, type Framing, type Shot } from '../../src/effects/shots';
@@ -1085,6 +1086,9 @@ const Generating: React.FC<{ job: Job }> = ({ job }) => {
           </div>
         ))}
       </div>
+      {left > 45 ? (
+        <ShootGame labels={{ title: tr("待つ間にシュート"), hint: tr("タップしてゴールにシュート"), score: tr("連続"), best: tr("ベスト"), miss: tr("おしい！") }} />
+      ) : null}
     </div>
   );
 };

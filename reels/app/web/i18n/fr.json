@@ -1000,5 +1000,10 @@
  "各カットの写真を作成": "Création d'une photo par plan",
  "各カットを動かし、音楽を作成（2〜3分）": "Animation de chaque plan et création de la musique (2–3 min)",
  "アプリを閉じても作成は続きます。できあがったら通知でお知らせします。": "La création continue même si vous fermez l'app. Vous recevrez une notification quand ce sera prêt.",
- "できあがったカット": "Plans terminés"
+ "できあがったカット": "Plans terminés",
+ "待つ間にシュート": "Un panier en attendant",
+ "タップしてゴールにシュート": "Touchez pour tirer vers le panier",
+ "連続": "Série",
+ "ベスト": "Record",
+ "おしい！": "Presque !"
 }
