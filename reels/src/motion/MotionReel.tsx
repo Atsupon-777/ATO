@@ -6,13 +6,22 @@ import { z } from 'zod';
 import { cjkVars, loadFonts } from '../lib/fonts';
 import { Headline, type HeadlineProps } from './Headline';
 import { InkWash, type InkWashProps } from './InkWash';
+import { PaperDesk, type PaperDeskProps } from './PaperDesk';
 import { StatChart, type StatChartProps } from './StatChart';
+import { Teardown, type TeardownProps } from './Teardown';
+import { ChatThread, LogoReveal, Pricing, Timeline, type ChatProps, type LogoRevealProps, type PricingProps, type TimelineProps } from './UiScenes';
 
 /** Every motion style the app can play, by id. Add a style here and in motionSceneSchema. */
 export const motionScenes = {
   statChart: StatChart as React.FC<any>,
   headline: Headline as React.FC<any>,
   inkWash: InkWash as React.FC<any>,
+  teardown: Teardown as React.FC<any>,
+  paperDesk: PaperDesk as React.FC<any>,
+  chat: ChatThread as React.FC<any>,
+  pricing: Pricing as React.FC<any>,
+  timeline: Timeline as React.FC<any>,
+  logoReveal: LogoReveal as React.FC<any>,
 } as const;
 export type MotionSceneId = keyof typeof motionScenes;
 export const motionSceneIds = Object.keys(motionScenes) as MotionSceneId[];
@@ -21,6 +30,12 @@ export const motionSceneSchema = z.discriminatedUnion('kind', [
   z.object({ kind: z.literal('statChart'), seconds: z.number().min(2).max(12).default(5.7), props: z.custom<StatChartProps>() }),
   z.object({ kind: z.literal('headline'), seconds: z.number().min(2).max(12).default(5), props: z.custom<HeadlineProps>() }),
   z.object({ kind: z.literal('inkWash'), seconds: z.number().min(2).max(12).default(5), props: z.custom<InkWashProps>() }),
+  z.object({ kind: z.literal('teardown'), seconds: z.number().min(3).max(12).default(7.4), props: z.custom<TeardownProps>() }),
+  z.object({ kind: z.literal('paperDesk'), seconds: z.number().min(3).max(12).default(7.9), props: z.custom<PaperDeskProps>() }),
+  z.object({ kind: z.literal('chat'), seconds: z.number().min(2).max(12).default(5), props: z.custom<ChatProps>() }),
+  z.object({ kind: z.literal('pricing'), seconds: z.number().min(2).max(12).default(4), props: z.custom<PricingProps>() }),
+  z.object({ kind: z.literal('timeline'), seconds: z.number().min(2).max(12).default(5), props: z.custom<TimelineProps>() }),
+  z.object({ kind: z.literal('logoReveal'), seconds: z.number().min(2).max(8).default(3.5), props: z.custom<LogoRevealProps>() }),
 ]);
 export type MotionScene = z.infer<typeof motionSceneSchema>;
 
@@ -89,5 +104,74 @@ export const motionSample: MotionReelProps = {
       },
     },
     { kind: 'inkWash', seconds: 5, props: { title: '朝の光をまとう', sub: '京都の水でつくる化粧水', seal: '光' } },
+  ],
+};
+
+/** Second sample: a made-up booking app (Hoshi), to show the UI and paper styles. */
+export const motionSample2: MotionReelProps = {
+  lang: 'ja',
+  scenes: [
+    {
+      kind: 'paperDesk',
+      seconds: 7.9,
+      props: {
+        kicker: 'FIELD NOTES · Nº 01',
+        headline: '予約の電話、\n1日に何本取っていますか？',
+        card: ['電話は営業時間だけ', '聞き間違いがある', '手が止まる'],
+        aside: '全部なくせる',
+        label: '24時間 自動で予約',
+      },
+    },
+    {
+      kind: 'chat',
+      seconds: 5,
+      props: {
+        title: 'Hoshi 予約',
+        messages: [
+          { text: '明日の19時、2名で空いてますか？' },
+          { me: true, text: '空いています。カウンター席でお取りしますね。' },
+          { text: 'お願いします！' },
+          { me: true, text: 'ご予約できました。前日にお知らせを送ります。' },
+        ],
+      },
+    },
+    {
+      kind: 'teardown',
+      seconds: 7.4,
+      props: {
+        name: 'Hoshi',
+        layers: [
+          { title: '受ける', text: 'LINEとWebで24時間' },
+          { title: '整える', text: '席と時間を自動で調整' },
+          { title: '知らせる', text: '前日に自動でリマインド' },
+        ],
+      },
+    },
+    {
+      kind: 'timeline',
+      seconds: 5,
+      props: {
+        title: '小さな店から、全国へ',
+        events: [
+          { year: '2023', text: '1店舗で試験運用' },
+          { year: '2024', text: '導入50店舗' },
+          { year: '2025', text: '無断キャンセル半分に' },
+          { year: '2026', text: '全国1,000店舗' },
+        ],
+      },
+    },
+    {
+      kind: 'pricing',
+      seconds: 4,
+      props: {
+        title: 'まずは無料で',
+        plans: [
+          { name: 'フリー', price: '0円', points: ['月30件まで', 'LINE予約'] },
+          { name: 'スタンダード', price: '4,980円', per: '/月', points: ['予約無制限', 'リマインド'], best: true },
+          { name: 'プロ', price: '9,800円', per: '/月', points: ['複数店舗', '分析'] },
+        ],
+      },
+    },
+    { kind: 'logoReveal', seconds: 3.5, props: { name: 'Hoshi', tagline: '電話のいらない予約', cta: '無料ではじめる' } },
   ],
 };
