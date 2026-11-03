@@ -7,6 +7,8 @@
 //
 // A call can override the env with `provider`. When a Higgsfield clip fails for a reason other than
 // moderation, it falls back to Gemini Omni so the customer's film still finishes (VIDEO_FALLBACK=0 turns that off).
+import { writeFile } from 'node:fs/promises';
+import path from 'node:path';
 import { imageToVideo as geminiImageToVideo } from './gemini.ts';
 import { HF_MODELS, higgsfieldImageToVideo, type HfModel } from './higgsfield.ts';
 import type { Usage } from './usage.ts';
@@ -35,6 +37,11 @@ export async function imageToVideo(opts: {
   provider?: VideoProvider;
 }): Promise<string> {
   const { provider = defaultVideoProvider(), ...rest } = opts;
+  // what was asked of which model, next to the clip, so a take can be traced back to its prompt
+  await writeFile(
+    `${opts.out}.prompt.json`,
+    JSON.stringify({ provider, image: path.basename(opts.image), seconds: opts.seconds ?? 8, prompt: opts.prompt, negativePrompt: opts.negativePrompt }, null, 2),
+  ).catch(() => {});
   if (provider === 'gemini') return geminiImageToVideo(rest);
   try {
     return await higgsfieldImageToVideo({ ...rest, model: provider, seconds: rest.seconds ?? 8 });

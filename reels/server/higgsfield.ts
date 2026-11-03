@@ -88,14 +88,28 @@ export async function higgsfieldImageToVideo(opts: {
   const resolution = process.env.REELS_VIDEO_RES === '1080p' ? '1080p' : '720p';
   const avoid = opts.negativePrompt ?? 'warped logo, changing text, deformed product, extra parts, morphing, flicker';
   const prompt = `${opts.prompt}\nThe video starts exactly on this image. Avoid: ${avoid}. No speech, no music, no added text.`;
-  const imageUrl = await uploadFile(opts.image);
-  const input = inputFor(opts.model, imageUrl, prompt, opts.seconds, resolution);
-  const quoted = await estimateUsd(opts.model, input);
-  // one key per clip, so a timed-out submission can be retried without paying twice
-  const key = randomUUID();
-  const submit = () => api(`/${HF_MODELS[opts.model]}`, { body: input, headers: { 'Idempotency-Key': key, 'Hf-Expires-After': '86400' } });
-  let req = await submit().catch((e) => (/fetch failed|ECONNRESET|ETIMEDOUT|5\d\d/.test(String(e)) ? submit() : Promise.reject(e)));
-  const statusUrl: string = req.status_url ?? `/requests/${req.request_id}/status`;
+  // The ticket next to the clip remembers the paid request, so a crash, restart or failed download
+  // resumes it (poll / download again) instead of paying for a second generation.
+  const ticketFile = `${opts.out}.hf.json`;
+  const old = await readFile(ticketFile, 'utf8').then(JSON.parse).catch(() => undefined);
+  const ticket: { model: HfModel; request_id?: string; status_url?: string; video_url?: string; usd?: number; seconds?: number } =
+    old?.model === opts.model && old.request_id ? old : { model: opts.model };
+  const saveTicket = () => writeFile(ticketFile, JSON.stringify(ticket, null, 2));
+  let req: any;
+  if (ticket.request_id) req = await api(ticket.status_url ?? `/requests/${ticket.request_id}/status`);
+  else {
+    const imageUrl = await uploadFile(opts.image);
+    const input = inputFor(opts.model, imageUrl, prompt, opts.seconds, resolution);
+    ticket.usd = await estimateUsd(opts.model, input);
+    ticket.seconds = Number(input.duration);
+    // one key per clip, so a timed-out submission can be retried without paying twice
+    const key = randomUUID();
+    const submit = () => api(`/${HF_MODELS[opts.model]}`, { body: input, headers: { 'Idempotency-Key': key, 'Hf-Expires-After': '604800' } });
+    req = await submit().catch((e) => (/fetch failed|ECONNRESET|ETIMEDOUT|5\d\d/.test(String(e)) ? submit() : Promise.reject(e)));
+    Object.assign(ticket, { request_id: req.request_id, status_url: req.status_url });
+    await saveTicket();
+  }
+  const statusUrl: string = ticket.status_url ?? `/requests/${ticket.request_id}/status`;
   const started = Date.now();
   let wait = 2000;
   while (!TERMINAL.has(req.status)) {
@@ -108,15 +122,19 @@ export async function higgsfieldImageToVideo(opts: {
   if (req.status !== 'completed') throw new Error(`${opts.step}: ${opts.model} ${req.status}: ${JSON.stringify(req.error ?? '').slice(0, 300)}`);
   const url = req.video?.url ?? req.videos?.[0]?.url;
   if (!url) throw new Error(`${opts.step}: ${opts.model} returned no video`);
-  const r = await fetch(url);
-  if (!r.ok) throw new Error(`${opts.step}: video download failed (${r.status})`);
+  ticket.video_url = url;
+  await saveTicket();
+  const r = await fetch(url).catch((e) => {
+    throw new Error(`${opts.step}: video download failed from ${new URL(url).host} (${(e as Error).cause ?? e}); request ${ticket.request_id} is kept in ${path.basename(ticketFile)}`);
+  });
+  if (!r.ok) throw new Error(`${opts.step}: video download failed (${r.status}) from ${url}`);
   await writeFile(opts.out, Buffer.from(await r.arrayBuffer()));
-  const seconds = Number(input.duration);
+  const seconds = ticket.seconds ?? opts.seconds;
   opts.usage.add({
     step: opts.step,
     model: `higgsfield/${HF_MODELS[opts.model]}`,
     units: `${seconds}s${opts.model === 'seedance' ? ` ${resolution}` : ''}, no audio`,
-    usd: quoted ?? listPrice(opts.model, seconds, resolution),
+    usd: ticket.usd ?? listPrice(opts.model, seconds, resolution),
   });
   return opts.out;
 }
