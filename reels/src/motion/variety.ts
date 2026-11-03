@@ -31,6 +31,12 @@ export const STYLE_FAMILY: Record<MotionSceneId, 'type' | 'data' | 'ui' | 'place
   typewriter: 'type',
   pinDrop: 'place',
   searchFind: 'ui',
+  progressRing: 'data',
+  versus: 'data',
+  beforeAfter: 'ui',
+  scrollPage: 'ui',
+  verticalCopy: 'craft',
+  goldLine: 'brand',
 };
 
 /** How many of an account's recent reels count as "recent" when ranking styles. */

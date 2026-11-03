@@ -6,6 +6,7 @@ import { z } from 'zod';
 import { cjkVars, loadFonts } from '../lib/fonts';
 import { Bars3d, CompareTable, KineticType, PhoneStack, ReviewStars, type Bars3dProps, type CompareTableProps, type KineticTypeProps, type PhoneStackProps, type ReviewStarsProps } from './Batch4Scenes';
 import { Donut, FlapBoard, PinDrop, RankingRace, SearchFind, Typewriter, type DonutProps, type FlapBoardProps, type PinDropProps, type RankingRaceProps, type SearchFindProps, type TypewriterProps } from './Batch5Scenes';
+import { BeforeAfter, GoldLine, ProgressRing, ScrollPage, Versus, VerticalCopy, type BeforeAfterProps, type GoldLineProps, type ProgressRingProps, type ScrollPageProps, type VersusProps, type VerticalCopyProps } from './Batch6Scenes';
 import { Headline, type HeadlineProps } from './Headline';
 import { InkWash, type InkWashProps } from './InkWash';
 import { GlobeZoom, MapRoute, type GlobeZoomProps, type MapRouteProps } from './MapScenes';
@@ -44,6 +45,12 @@ export const motionScenes = {
   typewriter: Typewriter as React.FC<any>,
   pinDrop: PinDrop as React.FC<any>,
   searchFind: SearchFind as React.FC<any>,
+  progressRing: ProgressRing as React.FC<any>,
+  versus: Versus as React.FC<any>,
+  beforeAfter: BeforeAfter as React.FC<any>,
+  scrollPage: ScrollPage as React.FC<any>,
+  verticalCopy: VerticalCopy as React.FC<any>,
+  goldLine: GoldLine as React.FC<any>,
 } as const;
 export type MotionSceneId = keyof typeof motionScenes;
 export const motionSceneIds = Object.keys(motionScenes) as MotionSceneId[];
@@ -77,6 +84,12 @@ export const motionSceneSchema = z.discriminatedUnion('kind', [
   z.object({ kind: z.literal('typewriter'), seconds: z.number().min(2).max(10).default(4.5), ...shotFields, props: z.custom<TypewriterProps>() }),
   z.object({ kind: z.literal('pinDrop'), seconds: z.number().min(3).max(10).default(5), ...shotFields, props: z.custom<PinDropProps>() }),
   z.object({ kind: z.literal('searchFind'), seconds: z.number().min(3).max(10).default(4.5), ...shotFields, props: z.custom<SearchFindProps>() }),
+  z.object({ kind: z.literal('progressRing'), seconds: z.number().min(3).max(8).default(4), ...shotFields, props: z.custom<ProgressRingProps>() }),
+  z.object({ kind: z.literal('versus'), seconds: z.number().min(3).max(8).default(4), ...shotFields, props: z.custom<VersusProps>() }),
+  z.object({ kind: z.literal('beforeAfter'), seconds: z.number().min(3).max(8).default(4), ...shotFields, props: z.custom<BeforeAfterProps>() }),
+  z.object({ kind: z.literal('scrollPage'), seconds: z.number().min(3).max(10).default(5), ...shotFields, props: z.custom<ScrollPageProps>() }),
+  z.object({ kind: z.literal('verticalCopy'), seconds: z.number().min(3).max(10).default(5), ...shotFields, props: z.custom<VerticalCopyProps>() }),
+  z.object({ kind: z.literal('goldLine'), seconds: z.number().min(2.5).max(8).default(3.5), ...shotFields, props: z.custom<GoldLineProps>() }),
 ]);
 export type MotionScene = z.infer<typeof motionSceneSchema>;
 
@@ -326,5 +339,18 @@ export const motionSample5: MotionReelProps = {
     },
     { kind: 'pinDrop', seconds: 5, props: { title: '東京に広がっています', count: 24, label: '店舗' } },
     { kind: 'flapBoard', seconds: 3.5, props: { label: 'NEW SHOP OPEN', lines: ['SHIBUYA', 'OPEN 11:00', '2026-12-01'] } },
+  ],
+};
+
+/** Sixth sample: a made-up ryokan (Shizuku), for progress ring, versus, before/after, scroll page, vertical copy and gold line. */
+export const motionSample6: MotionReelProps = {
+  lang: 'ja',
+  scenes: [
+    { kind: 'verticalCopy', seconds: 5, props: { lines: ['湯けむりの', '向こうに、', '静かな朝。'], seal: '雫' } },
+    { kind: 'scrollPage', seconds: 5, props: { site: 'shizuku-ryokan.jp', sections: [{ heading: '山あいの、八つの部屋' }, { heading: '源泉かけ流しの露天' }, { heading: '季節の会席' }, { heading: 'ご予約はこちら' }] } },
+    { kind: 'beforeAfter', seconds: 4, props: { before: { label: '電話予約', lines: ['営業時間だけ', '折り返しの電話', '空室を口で説明'] }, after: { label: 'Web予約', lines: ['24時間いつでも', 'その場で確定', '空室がひと目で'] } } },
+    { kind: 'versus', seconds: 4, props: { title: '予約にかかる時間', before: { label: '電話', value: 12, unit: '分' }, after: { label: 'Web', value: 1, unit: '分' }, verdict: '12分 → 1分' } },
+    { kind: 'progressRing', seconds: 4, props: { value: 96, label: 'また泊まりたい', sub: '宿泊者アンケート 2026' } },
+    { kind: 'goldLine', seconds: 3.5, props: { title: '宿 雫', sub: 'SHIZUKU' } },
   ],
 };
