@@ -31,7 +31,8 @@ export const FREE_TOKENS = Number(process.env.FREE_TOKENS ?? 10);
  * A unit costs a little more than the same tokens on any plan, so a plan stays the better deal.
  */
 export const PAYG_UNIT = Number(process.env.PAYG_UNIT ?? 1);
-export const PAYG_UNIT_YEN = Number(process.env.PAYG_UNIT_YEN ?? 200);
+// 60円 a token since 2026-11-03 (was 200円), so one AI film bought outright costs about 1,800円
+export const PAYG_UNIT_YEN = Number(process.env.PAYG_UNIT_YEN ?? 60);
 export const PAYG_MIN = Number(process.env.PAYG_MIN ?? 2);
 export const PAYG_MAX = Number(process.env.PAYG_MAX ?? 500);
 /** Tokens from a top-up that carries no token count (a Checkout started before pay as you go, or an in-app pack). */

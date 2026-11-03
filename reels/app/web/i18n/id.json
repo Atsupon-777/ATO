@@ -678,7 +678,6 @@
  "ライトモードにする": "Mode terang",
  "テロップの文字を入れる": "Ketik teks judul",
  "プレミアム編集": "Edit premium",
- "リールを1本作るときに使う単位です。ふつうの動画は5、自分の素材だけなら2、AI動画を入れると12使います。書き出しは1回1です。足りないときは、必要な分だけいつでも買い足せます。": "Satuan yang dipakai untuk membuat reel: 5 untuk video biasa, 2 bila hanya materi sendiri, 12 dengan video AI. Setiap ekspor 1. Jika kurang, isi ulang kapan saja.",
  "一覧": "Semua",
  "上にスワイプで次の案。気に入ったら「残す」、似た雰囲気は「似た案」、全部見比べるなら「一覧」。": "Geser ke atas untuk ide berikutnya. Ketuk Simpan jika suka, Mirip untuk gaya serupa, atau Semua untuk membandingkan.",
  "作り方を選んでください。": "Pilih cara membuatnya.",
@@ -692,7 +691,6 @@
  "字幕を選ぶ": "Pilih teks",
  "書き出し時に＋{0}トークン": "+{0} token saat ekspor",
  "案の一覧": "Semua ide",
- "消費トークン: 自分の素材だけ 2 ／ AI写真・エフェクト 5 ／ AI動画あり 12 ／ 書き出し 1": "Token: materi sendiri 2 / foto AI atau efek 5 / dengan video AI 12 / ekspor 1",
  "直せます。字幕・色・カットの演出を変えて、何度でも書き出し直せます。書き出しは1回につき1トークンです。": "Bisa. Ubah teks, warna, atau efek potongan lalu ekspor ulang sesering yang Anda mau. Setiap ekspor 1 token.",
  "色を選ぶ": "Pilih warna",
  "話している動画、お店や商品の動画から": "Dari video bicara, atau video toko atau produk Anda",
@@ -995,5 +993,7 @@
  "一度に出す字幕を短くしました": "Lebih sedikit teks di layar sekaligus",
  "字幕を個別に直しているため、区切りは変えていません": "Beberapa teks diedit manual, jadi pemisahnya tidak diubah",
  "初回の1本は短い版が無料": "Yang pertama gratis (versi pendek)",
- "「商品を魅せる」「体験を映画のように」の最初の1本は、短い版を0トークンで作れます。": "Video pertama \"Tonjolkan produk\" atau \"Film pengalaman\" gratis dalam versi pendek (0 token)."
+ "「商品を魅せる」「体験を映画のように」の最初の1本は、短い版を0トークンで作れます。": "Video pertama \"Tonjolkan produk\" atau \"Film pengalaman\" gratis dalam versi pendek (0 token).",
+ "リールを1本作るときに使う単位です。自分の素材だけなら2、話す動画に字幕やエフェクトを付けると3、モーショングラフィックスは4、AI動画のフィルムは30使います。書き出しは1回1です。足りないときは、必要な分だけいつでも買い足せます。": "Satuan untuk membuat satu reel: 2 jika hanya materi sendiri, 3 untuk menambah subtitle dan efek ke video bicara, 4 untuk motion graphics, 30 untuk film video AI. Setiap ekspor 1. Jika kurang, isi ulang kapan saja sesuai kebutuhan.",
+ "消費トークン: 自分の素材だけ 2 ／ 話す動画 3 ／ モーション 4 ／ AI写真 5 ／ AI動画フィルム 30 ／ 書き出し 1": "Token terpakai: materi sendiri 2 / video bicara 3 / motion 4 / foto AI 5 / film video AI 30 / ekspor 1"
 }

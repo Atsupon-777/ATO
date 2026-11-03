@@ -678,7 +678,6 @@
  "ライトモードにする": "Modo claro",
  "テロップの文字を入れる": "Escribe un rótulo",
  "プレミアム編集": "Edición premium",
- "リールを1本作るときに使う単位です。ふつうの動画は5、自分の素材だけなら2、AI動画を入れると12使います。書き出しは1回1です。足りないときは、必要な分だけいつでも買い足せます。": "La unidad que gastas al crear un reel: 5 para un vídeo normal, 2 solo con tu material y 12 con vídeo IA. Cada exportación cuesta 1. Si te faltan, recarga cuando quieras.",
  "一覧": "Todas",
  "上にスワイプで次の案。気に入ったら「残す」、似た雰囲気は「似た案」、全部見比べるなら「一覧」。": "Desliza hacia arriba para la siguiente. Toca Guardar si te gusta, Parecidas para más del estilo o Todas para compararlas.",
  "作り方を選んでください。": "Elige cómo crearlo.",
@@ -692,7 +691,6 @@
  "字幕を選ぶ": "Elige los subtítulos",
  "書き出し時に＋{0}トークン": "+{0} tokens al exportar",
  "案の一覧": "Todas las ideas",
- "消費トークン: 自分の素材だけ 2 ／ AI写真・エフェクト 5 ／ AI動画あり 12 ／ 書き出し 1": "Tokens: solo tu material 2 / foto IA o efectos 5 / con vídeo IA 12 / exportar 1",
  "直せます。字幕・色・カットの演出を変えて、何度でも書き出し直せます。書き出しは1回につき1トークンです。": "Sí. Cambia subtítulos, colores o efectos y vuelve a exportar cuantas veces quieras. Cada exportación cuesta 1 token.",
  "色を選ぶ": "Elige el color",
  "話している動画、お店や商品の動画から": "A partir de un vídeo hablando o de tu tienda o producto",
@@ -995,5 +993,7 @@
  "一度に出す字幕を短くしました": "Menos texto en pantalla a la vez",
  "字幕を個別に直しているため、区切りは変えていません": "Algunos subtítulos se editaron a mano, así que los cortes no se cambiaron",
  "初回の1本は短い版が無料": "El primero gratis (versión corta)",
- "「商品を魅せる」「体験を映画のように」の最初の1本は、短い版を0トークンで作れます。": "Tu primer vídeo de «Luce tu producto» o «Película de experiencia» es gratis en su versión corta (0 tokens)."
+ "「商品を魅せる」「体験を映画のように」の最初の1本は、短い版を0トークンで作れます。": "Tu primer vídeo de «Luce tu producto» o «Película de experiencia» es gratis en su versión corta (0 tokens).",
+ "リールを1本作るときに使う単位です。自分の素材だけなら2、話す動画に字幕やエフェクトを付けると3、モーショングラフィックスは4、AI動画のフィルムは30使います。書き出しは1回1です。足りないときは、必要な分だけいつでも買い足せます。": "La unidad para crear un reel: 2 solo con tu propio material, 3 para añadir subtítulos y efectos a un video hablado, 4 para motion graphics, 30 para una película de video con IA. Cada exportación cuesta 1. Si te faltan, recarga cuando quieras solo lo que necesites.",
+ "消費トークン: 自分の素材だけ 2 ／ 話す動画 3 ／ モーション 4 ／ AI写真 5 ／ AI動画フィルム 30 ／ 書き出し 1": "Tokens usados: solo material propio 2 / video hablado 3 / motion 4 / foto IA 5 / película de video IA 30 / exportar 1"
 }

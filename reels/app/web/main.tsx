@@ -359,9 +359,9 @@ const uploadFile = async (f: File) => {
   return j as { file: string; url: string };
 };
 
-// Tokens per reel, the same table as the server (A: own material 2, B: AI photo or effects 5, C: AI video 12).
+// Tokens per reel, the same table as the server's tokensFor (AI video film 30, motion graphics 4, talking video 3, own material 2).
 const tokensFor = (t: TemplateId, input: Record<string, any>) =>
-  t === 'ExperienceFilm' || t === 'PhotoAdFilm' ? 30 : t === 'ProductShine' ? (input.video ? 30 : 5) : t === 'EffectsReel' || t === 'FivePass' || t === 'SaaSPromo' || t === 'ServiceReel' ? 5 : 2;
+  t === 'ExperienceFilm' || t === 'PhotoAdFilm' ? 30 : t === 'ProductShine' ? (input.video ? 30 : 5) : t === 'SaaSPromo' || t === 'ServiceReel' ? 4 : t === 'EffectsReel' || t === 'FivePass' ? 3 : 2;
 /** Product ad films: an account's first one is free (the server's PRODUCT_AD). */
 const PRODUCT_AD = new Set<string>(['ProductShine', 'ExperienceFilm', 'PhotoAdFilm', 'PhotoAd']);
 /** Tokens to export a finished reel (each time), and extra for the premium edit (stickers, captions added by hand). */
@@ -5255,7 +5255,7 @@ const MIN_PER_REEL = Math.min(...PLANS.map(perReel));
 const perUnit = (p: { yen: number; tokens: number }, unit: number) => Math.round((p.yen / p.tokens) * unit);
 
 const FAQ = [
-  { q: tr("トークンとは？"), a: tr("リールを1本作るときに使う単位です。ふつうの動画は5、自分の素材だけなら2、AI動画を入れると12使います。書き出しは1回1です。足りないときは、必要な分だけいつでも買い足せます。") },
+  { q: tr("トークンとは？"), a: tr("リールを1本作るときに使う単位です。自分の素材だけなら2、話す動画に字幕やエフェクトを付けると3、モーショングラフィックスは4、AI動画のフィルムは30使います。書き出しは1回1です。足りないときは、必要な分だけいつでも買い足せます。") },
   { q: tr("同じテンプレートでも毎回ちがう動画になりますか？"), a: tr("はい。ミックスはカットごとにエフェクト・字幕・カメラ・切り替えを組み合わせるので、シャッフルするたびに別の組み合わせになります。") },
   { q: tr("書き出した動画は商用で使えますか？"), a: tr("使えます。インスタのリール、TikTok、YouTubeショート、広告にそのまま使える縦型MP4です。") },
   { q: tr("書き出した後でも直せますか？"), a: tr("直せます。字幕・色・カットの演出を変えて、何度でも書き出し直せます。書き出しは1回につき1トークンです。") },
@@ -5592,7 +5592,7 @@ const Account: React.FC<{ go: (h: string) => void }> = ({ go }) => {
         })}
       </div>
       {inStore ? <p className="cost">{tr("このプランはiPhoneのアプリで契約しています。変更・解約はiPhoneの「設定」→ Apple ID →「サブスクリプション」からできます。")}</p> : null}
-      <p className="cost">{tr("消費トークン: 自分の素材だけ 2 ／ AI写真・エフェクト 5 ／ AI動画あり 12 ／ 書き出し 1")}</p>
+      <p className="cost">{tr("消費トークン: 自分の素材だけ 2 ／ 話す動画 3 ／ モーション 4 ／ AI写真 5 ／ AI動画フィルム 30 ／ 書き出し 1")}</p>
       {billing && appConfig?.payg ? <PayAsYouGo payg={appConfig.payg} busy={busy} onBuy={(tokens) => open('topup', tokens)} /> : null}
       {billing && me?.subscribed ? (
         <div className="row" style={{ flexWrap: 'wrap', gap: 8, marginTop: 8 }}>
@@ -6110,7 +6110,7 @@ const StorePlans: React.FC<{ me: Me | null; onChanged: () => Promise<unknown> }>
         })}
       </div>
       {webPlan ? <p className="cost">{tr("このプランはアプリ以外で契約しています。")}</p> : null}
-      <p className="cost">{tr("消費トークン: 自分の素材だけ 2 ／ AI写真・エフェクト 5 ／ AI動画あり 12 ／ 書き出し 1")}</p>
+      <p className="cost">{tr("消費トークン: 自分の素材だけ 2 ／ 話す動画 3 ／ モーション 4 ／ AI写真 5 ／ AI動画フィルム 30 ／ 書き出し 1")}</p>
       <p className="cost">{tr("その月に使い切れなかったトークンは1年間持ち越せます。プランを変えても残りはそのままです。")}</p>
       <div className="row" style={{ flexWrap: 'wrap', gap: 8, marginTop: 8 }}>
         {products?.small ? (

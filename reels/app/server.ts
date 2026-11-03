@@ -107,7 +107,11 @@ const exportCost = (job: Job, hq = false) => EXPORT_TOKENS + (premiumDue(job) ? 
 /** Product ad films: an account's first one is free (accounts.ts freeFirstState). Names of templates still to come are listed too. */
 const PRODUCT_AD = new Set<string>(['ProductShine', 'ExperienceFilm', 'PhotoAdFilm', 'PhotoAd']);
 const AI_FILM_TOKENS = 30;
-const tokensFor = (t: Template, input: Record<string, any>) => (t === 'ExperienceFilm' || t === 'PhotoAdFilm' ? AI_FILM_TOKENS : t === 'ProductShine' ? (input.video ? AI_FILM_TOKENS : 5) : t === 'EffectsReel' || t === 'FivePass' || t === 'SaaSPromo' || t === 'ServiceReel' ? 5 : 2);
+// Token table agreed 2026-11-03 (1 token ≈ 50円 on a plan, each kind priced at 3x its cost or more):
+// AI video film 30, motion graphics (service / SaaS) 4, talking video with captions and effects 3, own material 2.
+const MOTION_TOKENS = 4;
+const FROM_VIDEO_TOKENS = 3;
+const tokensFor = (t: Template, input: Record<string, any>) => (t === 'ExperienceFilm' || t === 'PhotoAdFilm' ? AI_FILM_TOKENS : t === 'ProductShine' ? (input.video ? AI_FILM_TOKENS : 5) : t === 'SaaSPromo' || t === 'ServiceReel' ? MOTION_TOKENS : t === 'EffectsReel' || t === 'FivePass' ? FROM_VIDEO_TOKENS : 2);
 
 const jobs = new Map<string, Job>();
 
