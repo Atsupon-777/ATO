@@ -61,6 +61,13 @@ export const STYLE_FAMILY: Record<MotionSceneId, 'type' | 'data' | 'ui' | 'place
   text3d: 'type',
   clay: 'craft',
   handwriting: 'type',
+  accessGuide: 'place',
+  paperMap: 'place',
+  shopCard: 'brand',
+  ctaTap: 'brand',
+  lightLeak: 'photo',
+  analog: 'photo',
+  photoDive: 'photo',
 };
 
 /** How many of an account's recent reels count as "recent" when ranking styles. */

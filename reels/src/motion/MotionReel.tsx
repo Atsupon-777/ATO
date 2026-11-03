@@ -11,6 +11,7 @@ import { BrushText, Chalkboard, UkiyoWave, WashiSeal, Watercolor, Whiteboard, ty
 import { Photo25d, PhotoWall, Collage, Polaroids, TextMask, SplitScreen, type Photo25dProps, type PhotoWallProps, type CollageProps, type PolaroidsProps, type TextMaskProps, type SplitScreenProps } from './Batch8Scenes';
 import { Ingredients, PriceTag, SizeCompare, Colorways, Turntable, LogoShine, type IngredientsProps, type PriceTagProps, type SizeCompareProps, type ColorwaysProps, type TurntableProps, type LogoShineProps } from './Batch9Scenes';
 import { FloatIcons, Liquid, GlassCards, Text3d, Clay, Handwriting, type FloatIconsProps, type LiquidProps, type GlassCardsProps, type Text3dProps, type ClayProps, type HandwritingProps } from './Batch10Scenes';
+import { AccessGuide, PaperMap, ShopCard, CtaTap, LightLeak, Analog, PhotoDive, type AccessGuideProps, type PaperMapProps, type ShopCardProps, type CtaTapProps, type LightLeakProps, type AnalogProps, type PhotoDiveProps } from './Batch11Scenes';
 import { Headline, type HeadlineProps } from './Headline';
 import { InkWash, type InkWashProps } from './InkWash';
 import { GlobeZoom, MapRoute, type GlobeZoomProps, type MapRouteProps } from './MapScenes';
@@ -79,6 +80,13 @@ export const motionScenes = {
   text3d: Text3d as React.FC<any>,
   clay: Clay as React.FC<any>,
   handwriting: Handwriting as React.FC<any>,
+  accessGuide: AccessGuide as React.FC<any>,
+  paperMap: PaperMap as React.FC<any>,
+  shopCard: ShopCard as React.FC<any>,
+  ctaTap: CtaTap as React.FC<any>,
+  lightLeak: LightLeak as React.FC<any>,
+  analog: Analog as React.FC<any>,
+  photoDive: PhotoDive as React.FC<any>,
 } as const;
 export type MotionSceneId = keyof typeof motionScenes;
 export const motionSceneIds = Object.keys(motionScenes) as MotionSceneId[];
@@ -142,6 +150,13 @@ export const motionSceneSchema = z.discriminatedUnion('kind', [
   z.object({ kind: z.literal('text3d'), seconds: z.number().min(2.5).max(10).default(3.5), ...shotFields, props: z.custom<Text3dProps>() }),
   z.object({ kind: z.literal('clay'), seconds: z.number().min(2.5).max(10).default(3.5), ...shotFields, props: z.custom<ClayProps>() }),
   z.object({ kind: z.literal('handwriting'), seconds: z.number().min(2.5).max(10).default(4.5), ...shotFields, props: z.custom<HandwritingProps>() }),
+  z.object({ kind: z.literal('accessGuide'), seconds: z.number().min(2.5).max(10).default(5), ...shotFields, props: z.custom<AccessGuideProps>() }),
+  z.object({ kind: z.literal('paperMap'), seconds: z.number().min(2.5).max(10).default(5), ...shotFields, props: z.custom<PaperMapProps>() }),
+  z.object({ kind: z.literal('shopCard'), seconds: z.number().min(2.5).max(10).default(4), ...shotFields, props: z.custom<ShopCardProps>() }),
+  z.object({ kind: z.literal('ctaTap'), seconds: z.number().min(2.5).max(10).default(3), ...shotFields, props: z.custom<CtaTapProps>() }),
+  z.object({ kind: z.literal('lightLeak'), seconds: z.number().min(2.5).max(10).default(3.5), ...shotFields, props: z.custom<LightLeakProps>() }),
+  z.object({ kind: z.literal('analog'), seconds: z.number().min(2.5).max(10).default(3.5), ...shotFields, props: z.custom<AnalogProps>() }),
+  z.object({ kind: z.literal('photoDive'), seconds: z.number().min(2.5).max(10).default(5), ...shotFields, props: z.custom<PhotoDiveProps>() }),
 ]);
 export type MotionScene = z.infer<typeof motionSceneSchema>;
 
@@ -456,5 +471,19 @@ export const motionSample10: MotionReelProps = {
     { kind: 'liquid', seconds: 4.5, props: { title: 'とろける保湿', sub: 'Lumina ジェル' } },
     { kind: 'glassCards', seconds: 4.5, props: { title: '今月のお金', cards: [{ label: '残高', value: '¥482,300' }, { label: '今月の支出', value: '¥96,120' }, { label: '貯金ペース', value: '+12%' }] } },
     { kind: 'text3d', seconds: 3.5, props: { text: 'SALE', sub: '週末だけ 最大50%OFF' } },
+  ],
+};
+
+/** Eleventh sample: places and endings (a made-up cafe, Hinata). */
+export const motionSample11: MotionReelProps = {
+  lang: 'ja',
+  scenes: [
+    { kind: 'analog', seconds: 3.5, props: { image: 'samples/photos/cafe.jpg', title: 'あの頃の喫茶店', stamp: 'NOV. 3 1987' } },
+    { kind: 'photoDive', seconds: 5, props: { images: ['samples/photos/interior.jpg', 'samples/photos/matcha.jpg', 'samples/photos/cafe.jpg'], captions: ['静かな店内', '自家製の抹茶', '毎朝のラテ'] } },
+    { kind: 'lightLeak', seconds: 3.5, props: { image: 'samples/photos/florist.jpg', title: '窓辺の花も、季節ごとに' } },
+    { kind: 'paperMap', seconds: 5, props: { title: '散歩のついでに', spots: [{ x: 0.3, y: 0.3, name: '公園' }, { x: 0.62, y: 0.55, name: 'ひなた' }, { x: 0.45, y: 0.8, name: '川沿い' }] } },
+    { kind: 'accessGuide', seconds: 5, props: { station: '吉祥寺駅', exit: '北口', shop: '喫茶 ひなた', minutes: 6 } },
+    { kind: 'shopCard', seconds: 4, props: { name: '喫茶 ひなた', address: '東京都武蔵野市吉祥寺本町1-2-3', hours: '8:00〜19:00', closed: '水曜日', url: 'hinata-cafe.jp', photo: 'samples/photos/interior.jpg' } },
+    { kind: 'ctaTap', seconds: 3, props: { label: '席を予約する', note: '30秒で予約できます' } },
   ],
 };
