@@ -3,6 +3,7 @@
 import React from 'react';
 import { AbsoluteFill, useCurrentFrame, useVideoConfig } from 'remotion';
 import { fonts } from '../lib/fonts';
+import { useLook } from './theme';
 import { E, k, lin, mix, rand } from './kit';
 
 export type InkWashProps = {
@@ -40,10 +41,11 @@ const LAYERS = [
 export const InkWash: React.FC<InkWashProps> = (p) => {
   const f = useCurrentFrame();
   const { fps, durationInFrames: D } = useVideoConfig();
+  const L = useLook();
   const t = (s: number) => s * fps;
   const run = lin(f, 0, D);
   const sunRise = k(f, t(0.3), t(2.6), E.inOutCubic);
-  const sunColor = p.sun ?? '#d8342a';
+  const sunColor = p.sun ?? (L && L.accent.startsWith('#') ? L.accent : '#d8342a');
   const chars = [...p.title];
   const brushAt = (i: number) => t(1.0) + i * t(0.16);
   const sealAt = brushAt(chars.length) + t(0.35);

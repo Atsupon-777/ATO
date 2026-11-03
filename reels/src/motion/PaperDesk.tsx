@@ -4,6 +4,7 @@
 import React from 'react';
 import { AbsoluteFill, useCurrentFrame, useVideoConfig } from 'remotion';
 import { fonts } from '../lib/fonts';
+import { useLook } from './theme';
 import { E, k, lin, mix, rand, springX } from './kit';
 
 export type PaperDeskProps = {
@@ -25,8 +26,9 @@ const PENCIL = '#231c19';
 export const PaperDesk: React.FC<PaperDeskProps> = (p) => {
   const f = useCurrentFrame();
   const { fps, durationInFrames: D } = useVideoConfig();
+  const L = useLook();
   const t = (s: number) => s * fps;
-  const ink = p.ink ?? '#7b1f2d';
+  const ink = p.ink ?? L?.accent ?? '#7b1f2d';
   const settle = k(f, 0, t(0.9), E.outExpo);
   const sc = D / t(7.9); // the beats are timed for 7.9 s and scale to the scene length
   const T = (s: number) => t(s) * sc;
@@ -67,7 +69,7 @@ export const PaperDesk: React.FC<PaperDeskProps> = (p) => {
         {/* the printed note */}
         <div style={{ position: 'absolute', left: 70, top: 190, width: 940, height: 1000, background: PAPERC, borderRadius: 3, transform: 'rotate(-2.5deg)', boxShadow: '0 2px 3px rgba(0,0,0,.35), 0 26px 50px -10px rgba(0,0,0,.55)' }}>
           <div style={{ position: 'absolute', left: 60, top: 54, fontFamily: 'ui-monospace, Menlo, monospace', fontSize: 22, letterSpacing: '0.3em', color: 'rgba(35,28,25,.6)' }}>{p.kicker ?? 'FIELD NOTES · Nº 01'}</div>
-          <div style={{ position: 'absolute', left: 60, right: 60, top: 100, fontFamily: fonts.minchoJP, fontWeight: 800, fontSize: 60, lineHeight: 1.25, color: PENCIL, whiteSpace: 'pre-line' }}>{p.headline}</div>
+          <div style={{ position: 'absolute', left: 60, right: 60, top: 100, fontFamily: L?.head ?? fonts.minchoJP, fontWeight: 800, fontSize: 60, lineHeight: 1.25, color: PENCIL, whiteSpace: 'pre-line' }}>{p.headline}</div>
           <svg width={940} height={1000} style={{ position: 'absolute', inset: 0 }}>
             <line x1={120} y1={640} x2={850} y2={640} stroke={PENCIL} strokeOpacity={0.5} strokeWidth={2} />
             <line x1={120} y1={330} x2={120} y2={640} stroke={PENCIL} strokeOpacity={0.5} strokeWidth={2} />
@@ -114,7 +116,7 @@ export const PaperDesk: React.FC<PaperDeskProps> = (p) => {
           {loop >= 1 ? <path d="M672 1070 Q 720 1110 730 1170" fill="none" stroke={ink} strokeWidth={6} strokeLinecap="round" pathLength={1} strokeDasharray="1 1" strokeDashoffset={1 - k(f, T(4.38), T(4.58))} /> : null}
         </svg>
         {p.aside ? (
-          <div style={{ position: 'absolute', left: 690, top: 1180, fontFamily: fonts.minchoJP, fontSize: 56, color: ink, transform: 'rotate(-6deg)', clipPath: `inset(0 ${(1 - hand) * 100}% 0 0)`, fontWeight: 700 }}>
+          <div style={{ position: 'absolute', left: 690, top: 1180, fontFamily: '"Klee One", ' + fonts.minchoJP, fontSize: 56, color: L ? '#f3ede2' : ink, transform: 'rotate(-6deg)', clipPath: `inset(0 ${(1 - hand) * 100}% 0 0)`, fontWeight: 700 }}>
             {p.aside}
           </div>
         ) : null}

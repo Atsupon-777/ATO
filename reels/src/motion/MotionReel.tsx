@@ -9,6 +9,7 @@ import { InkWash, type InkWashProps } from './InkWash';
 import { PaperDesk, type PaperDeskProps } from './PaperDesk';
 import { StatChart, type StatChartProps } from './StatChart';
 import { Teardown, type TeardownProps } from './Teardown';
+import { MotionThemeContext, PACE, lookOf, motionThemeSchema } from './theme';
 import { ChatThread, LogoReveal, Pricing, Timeline, type ChatProps, type LogoRevealProps, type PricingProps, type TimelineProps } from './UiScenes';
 
 /** Every motion style the app can play, by id. Add a style here and in motionSceneSchema. */
@@ -43,20 +44,26 @@ export const motionReelSchema = z.object({
   scenes: z.array(motionSceneSchema).min(1).max(12),
   lang: z.string().optional(),
   music: z.string().optional(),
+  /** Tone and manner shared by every scene; unset keeps each scene's own look. */
+  theme: motionThemeSchema.optional(),
 });
 export type MotionReelProps = z.infer<typeof motionReelSchema>;
 
-export const motionReelFrames = (p: MotionReelProps, fps: number) => Math.round(p.scenes.reduce((a, s) => a + s.seconds, 0) * fps);
+const paceOf = (p: Pick<MotionReelProps, 'theme'>) => PACE[p.theme?.pace ?? 'normal'];
+export const motionReelFrames = (p: MotionReelProps, fps: number) => p.scenes.reduce((a, s) => a + Math.round(s.seconds * paceOf(p) * fps), 0);
 
-export const MotionReel: React.FC<MotionReelProps> = ({ scenes, lang, music }) => {
+export const MotionReel: React.FC<MotionReelProps> = ({ scenes, lang, music, theme }) => {
   loadFonts(JSON.stringify(scenes));
+  const look = theme ? lookOf(motionThemeSchema.parse(theme)) : null;
+  const pace = paceOf({ theme });
   let at = 0;
   return (
+    <MotionThemeContext.Provider value={look}>
     <AbsoluteFill style={{ background: '#000', ...cjkVars(lang) }}>
       {scenes.map((s, i) => {
         const C = motionScenes[s.kind];
         const from = at;
-        const len = Math.round(s.seconds * 30);
+        const len = Math.round(s.seconds * pace * 30);
         at += len;
         return (
           <Sequence key={i} from={from} durationInFrames={len}>
@@ -66,6 +73,7 @@ export const MotionReel: React.FC<MotionReelProps> = ({ scenes, lang, music }) =
       })}
       {music ? <Audio src={music} /> : null}
     </AbsoluteFill>
+    </MotionThemeContext.Provider>
   );
 };
 

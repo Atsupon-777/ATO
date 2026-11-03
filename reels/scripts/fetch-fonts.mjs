@@ -8,6 +8,9 @@ const FAMILIES = [
   'Shippori+Mincho:wght@500;800',
   'Cormorant+Garamond:ital,wght@0,500;0,600;1,500;1,600',
   'Plus+Jakarta+Sans:wght@600;800',
+  // motion-graphics tone and manner: 丸ゴシック and 手描き風 (src/motion/theme.ts)
+  'M+PLUS+Rounded+1c:wght@500;800',
+  'Klee+One:wght@600',
   // Chinese and Tamil captions/copy (the app and videos support ja, en, fr, id, zh, es, ta).
   'Noto+Sans+SC:wght@400;700;900',
   'Noto+Sans+Tamil:wght@400;700;900',
@@ -22,7 +25,8 @@ for (const fam of FAMILIES) {
   const urls = [...new Set(src.match(/https:\/\/fonts\.gstatic\.com\/[^)]+/g))];
   let local = src;
   for (const u of urls) {
-    const name = u.split('/').slice(-3).join('-');
+    // some faces come from /l/font?kit=…: keep the name a plain file name (no ? or =) so it is served as a file
+    const name = u.split('/').slice(-3).join('-').replace(/[?=&]/g, '_');
     get(u, `public/fonts/${name}`);
     local = local.replaceAll(u, `./${name}`);
   }

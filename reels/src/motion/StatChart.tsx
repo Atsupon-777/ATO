@@ -3,6 +3,7 @@
 import React from 'react';
 import { AbsoluteFill, useCurrentFrame, useVideoConfig } from 'remotion';
 import { fonts } from '../lib/fonts';
+import { useLook } from './theme';
 import { E, fmtNum, k, lin, mix, rand, springX } from './kit';
 
 export type StatChartProps = {
@@ -28,7 +29,9 @@ const PLOT = { x: 140, y: 1010, w: 800, h: 480 };
 export const StatChart: React.FC<StatChartProps> = (p) => {
   const f = useCurrentFrame();
   const { fps, durationInFrames: D } = useVideoConfig();
-  const gold = p.accent ?? '#ecd29c';
+  const L = useLook();
+  const INK = L?.ink ?? '#f6ead2', MUTED = L?.muted ?? 'rgba(246,234,210,.62)', BG = L?.bg ?? '#120a0d';
+  const gold = p.accent ?? L?.accent ?? '#ecd29c';
   const t = (s: number) => s * fps;
   // the count runs over the first ~60% of the scene, then the payoff and the sweep
   const runEnd = Math.min(D * 0.5, t(3.4));
@@ -66,7 +69,7 @@ export const StatChart: React.FC<StatChartProps> = (p) => {
   // the number and its unit share the width: about 0.62 em per digit or comma
   const size = Math.min(330, (900 - (p.unit ? 60 * [...p.unit].length : 0)) / (Math.max(3, label.length) * 0.6));
   return (
-    <AbsoluteFill style={{ background: 'radial-gradient(120% 70% at 50% 0%, #3a1520 0%, #120a0d 60%)', overflow: 'hidden' }}>
+    <AbsoluteFill style={{ background: L ? `radial-gradient(120% 70% at 50% 0%, ${L.surface} 0%, ${L.bg} 60%)` : 'radial-gradient(120% 70% at 50% 0%, #3a1520 0%, #120a0d 60%)', overflow: 'hidden' }}>
       <AbsoluteFill
         style={{
           transform: `translateY(${(1 - enter) * 260}px) scale(${(1.08 - 0.08 * enter) * push})`,
@@ -81,12 +84,12 @@ export const StatChart: React.FC<StatChartProps> = (p) => {
         ) : null}
         <div style={{ position: 'absolute', right: 90, top: 156, display: 'flex', gap: 30, fontFamily: 'ui-monospace, Menlo, monospace', fontSize: 22, letterSpacing: '0.14em' }}>
           {['WEEK', 'MONTH', 'ALL'].map((w) => (
-            <span key={w} style={{ color: w === 'ALL' ? '#f6ead2' : 'rgba(246,234,210,.35)', borderBottom: w === 'ALL' ? `3px solid ${gold}` : 'none', paddingBottom: 6 }}>
+            <span key={w} style={{ color: w === 'ALL' ? INK : MUTED, borderBottom: w === 'ALL' ? `3px solid ${gold}` : 'none', paddingBottom: 6 }}>
               {w}
             </span>
           ))}
         </div>
-        <div style={{ position: 'absolute', left: 90, top: 300, fontFamily: fonts.sansJP, fontWeight: 700, fontSize: 40, color: 'rgba(246,234,210,.62)' }}>{p.label}</div>
+        <div style={{ position: 'absolute', left: 90, top: 300, fontFamily: L?.body ?? fonts.sansJP, fontWeight: 700, fontSize: 40, color: MUTED }}>{p.label}</div>
         <div style={{ position: 'absolute', left: 80, top: 360, display: 'flex', alignItems: 'baseline', gap: 18, transform: `scale(${landKick})`, transformOrigin: 'left center' }}>
           <span
             style={{
@@ -96,7 +99,7 @@ export const StatChart: React.FC<StatChartProps> = (p) => {
               lineHeight: 1,
               letterSpacing: '-0.04em',
               fontVariantNumeric: 'tabular-nums',
-              backgroundImage: `linear-gradient(180deg, #fff8ea 10%, ${gold} 95%)`,
+              backgroundImage: `linear-gradient(180deg, ${L?.ink ?? '#fff8ea'} 10%, ${gold} 95%)`,
               WebkitBackgroundClip: 'text',
               color: 'transparent',
             }}
@@ -106,7 +109,7 @@ export const StatChart: React.FC<StatChartProps> = (p) => {
           {p.unit ? <span style={{ fontFamily: 'ui-monospace, Menlo, monospace', fontSize: 48, color: gold }}>{p.unit}</span> : null}
         </div>
         {p.subtitle ? (
-          <div style={{ position: 'absolute', left: 90, right: 90, top: 760, fontFamily: fonts.sansJP, fontWeight: 700, fontSize: 44, lineHeight: 1.35, color: '#f6ead2' }}>
+          <div style={{ position: 'absolute', left: 90, right: 90, top: 760, fontFamily: L?.head ?? fonts.sansJP, fontWeight: 700, fontSize: 44, lineHeight: 1.35, color: INK }}>
             {[...p.subtitle].map((ch, i, all) => (
               <span key={i} style={{ opacity: lin(f, t(0.5) + (i / all.length) * (runEnd - t(0.6)), t(0.5) + (i / all.length) * (runEnd - t(0.6)) + 4) }}>
                 {ch}
@@ -144,9 +147,9 @@ export const StatChart: React.FC<StatChartProps> = (p) => {
             const cx = X(m.at), cy = Y(shape(m.at));
             return (
               <g key={i} opacity={Math.min(1, passed * 3)} transform={`translate(${cx} ${cy}) scale(${s}) translate(${-cx} ${-cy})`}>
-                <circle cx={cx} cy={cy} r="22" fill="#120a0d" stroke={gold} strokeWidth="4" />
+                <circle cx={cx} cy={cy} r="22" fill={BG} stroke={gold} strokeWidth="4" />
                 <circle cx={cx} cy={cy} r="8" fill={gold} />
-                <text x={cx} y={cy - 40} textAnchor="middle" fontFamily={fonts.sansJP} fontWeight="700" fontSize="28" fill="#f6ead2">
+                <text x={cx} y={cy - 40} textAnchor="middle" fontFamily={fonts.sansJP} fontWeight="700" fontSize="28" fill={INK}>
                   {m.label}
                 </text>
               </g>
@@ -173,8 +176,8 @@ export const StatChart: React.FC<StatChartProps> = (p) => {
                 padding: '16px 34px',
                 borderRadius: 999,
                 background: `linear-gradient(180deg, #fff3d6, ${gold})`,
-                color: '#1d0d12',
-                fontFamily: fonts.sansJP,
+                color: L?.onAccent ?? '#1d0d12',
+                fontFamily: L?.head ?? fonts.sansJP,
                 fontWeight: 900,
                 fontSize: 38,
                 whiteSpace: 'nowrap',
@@ -186,13 +189,13 @@ export const StatChart: React.FC<StatChartProps> = (p) => {
           </div>
         ) : null}
       </AbsoluteFill>
-      {sweep > 0 ? <DotSweep progress={sweep} ox={X(tip[0])} oy={Y(tip[1])} color={gold} /> : null}
+      {sweep > 0 ? <DotSweep progress={sweep} ox={X(tip[0])} oy={Y(tip[1])} color={gold} dark={BG} /> : null}
     </AbsoluteFill>
   );
 };
 
 /** The exit: a dot matrix grows out of the chart tip until it fills the frame. */
-const DotSweep: React.FC<{ progress: number; ox: number; oy: number; color: string }> = ({ progress, ox, oy, color }) => {
+const DotSweep: React.FC<{ progress: number; ox: number; oy: number; color: string; dark: string }> = ({ progress, ox, oy, color, dark }) => {
   const pitch = 27;
   const dots: React.ReactNode[] = [];
   const maxD = Math.hypot(1080, 1920);
@@ -201,7 +204,7 @@ const DotSweep: React.FC<{ progress: number; ox: number; oy: number; color: stri
       const d = Math.hypot(x - ox, y - oy) / maxD;
       const local = Math.min(1, Math.max(0, (progress * 1.6 - d) * 2.2 + rand(x * 7 + y) * 0.08));
       if (local <= 0) continue;
-      dots.push(<circle key={`${x}-${y}`} cx={x} cy={y} r={2 + local * pitch * 0.62} fill={local > 0.7 ? '#120a0d' : color} opacity={0.9} />);
+      dots.push(<circle key={`${x}-${y}`} cx={x} cy={y} r={2 + local * pitch * 0.62} fill={local > 0.7 ? dark : color} opacity={0.9} />);
     }
   return (
     <svg width={1080} height={1920} style={{ position: 'absolute', inset: 0 }}>

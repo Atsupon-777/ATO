@@ -3,6 +3,7 @@
 import React from 'react';
 import { AbsoluteFill, useCurrentFrame, useVideoConfig } from 'remotion';
 import { fonts } from '../lib/fonts';
+import { useLook } from './theme';
 import { E, k, lin, mix, rand } from './kit';
 
 export type HeadlineProps = {
@@ -24,8 +25,9 @@ const INK = '#1b1a17';
 export const Headline: React.FC<HeadlineProps> = (p) => {
   const f = useCurrentFrame();
   const { fps, durationInFrames: D } = useVideoConfig();
+  const L = useLook();
   const t = (s: number) => s * fps;
-  const marker = p.accent ?? '#e9ff52';
+  const marker = p.accent ?? L?.accent ?? '#e9ff52';
   const swing = k(f, 0, t(0.9), E.outExpo);
   const drift = lin(f, 0, D);
   const lines = p.headline.split('\n').length > 1 ? p.headline.split('\n') : wrap(p.headline, /[぀-鿿]/.test(p.headline) ? 11 : 22);
@@ -40,7 +42,7 @@ export const Headline: React.FC<HeadlineProps> = (p) => {
   const longest = Math.max(...lines.map((l) => [...l].reduce((n, ch) => n + (/[　-鿿＀-￯]/.test(ch) ? 1.02 : 0.5), 0)));
   const headSize = Math.min(cjk ? 72 : 80, 780 / Math.max(1, longest));
   return (
-    <AbsoluteFill style={{ background: '#121110', overflow: 'hidden' }}>
+    <AbsoluteFill style={{ background: L?.bg ?? '#121110', overflow: 'hidden' }}>
       {/* the stack of papers behind, out of focus */}
       {[0, 1, 2, 3, 4, 5].map((i) => (
         <div
@@ -84,7 +86,7 @@ export const Headline: React.FC<HeadlineProps> = (p) => {
           {p.kicker ? (
             <div style={{ fontFamily: fonts.sansJP, fontWeight: 700, fontSize: 24, color: '#b2351f', letterSpacing: '0.12em', marginBottom: 14, opacity: lin(f, t(0.35), t(0.6)) }}>{p.kicker}</div>
           ) : null}
-          <div style={{ fontFamily: cjk ? fonts.minchoJP : fonts.serif, fontWeight: cjk ? 800 : 600, fontSize: headSize, lineHeight: 1.12, letterSpacing: cjk ? '0.02em' : '-0.015em', whiteSpace: 'nowrap' }}>
+          <div style={{ fontFamily: L && L.head !== fonts.sansJP ? L.head : cjk ? fonts.minchoJP : fonts.serif, fontWeight: cjk ? 800 : 600, fontSize: headSize, lineHeight: 1.12, letterSpacing: cjk ? '0.02em' : '-0.015em', whiteSpace: 'nowrap' }}>
             {lines.map((l, i) => {
               const a = k(f, headAt(i), headAt(i) + t(0.4), E.outExpo);
               return (

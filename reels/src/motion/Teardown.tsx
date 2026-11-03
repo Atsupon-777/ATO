@@ -4,6 +4,7 @@
 import React from 'react';
 import { AbsoluteFill, Img, useCurrentFrame, useVideoConfig } from 'remotion';
 import { fonts } from '../lib/fonts';
+import { useLook } from './theme';
 import { E, k, lin, mix, springX } from './kit';
 
 export type TeardownProps = {
@@ -17,8 +18,9 @@ const LW = 470, LH = 1016;
 export const Teardown: React.FC<TeardownProps> = (p) => {
   const f = useCurrentFrame();
   const { fps, durationInFrames: D } = useVideoConfig();
+  const L = useLook();
   const t = (s: number) => s * fps;
-  const gold = p.accent ?? '#e6cb92';
+  const gold = p.accent ?? L?.accent ?? '#e6cb92';
   const layers = p.layers.slice(0, 4);
   const n = layers.length;
   const tilt = k(f, 0, t(0.9), E.inOutCubic);
@@ -36,8 +38,8 @@ export const Teardown: React.FC<TeardownProps> = (p) => {
     return k(f, a - 2, a + t(0.3)) * (1 - k(f, b - t(0.1), b + t(0.2)));
   };
   return (
-    <AbsoluteFill style={{ background: 'radial-gradient(90% 60% at 50% 45%, #2b141b 0%, #1b0e12 55%, #0c0709 100%)', overflow: 'hidden' }}>
-      <div style={{ position: 'absolute', top: 150, width: '100%', textAlign: 'center', fontFamily: 'ui-monospace, Menlo, monospace', fontSize: 24, letterSpacing: '0.32em', color: 'rgba(246,234,210,.5)', opacity: 1 - dive }}>
+    <AbsoluteFill style={{ background: L ? `radial-gradient(90% 60% at 50% 45%, ${L.surface} 0%, ${L.bg} 70%)` : 'radial-gradient(90% 60% at 50% 45%, #2b141b 0%, #1b0e12 55%, #0c0709 100%)', overflow: 'hidden' }}>
+      <div style={{ position: 'absolute', top: 150, width: '100%', textAlign: 'center', fontFamily: 'ui-monospace, Menlo, monospace', fontSize: 24, letterSpacing: '0.32em', color: L?.muted ?? 'rgba(246,234,210,.5)', opacity: 1 - dive }}>
         {p.name.toUpperCase()} — TEARDOWN
       </div>
       <AbsoluteFill style={{ perspective: 2600, filter: `blur(${dive * 14}px)`, opacity: 1 - dive }}>
@@ -53,7 +55,7 @@ export const Teardown: React.FC<TeardownProps> = (p) => {
           }}
         >
           {/* the device itself, at the bottom of the stack */}
-          <div style={{ position: 'absolute', inset: -14, borderRadius: 84, background: '#3a1c24', boxShadow: `inset 0 0 0 2px rgba(230,203,146,.35)` }} />
+          <div style={{ position: 'absolute', inset: -14, borderRadius: 84, background: L?.surface ?? '#3a1c24', boxShadow: `inset 0 0 0 2px rgba(230,203,146,.35)` }} />
           {layers.map((l, i) => {
             const rise = springX(lin(f, t(0.4) + t(0.1) * i, t(1.45) + t(0.1) * i), 0.9, 6.5) * (1 - collapse);
             const act = activeOf(i);
@@ -67,8 +69,9 @@ export const Teardown: React.FC<TeardownProps> = (p) => {
                   borderRadius: 66,
                   overflow: 'hidden',
                   transform: `translateZ(${z}px)`,
-                  opacity: i === n - 1 ? 1 : Math.min(1, rise * 2 + collapse),
-                  filter: `brightness(${mix(0.45, 1, Math.max(act, i === n - 1 && rise < 0.05 ? 1 : 0))})`,
+                  opacity: (i === n - 1 ? 1 : Math.min(1, rise * 2 + collapse)) * (L && !L.dark ? mix(0.55, 1, act) : 1),
+                  // on a light theme dimming reads as dirt, so the resting layers fade instead of darkening
+                  filter: L && !L.dark ? 'none' : `brightness(${mix(0.45, 1, Math.max(act, i === n - 1 && rise < 0.05 ? 1 : 0))})`,
                   boxShadow: `0 0 0 2px rgba(230,203,146,.45)${act > 0 ? `, 0 0 0 ${3 * act}px ${gold}, 0 0 ${70 * act}px ${10 * act}px rgba(230,203,146,.35)` : ''}`,
                   background: l.image ? '#000' : `linear-gradient(160deg, #fbf6ec 0%, #efe3cc 100%)`,
                 }}
@@ -108,8 +111,8 @@ export const Teardown: React.FC<TeardownProps> = (p) => {
             }}
           >
             <div style={{ fontFamily: 'ui-monospace, Menlo, monospace', fontSize: 22, color: gold }}>0{i + 1} ——</div>
-            <div style={{ fontFamily: fonts.sansJP, fontWeight: 900, fontSize: 54, color: '#f6ead2', lineHeight: 1.15, marginTop: 6 }}>{l.title}</div>
-            {l.text ? <div style={{ fontFamily: fonts.sansJP, fontSize: 28, color: 'rgba(246,234,210,.6)', marginTop: 8, lineHeight: 1.4 }}>{l.text}</div> : null}
+            <div style={{ fontFamily: L?.head ?? fonts.sansJP, fontWeight: 900, fontSize: 54, color: L?.ink ?? '#f6ead2', lineHeight: 1.15, marginTop: 6 }}>{l.title}</div>
+            {l.text ? <div style={{ fontFamily: fonts.sansJP, fontSize: 28, color: L?.muted ?? 'rgba(246,234,210,.6)', marginTop: 8, lineHeight: 1.4 }}>{l.text}</div> : null}
           </div>
         );
       })}
