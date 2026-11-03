@@ -4,6 +4,7 @@ import React from 'react';
 import { AbsoluteFill, Audio, Sequence } from 'remotion';
 import { z } from 'zod';
 import { cjkVars, loadFonts } from '../lib/fonts';
+import { Bars3d, CompareTable, KineticType, PhoneStack, ReviewStars, type Bars3dProps, type CompareTableProps, type KineticTypeProps, type PhoneStackProps, type ReviewStarsProps } from './Batch4Scenes';
 import { Headline, type HeadlineProps } from './Headline';
 import { InkWash, type InkWashProps } from './InkWash';
 import { GlobeZoom, MapRoute, type GlobeZoomProps, type MapRouteProps } from './MapScenes';
@@ -31,6 +32,11 @@ export const motionScenes = {
   cursorDemo: CursorDemo as React.FC<any>,
   kpiTiles: KpiTiles as React.FC<any>,
   logoLine: LogoLine as React.FC<any>,
+  kineticType: KineticType as React.FC<any>,
+  reviewStars: ReviewStars as React.FC<any>,
+  compareTable: CompareTable as React.FC<any>,
+  phoneStack: PhoneStack as React.FC<any>,
+  bars3d: Bars3d as React.FC<any>,
 } as const;
 export type MotionSceneId = keyof typeof motionScenes;
 export const motionSceneIds = Object.keys(motionScenes) as MotionSceneId[];
@@ -53,6 +59,11 @@ export const motionSceneSchema = z.discriminatedUnion('kind', [
   z.object({ kind: z.literal('cursorDemo'), seconds: z.number().min(3).max(12).default(6), ...shotFields, props: z.custom<CursorDemoProps>() }),
   z.object({ kind: z.literal('kpiTiles'), seconds: z.number().min(2).max(10).default(4), ...shotFields, props: z.custom<KpiTilesProps>() }),
   z.object({ kind: z.literal('logoLine'), seconds: z.number().min(2).max(8).default(3), ...shotFields, props: z.custom<LogoLineProps>() }),
+  z.object({ kind: z.literal('kineticType'), seconds: z.number().min(1.5).max(8).default(3), ...shotFields, props: z.custom<KineticTypeProps>() }),
+  z.object({ kind: z.literal('reviewStars'), seconds: z.number().min(3).max(10).default(5), ...shotFields, props: z.custom<ReviewStarsProps>() }),
+  z.object({ kind: z.literal('compareTable'), seconds: z.number().min(3).max(10).default(5), ...shotFields, props: z.custom<CompareTableProps>() }),
+  z.object({ kind: z.literal('phoneStack'), seconds: z.number().min(3).max(10).default(6), ...shotFields, props: z.custom<PhoneStackProps>() }),
+  z.object({ kind: z.literal('bars3d'), seconds: z.number().min(3).max(10).default(4.5), ...shotFields, props: z.custom<Bars3dProps>() }),
 ]);
 export type MotionScene = z.infer<typeof motionSceneSchema>;
 
@@ -234,5 +245,44 @@ export const motionSample3: MotionReelProps = {
       },
     },
     { kind: 'logoLine', seconds: 3, props: { name: 'TSUMUGI', tagline: 'つむぎ珈琲' } },
+  ],
+};
+
+/** Fourth sample: a made-up fitness app (Kumo Fit), for kinetic type, reviews, comparison, phones and 3D bars. */
+export const motionSample4: MotionReelProps = {
+  lang: 'ja',
+  scenes: [
+    { kind: 'kineticType', seconds: 2.6, props: { words: ['ジム、', '続かない？', '家で5分。'] } },
+    {
+      kind: 'phoneStack',
+      seconds: 6,
+      props: { screens: [{ caption: '今日のメニューが届く' }, { caption: '動画を見ながら5分' }, { caption: '続いた日が見える' }] },
+    },
+    {
+      kind: 'compareTable',
+      seconds: 5,
+      props: {
+        title: 'ジムとくらべて',
+        us: 'Kumo Fit',
+        them: 'ジム',
+        rows: [
+          { label: '月額', us: '980円', them: '8,000円' },
+          { label: '移動時間', us: '0分', them: '30分' },
+          { label: '24時間いつでも', us: true, them: false },
+          { label: '専属コーチ', us: true, them: true },
+        ],
+      },
+    },
+    {
+      kind: 'bars3d',
+      seconds: 4.5,
+      props: { title: '続いた人の数', unit: '人', bars: [{ label: '1月', value: 1200 }, { label: '3月', value: 2600 }, { label: '5月', value: 4100 }, { label: '7月', value: 7800 }] },
+    },
+    {
+      kind: 'reviewStars',
+      seconds: 5,
+      props: { rating: 4.8, source: 'App Store', count: '2,300件', quotes: [{ text: '朝の5分が習慣になりました', who: '30代・会社員' }, { text: 'ジムより続いてます', who: '40代・主婦' }] },
+    },
+    { kind: 'logoReveal', seconds: 3.5, props: { name: 'Kumo Fit', tagline: '家で、5分だけ。', cta: '7日間無料' } },
   ],
 };
