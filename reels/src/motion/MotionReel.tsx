@@ -9,6 +9,7 @@ import { Donut, FlapBoard, PinDrop, RankingRace, SearchFind, Typewriter, type Do
 import { BeforeAfter, GoldLine, ProgressRing, ScrollPage, Versus, VerticalCopy, type BeforeAfterProps, type GoldLineProps, type ProgressRingProps, type ScrollPageProps, type VersusProps, type VerticalCopyProps } from './Batch6Scenes';
 import { BrushText, Chalkboard, UkiyoWave, WashiSeal, Watercolor, Whiteboard, type BrushTextProps, type ChalkboardProps, type UkiyoWaveProps, type WashiSealProps, type WatercolorProps, type WhiteboardProps } from './Batch7Scenes';
 import { Photo25d, PhotoWall, Collage, Polaroids, TextMask, SplitScreen, type Photo25dProps, type PhotoWallProps, type CollageProps, type PolaroidsProps, type TextMaskProps, type SplitScreenProps } from './Batch8Scenes';
+import { Ingredients, PriceTag, SizeCompare, Colorways, Turntable, LogoShine, type IngredientsProps, type PriceTagProps, type SizeCompareProps, type ColorwaysProps, type TurntableProps, type LogoShineProps } from './Batch9Scenes';
 import { Headline, type HeadlineProps } from './Headline';
 import { InkWash, type InkWashProps } from './InkWash';
 import { GlobeZoom, MapRoute, type GlobeZoomProps, type MapRouteProps } from './MapScenes';
@@ -65,6 +66,12 @@ export const motionScenes = {
   polaroids: Polaroids as React.FC<any>,
   textMask: TextMask as React.FC<any>,
   splitScreen: SplitScreen as React.FC<any>,
+  ingredients: Ingredients as React.FC<any>,
+  priceTag: PriceTag as React.FC<any>,
+  sizeCompare: SizeCompare as React.FC<any>,
+  colorways: Colorways as React.FC<any>,
+  turntable: Turntable as React.FC<any>,
+  logoShine: LogoShine as React.FC<any>,
 } as const;
 export type MotionSceneId = keyof typeof motionScenes;
 export const motionSceneIds = Object.keys(motionScenes) as MotionSceneId[];
@@ -116,6 +123,12 @@ export const motionSceneSchema = z.discriminatedUnion('kind', [
   z.object({ kind: z.literal('polaroids'), seconds: z.number().min(2.5).max(10).default(5.5), ...shotFields, props: z.custom<PolaroidsProps>() }),
   z.object({ kind: z.literal('textMask'), seconds: z.number().min(2.5).max(10).default(4), ...shotFields, props: z.custom<TextMaskProps>() }),
   z.object({ kind: z.literal('splitScreen'), seconds: z.number().min(2.5).max(10).default(4), ...shotFields, props: z.custom<SplitScreenProps>() }),
+  z.object({ kind: z.literal('ingredients'), seconds: z.number().min(2.5).max(10).default(6), ...shotFields, props: z.custom<IngredientsProps>() }),
+  z.object({ kind: z.literal('priceTag'), seconds: z.number().min(2.5).max(10).default(4), ...shotFields, props: z.custom<PriceTagProps>() }),
+  z.object({ kind: z.literal('sizeCompare'), seconds: z.number().min(2.5).max(10).default(4), ...shotFields, props: z.custom<SizeCompareProps>() }),
+  z.object({ kind: z.literal('colorways'), seconds: z.number().min(2.5).max(10).default(5), ...shotFields, props: z.custom<ColorwaysProps>() }),
+  z.object({ kind: z.literal('turntable'), seconds: z.number().min(2.5).max(10).default(4.5), ...shotFields, props: z.custom<TurntableProps>() }),
+  z.object({ kind: z.literal('logoShine'), seconds: z.number().min(2.5).max(10).default(3.5), ...shotFields, props: z.custom<LogoShineProps>() }),
 ]);
 export type MotionScene = z.infer<typeof motionSceneSchema>;
 
@@ -404,5 +417,18 @@ export const motionSample8: MotionReelProps = {
     { kind: 'collage', seconds: 5, props: { images: ['samples/photos/fashion.jpg', 'samples/photos/sneaker.jpg', 'samples/photos/interior.jpg', 'samples/photos/cat.jpg'], words: ['自由', 'に', '旅'] } },
     { kind: 'splitScreen', seconds: 4, props: { panels: [{ image: 'samples/photos/travel.jpg', label: '見る' }, { image: 'samples/photos/ramen.jpg', label: '食べる' }, { image: 'samples/photos/interior.jpg', label: '泊まる' }] } },
     { kind: 'photoWall', seconds: 4.5, props: { images: ['samples/photos/travel.jpg', 'samples/photos/cafe.jpg', 'samples/photos/matcha.jpg', 'samples/photos/sushi.jpg', 'samples/photos/florist.jpg', 'samples/photos/ramen.jpg', 'samples/photos/interior.jpg', 'samples/photos/fashion.jpg', 'samples/photos/cat.jpg', 'samples/photos/puppy.jpg'], title: 'あなたの次の週末へ' } },
+  ],
+};
+
+/** Ninth sample: product styles (a made-up watch brand, Hikari, and the Lumina serum). */
+export const motionSample9: MotionReelProps = {
+  lang: 'ja',
+  scenes: [
+    { kind: 'turntable', seconds: 4.5, props: { product: 'samples/watch-cutout.png', cutout: true, name: 'HIKARI 38', sub: 'AUTOMATIC' } },
+    { kind: 'ingredients', seconds: 6, props: { product: 'samples/photos/serum.jpg', name: 'Lumina 美容液', points: [{ title: '京都の水', text: '伏見の軟水を使用' }, { title: 'ビタミンC', text: '朝の肌にハリ' }, { title: '無香料', text: '敏感肌にも' }, { title: '30mL', text: '約2か月分' }] } },
+    { kind: 'sizeCompare', seconds: 4, props: { product: 'samples/watch-cutout.png', cutout: true, heightCm: 11.5, label: '手のひらサイズ' } },
+    { kind: 'colorways', seconds: 5, props: { product: 'samples/photos/sneaker.jpg', name: '全4色', colors: [{ name: 'ホワイト', swatch: '#e9e6e0', hue: 0 }, { name: 'サンセット', swatch: '#ff7a3d', hue: 40 }, { name: 'ミント', swatch: '#5ed1b0', hue: 140 }, { name: 'ラベンダー', swatch: '#a68cff', hue: 240 }] } },
+    { kind: 'priceTag', seconds: 4, props: { product: 'samples/photos/sneaker.jpg', label: '週末だけの', before: '12,800円', price: '8,980円', badge: '30%\nOFF', until: '11月10日まで' } },
+    { kind: 'logoShine', seconds: 3.5, props: { name: 'HIKARI', tagline: '時を、身につける' } },
   ],
 };

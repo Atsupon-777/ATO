@@ -1,6 +1,6 @@
 import React from 'react';
 import { Composition } from 'remotion';
-import { MotionReel, motionReelFrames, motionReelSchema, motionSample, motionSample2, motionSample3, motionSample4, motionSample5, motionSample6, motionSample7, motionSample8 } from './motion/MotionReel';
+import { MotionReel, motionReelFrames, motionReelSchema, motionSample, motionSample2, motionSample3, motionSample4, motionSample5, motionSample6, motionSample7, motionSample8, motionSample9 } from './motion/MotionReel';
 import { FPS, beatFrames } from './lib/timing';
 import { ProductShine, productShineFrames } from './templates/ProductShine';
 import {
@@ -154,6 +154,17 @@ export const RemotionRoot: React.FC = () => (
       width={1080}
       height={1920}
       durationInFrames={motionReelFrames(motionSample8, FPS)}
+      calculateMetadata={({ props }) => ({ durationInFrames: motionReelFrames(props, FPS) })}
+    />
+    <Composition
+      id="MotionReel9"
+      component={MotionReel}
+      schema={motionReelSchema}
+      defaultProps={motionSample9}
+      fps={FPS}
+      width={1080}
+      height={1920}
+      durationInFrames={motionReelFrames(motionSample9, FPS)}
       calculateMetadata={({ props }) => ({ durationInFrames: motionReelFrames(props, FPS) })}
     />
     <Composition

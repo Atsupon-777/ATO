@@ -49,6 +49,12 @@ export const STYLE_FAMILY: Record<MotionSceneId, 'type' | 'data' | 'ui' | 'place
   polaroids: 'photo',
   textMask: 'type',
   splitScreen: 'photo',
+  ingredients: 'product',
+  priceTag: 'product',
+  sizeCompare: 'product',
+  colorways: 'product',
+  turntable: 'product',
+  logoShine: 'brand',
 };
 
 /** How many of an account's recent reels count as "recent" when ranking styles. */
