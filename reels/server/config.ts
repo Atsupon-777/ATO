@@ -25,6 +25,13 @@ export const prices = {
   } as Record<string, Record<string, number>>,
   /** Gemini Omni video: per million tokens (video output ≈ 5,792 tokens per second of 720p), and per second as a fallback */
   omni: { input: 1.5, videoOut: 17.5, perSecond: { '720p': 0.1014, '1080p': 0.152 } as Record<string, number> },
+  /** Higgsfield image-to-video, USD per second with sound off, after the 15% API discount (estimate endpoint, 2026-11-03).
+   *  The ledger uses the live estimate per clip; these are the fallback. Seedance is billed by pixels × seconds. */
+  higgsfield: {
+    kling: 0.0715,
+    'kling-pro': 0.0952,
+    seedance: { '480p': 0.2056, '720p': 0.4622, '1080p': 1.1372 } as Record<string, number>,
+  },
   /** per music clip (estimate) */
   music: Number(env('REELS_MUSIC_PRICE', '0.04')),
   /** per million tokens, input / output (estimate for the default text model) */

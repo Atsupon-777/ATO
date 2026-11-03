@@ -28,6 +28,10 @@ SECRETS="GEMINI_API_KEY=GEMINI_API_KEY:latest,STRIPE_SECRET_KEY=STRIPE_SECRET_KE
 if gcloud secrets describe REVENUECAT_WEBHOOK_AUTH >/dev/null 2>&1; then
   SECRETS="$SECRETS,REVENUECAT_WEBHOOK_AUTH=REVENUECAT_WEBHOOK_AUTH:latest"
 fi
+# Higgsfield video (VIDEO_PROVIDER=kling etc.): only once the API key is in Secret Manager.
+if gcloud secrets describe HIGGSFIELD_API_KEY >/dev/null 2>&1; then
+  SECRETS="$SECRETS,HIGGSFIELD_API_KEY=HIGGSFIELD_API_KEY:latest"
+fi
 for s in $(echo "$SECRETS" | tr ',' '\n' | cut -d= -f1); do
   gcloud secrets add-iam-policy-binding "$s" --member "serviceAccount:$SA" --role roles/secretmanager.secretAccessor >/dev/null
 done
