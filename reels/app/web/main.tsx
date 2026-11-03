@@ -4873,7 +4873,9 @@ const Start: React.FC<{ go: (h: string) => void }> = ({ go }) => {
       setBusy(false);
     }
   };
-  const [open, setOpen] = useState<string | null>(goal === 'talk' ? 'video' : null);
+  // 動画から作る (#/video) opens straight on the upload; the old #/start keeps all three ways.
+  const onlyVideo = location.hash.startsWith('#/video');
+  const [open, setOpen] = useState<string | null>(goal === 'talk' || onlyVideo ? 'video' : null);
   const fold = (id: string, title: string, note: string, body: React.ReactNode) => (
     <section className={`fold ${open === id ? 'open' : ''}`}>
       <button className="foldhead" aria-expanded={open === id} onClick={() => setOpen(open === id ? null : id)}>
@@ -4888,8 +4890,13 @@ const Start: React.FC<{ go: (h: string) => void }> = ({ go }) => {
   );
   return (
     <div className="start">
-      <h1>{tr("動画を作る")}</h1>
-      <p className="sub">{tr("作り方を選んでください。")}</p>
+      {onlyVideo ? (
+        <button className="linkbtn back" onClick={() => go('#/')}>
+          <Glyph d="M15 5l-7 7 7 7" size={16} /> {tr("作る")}
+        </button>
+      ) : null}
+      <h1>{onlyVideo ? tr("動画から作る") : tr("動画を作る")}</h1>
+      <p className="sub">{onlyVideo ? tr("撮った動画を1本。字幕とテロップの案をAIが作ります。") : tr("作り方を選んでください。")}</p>
       {fold(
         'video',
         tr("動画を載せる"),
@@ -4908,7 +4915,7 @@ const Start: React.FC<{ go: (h: string) => void }> = ({ go }) => {
           {DEMO ? <div className="warn">{DEMO_BLOCKED}</div> : null}
         </>,
       )}
-      {fold(
+      {onlyVideo ? null : fold(
         'product',
         tr("商品を見せる"),
         tr("商品写真1枚から"),
@@ -4916,7 +4923,7 @@ const Start: React.FC<{ go: (h: string) => void }> = ({ go }) => {
           {TEMPLATES.ProductShine.name}
         </button>,
       )}
-      {fold(
+      {onlyVideo ? null : fold(
         'service',
         tr("サービス紹介"),
         tr("画面のスクリーンショットから"),
@@ -6279,6 +6286,179 @@ const Icon: React.FC<{ name: 'home' | 'reels' | 'plus' | 'search' | 'me' | 'grid
   );
 };
 
+// ---------- 作る: two ways in (写真から / 動画から), and シーン案 cards for a photo ----------
+
+type SceneIdea = { title: string; prompt: string; colors: string[] };
+/** Scene titles already shown for this photo, so ほかの案 never repeats them (kept on this device). */
+const seenScenes = (photo: string): string[] => {
+  try {
+    return JSON.parse(localStorage.getItem(`editless-scenes:${photo}`) ?? '[]');
+  } catch {
+    return [];
+  }
+};
+const rememberScenes = (photo: string, titles: string[]) => {
+  try {
+    localStorage.setItem(`editless-scenes:${photo}`, JSON.stringify([...new Set([...seenScenes(photo), ...titles])].slice(-60)));
+  } catch {
+    /* private mode: repeats are possible, nothing breaks */
+  }
+};
+
+/**
+ * 写真から作る: one product photo → about six scene cards from the AI → tap one (edit its sentence if you like,
+ * or write your own) → the ad film. No templates to browse; the AI picks the look from the photo and the scene.
+ */
+const SceneFlow: React.FC<{ go: (h: string) => void }> = ({ go }) => {
+  useAmbientPhoto('serum');
+  const goal = goalOfHash();
+  const [photo, setPhoto] = useState<{ file: string; url: string; name: string } | undefined>();
+  const [brandName, setBrandName] = useState('');
+  const [what, setWhat] = useState('');
+  const [scenes, setScenes] = useState<SceneIdea[] | null>(null);
+  const [pick, setPick] = useState<number | 'own' | null>(null);
+  const [texts, setTexts] = useState<Record<string, string>>({});
+  const [loading, setLoading] = useState(false);
+  const [busy, setBusy] = useState(false);
+  const [err, setErr] = useState('');
+  const [freeFirst, setFreeFirst] = useState<Me['freeFirst']>();
+  useEffect(() => {
+    loadBrand().then((b: Brand | null) => b?.name && setBrandName((v) => v || b.name!), () => null);
+    if (!DEMO) api<Me>('/api/me').then((m) => setFreeFirst(m.freeFirst), () => null);
+  }, []);
+  const ask = async () => {
+    if (!photo) return;
+    setLoading(true);
+    setErr('');
+    try {
+      const { scenes: s } = await api<{ scenes: SceneIdea[] }>('/api/scenes', {
+        method: 'POST',
+        body: JSON.stringify({ photo: photo.file, brand: brandName, description: what, goal, lang, avoid: seenScenes(photo.file) }),
+      });
+      rememberScenes(photo.file, s.map((x) => x.title));
+      setScenes(s);
+      setPick(null);
+      setTexts({});
+    } catch (e: any) {
+      setErr(e.message);
+    }
+    setLoading(false);
+  };
+  const textOf = (k: number | 'own') => texts[String(k)] ?? (k === 'own' ? '' : scenes?.[k]?.prompt ?? '');
+  const chosen = pick === null ? '' : textOf(pick).trim();
+  const make = async () => {
+    if (!photo || !chosen) return;
+    setBusy(true);
+    setErr('');
+    try {
+      const j = await api<Job>('/api/jobs', {
+        method: 'POST',
+        body: JSON.stringify({ template: 'PhotoAdFilm', input: { photo: photo.file, brand: brandName.trim().slice(0, 24) || 'BRAND', description: what, scene: chosen, lang, goal, cta: '' } }),
+      });
+      enablePush(registerPushToken);
+      go(`#/job/${j.id}`);
+    } catch (e: any) {
+      setErr(e.message);
+      setBusy(false);
+    }
+  };
+  const cost = tokensFor('PhotoAdFilm', {});
+  return (
+    <div className="scenes">
+      <button className="linkbtn back" onClick={() => go('#/start')}>
+        <Glyph d="M15 5l-7 7 7 7" size={16} /> {tr("作る")}
+      </button>
+      <h1>{tr("写真から作る")}</h1>
+      {!scenes ? (
+        <>
+          <p className="sub">{tr("商品の写真を1枚。AIが合いそうなシーンをいくつか考えます。")}</p>
+          <Drop label={tr("商品の写真（1枚）")} hint={tr("スマホで撮った写真で大丈夫です。ラベルが読めるように")} accept="image/*" value={photo} onChange={setPhoto} />
+          <div className="grid2">
+            <Field label={tr("ブランド名")} max={24} value={brandName} onChange={setBrandName} placeholder="LUMINA" />
+            <Field label={tr("どんな商品か（任意）")} max={60} value={what} onChange={setWhat} placeholder={tr("例: 化粧水")} />
+          </div>
+          <div className="pickcta">
+            <button className="btn big" disabled={!photo || loading || !!DEMO} onClick={ask}>
+              <Glyph d={G.sparkle} size={20} /> {loading ? tr("シーンを考えています…") : tr("シーン案を見る")}
+            </button>
+          </div>
+          <p className="cost" style={{ textAlign: 'center' }}>{tr("シーン案を見るのは無料です。")}</p>
+        </>
+      ) : (
+        <>
+          <p className="sub">{tr("どのシーンで撮りますか？文章は書きかえても大丈夫です。")}</p>
+          <div className="scenegrid">
+            {scenes.map((s, i) => (
+              <button key={`${s.title}-${i}`} className={`scenecard ${pick === i ? 'on' : ''}`} style={{ '--c1': s.colors[0] ?? '#555', '--c2': s.colors[1] ?? s.colors[0] ?? '#222', '--i': i } as React.CSSProperties} onClick={() => setPick(i)} aria-pressed={pick === i}>
+                {photo ? <img src={photo.url} alt="" /> : null}
+                <b>{s.title}</b>
+                <small>{textOf(i)}</small>
+              </button>
+            ))}
+            <button className={`scenecard own ${pick === 'own' ? 'on' : ''}`} onClick={() => setPick('own')} aria-pressed={pick === 'own'}>
+              <Glyph d="M4 20h4L19 9l-4-4L4 16zM14 6l4 4" size={30} />
+              <b>{tr("自分で書く")}</b>
+              <small>{tr("例: 雨の日の窓辺で")}</small>
+            </button>
+          </div>
+          {pick !== null ? (
+            <div className="sceneedit">
+              <Field label={pick === 'own' ? tr("どんなシーンで撮るか") : tr("このシーンの説明（書きかえできます）")} multiline value={textOf(pick)} onChange={(v) => setTexts((t) => ({ ...t, [String(pick)]: v.slice(0, 140) }))} placeholder={tr("例: 雨の日の窓辺で")} />
+            </div>
+          ) : null}
+          <button className="linkbtn more" disabled={loading} onClick={ask}>
+            <Glyph d="M4 12a8 8 0 0 1 14-5.3M20 12a8 8 0 0 1-14 5.3M18 3v4h-4M6 21v-4h4" size={16} /> {loading ? tr("シーンを考えています…") : tr("ほかの案を見る")}
+          </button>
+          <div className="pickcta sticky">
+            <button className="btn big" disabled={!chosen || busy || !!DEMO} onClick={make}>
+              <Glyph d={G.sparkle} size={20} /> {busy ? tr("送信中…") : tr("このシーンで作る")}
+            </button>
+            <span className="cost">
+              {freeFirst === 'available' ? (
+                <>
+                  {tr("消費:")} <s>{fmtN(cost)}</s> <b>0{tr("トークン")}</b> <span className="freefirst">{tr("初回の1本は短い版が無料")}</span>
+                </>
+              ) : (
+                <>
+                  {tr("消費:")} <b>{fmtN(cost)}{tr("トークン")}</b> · {tr("約4〜6分でできます")}
+                </>
+              )}
+            </span>
+          </div>
+        </>
+      )}
+      {err ? <div className="err">{err}</div> : null}
+      {DEMO ? <div className="warn">{DEMO_BLOCKED}</div> : null}
+    </div>
+  );
+};
+
+/** The 作る tab: two big ways in. Templates are never browsed; the AI chooses the look. */
+const Create: React.FC<{ go: (h: string) => void }> = ({ go }) => {
+  useAmbientPhoto('matcha');
+  const way = (href: string, photo: string, title: string, note: string) => (
+    <button className="waycard" onClick={() => go(href)}>
+      <img src={apiUrl(`/samples/photos/${photo}.jpg`)} alt="" />
+      <span className="stackglass">
+        <b>{title}</b>
+        <small>{note}</small>
+      </span>
+    </button>
+  );
+  return (
+    <div className="create">
+      <h1>{tr("何から作る？")}</h1>
+      <div className="ways">
+        {way('#/scene', 'serum', tr("写真から作る"), tr("商品やお店の写真1枚から、AIがシーンを考えます"))}
+        {way('#/video', 'creator', tr("動画から作る"), tr("撮った動画に、字幕とテロップを付けます"))}
+      </div>
+      <button className="linkbtn" onClick={() => go('#/new/ServiceReel/tpl-svc-features-none-clean?goal=service')}>
+        {tr("サービスを紹介する（画面の写真やURLから）")} <Glyph d="M9 5l7 7-7 7" size={14} />
+      </button>
+    </div>
+  );
+};
+
 // ---------- app shell (hash routing) ----------
 
 const useHash = () => {
@@ -6298,13 +6478,12 @@ const App = () => {
   const go = (h: string) => (location.hash = h);
   const [, route, arg, arg2] = hash.split('?')[0].split('/');
   const query = new URLSearchParams(hash.split('?')[1] ?? '');
-  const tab = route === 'reels' || route === 'job' ? 'reels' : route === 'me' || route === 'history' || route === 'admin' ? 'me' : route === 'new' || route === 'start' ? 'new' : route === 'templates' ? 'templates' : 'home';
+  // Three tabs: 作品 (what you made), 作る (photo or video in), マイページ. Templates are not browsed any more.
+  const tab = route === 'reels' || route === 'job' ? 'reels' : route === 'me' || route === 'history' || route === 'admin' ? 'me' : 'new';
   const tabs = [
-    { id: 'home', label: tr("ホーム"), icon: 'home', onClick: () => go('#/') },
-    { id: 'templates', label: tr("テンプレ"), icon: 'grid', onClick: () => go('#/templates') },
-    { id: 'new', label: tr("作成"), icon: 'plus', onClick: () => go('#/start') },
-    { id: 'reels', label: tr("マイ動画"), icon: 'reels', onClick: () => go('#/reels') },
-    { id: 'me', label: tr("アカウント"), icon: 'me', onClick: () => go('#/me') },
+    { id: 'reels', label: tr("作品"), icon: 'reels', onClick: () => go('#/reels') },
+    { id: 'new', label: tr("作る"), icon: 'plus', onClick: () => go('#/') },
+    { id: 'me', label: tr("マイページ"), icon: 'me', onClick: () => go('#/me') },
   ] as const;
   const [ambient, setAmbient] = useState<string | null>(null);
   // While picking, the reel takes the whole screen.
@@ -6356,12 +6535,16 @@ const App = () => {
           <ReelsFeed go={go} />
         ) : route === 'search' ? (
           <Search go={go} />
-        ) : route === 'start' ? (
+        ) : route === 'start' || route === 'video' ? (
           <Start go={go} />
+        ) : route === 'scene' ? (
+          <SceneFlow go={go} />
         ) : route === 'templates' ? (
           <Templates go={go} />
-        ) : (
+        ) : route === 'home' ? (
           <Home go={go} initialGroup={query.get('g') ?? undefined} />
+        ) : (
+          <Create go={go} />
         )}
         </div>
       </main>

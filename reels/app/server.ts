@@ -23,6 +23,7 @@ import { buildEffectsProps } from '../server/effects.ts';
 import { buildProductReel, STYLES, type Style } from '../server/product.ts';
 import { buildExperienceFilm } from '../server/experience.ts';
 import { buildPhotoAd } from '../server/photoad.ts';
+import { suggestScenes } from '../server/scenes.ts';
 import { renderTemplate } from '../server/render.ts';
 import { buildSaasProps } from '../server/saas.ts';
 import { buildTalkProps } from '../server/talk.ts';
@@ -150,6 +151,17 @@ const uploadOf = (user: User) => (name: unknown) => {
  * 「別の曲」 and new kinds of music are free (no tokens since 2026-10-23); each owner may make MUSIC_PER_HOUR /
  * MUSIC_PER_DAY new tracks, so free re-dos can't be farmed. Picking a kind already made for the reel is not counted.
  */
+const SCENES_PER_HOUR = 20;
+const scenesAsked = new Map<string, number[]>();
+/** シーン案 are free, so each owner may ask SCENES_PER_HOUR times an hour. */
+const takeSceneTurn = (uid: string) => {
+  const now = Date.now();
+  const list = (scenesAsked.get(uid) ?? []).filter((t) => now - t < 3600_000);
+  if (list.length >= SCENES_PER_HOUR) return false;
+  list.push(now);
+  scenesAsked.set(uid, list);
+  return true;
+};
 const MUSIC_PER_HOUR = 8;
 const MUSIC_PER_DAY = 30;
 const musicMade = new Map<string, number[]>();
@@ -275,6 +287,7 @@ async function startJob(template: Template, input: Record<string, any>, user: Us
           cta: String(input.cta || '').slice(0, 16),
           handle: String(input.handle || '').slice(0, 30),
           goal,
+          scene: String(input.scene || '').slice(0, 300) || undefined,
           lang,
           short: freeFirst,
           jobId: id,
@@ -724,6 +737,28 @@ const server = http.createServer(async (req, res) => {
       await recordTokens({ uid: target.uid, op: 'grant', tokens: n });
       const after = await getAccount(target.uid);
       return json(res, 200, { email: target.email, granted: n, balance: balance(after) });
+    }
+    // シーン案: about six scene ideas for a product photo (one cheap text call, no tokens; limited per hour like 別の曲).
+    if (p === '/api/scenes' && req.method === 'POST') {
+      const { photo, brand, description, goal, avoid, lang: wanted } = await readBody(req);
+      const file = uploadOf(user!)(photo);
+      if (!file || !(await stat(file).then(() => true, () => false))) return json(res, 400, { error: '商品の写真をアップロードしてください' });
+      if (!takeSceneTurn(user!.uid)) return json(res, 429, { error: '少し時間をおいてから、もう一度お試しください' });
+      try {
+        const out = await suggestScenes({
+          photo: file,
+          brand: typeof brand === 'string' ? brand.slice(0, 24) : undefined,
+          description: typeof description === 'string' ? description.slice(0, 200) : undefined,
+          goal,
+          lang: isLang(wanted) ? wanted : 'ja',
+          avoid: Array.isArray(avoid) ? avoid.filter((x): x is string => typeof x === 'string').map((x) => x.slice(0, 40)).slice(0, 30) : [],
+        });
+        recordAi({ jobId: '', uid: user!.uid, template: 'PhotoAdFilm', step: 'scenes', usd: out.usage.totalUsd });
+        return json(res, 200, { scenes: out.scenes });
+      } catch (e) {
+        console.error('scenes', e);
+        return json(res, 500, { error: 'シーン案を作れませんでした。もう一度お試しください' });
+      }
     }
     if (p === '/api/media-key' && req.method === 'GET') return json(res, 200, { key: await mediaKey(user!), hours: MEDIA_KEY_HOURS });
     // Push notifications in the app: its FCM token, so a finished export can tell the phone.

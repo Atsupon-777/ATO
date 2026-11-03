@@ -84,6 +84,8 @@ export type PhotoAdBrief = {
   handle?: string;
   /** What the reel is for (server/goals.ts), picked on the home screen: shapes the lines, tagline and CTA. */
   goal?: string;
+  /** The scene card the person picked or wrote (server/scenes.ts): the place, light and mood of the whole film. */
+  scene?: string;
   lang?: Lang;
   jobId?: string;
   onStep?: (step: number, total: number, label: string) => void;
@@ -150,6 +152,9 @@ export async function buildPhotoAd(brief: PhotoAdBrief) {
             `Brand: ${brief.brand}. ${brief.description ? `Product: ${brief.description}.` : ''}`,
             `Facts you may use in copy (claim nothing else: no effects, numbers, awards or ingredients that are not listed): ${brief.facts || '(none)'}`,
             goalLine(brief.goal),
+            brief.scene
+              ? `The customer chose this scene for the film (in their words; it may be in another language). Build the world, light, set and mood of EVERY shot from it, and keep the product exactly as photographed: ${brief.scene}`
+              : '',
             copyLanguage(lang),
             'Keep every shot simple enough for a video model to render cleanly: one subject, one motion, plain set, nothing tiny or intricate. Never ask for text in the image.',
           ].join('\n'),
