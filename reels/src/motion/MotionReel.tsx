@@ -1,7 +1,7 @@
 // A reel made only of motion-graphics scenes (no footage): each scene is one style from src/motion,
 // played back to back. The AI planner picks the styles and writes their text; the person only picks.
 import React from 'react';
-import { AbsoluteFill, Audio, Sequence, staticFile } from 'remotion';
+import { AbsoluteFill, Audio, Sequence } from 'remotion';
 import { z } from 'zod';
 import { cjkVars, loadFonts } from '../lib/fonts';
 import { Bars3d, CompareTable, KineticType, PhoneStack, ReviewStars, type Bars3dProps, type CompareTableProps, type KineticTypeProps, type PhoneStackProps, type ReviewStarsProps } from './Batch4Scenes';
@@ -374,7 +374,7 @@ export const motionSample7: MotionReelProps = {
   scenes: [
     { kind: 'brushText', seconds: 4, props: { text: '旬', sub: '鮨 楓' } },
     { kind: 'ukiyoWave', seconds: 4.5, props: { title: '海から、今朝', sub: '朝どれの魚だけ' } },
-    { kind: 'watercolor', seconds: 4.5, props: { image: staticFile('samples/photos/sushi.jpg'), title: '季節のおまかせ', sub: '十二貫' } },
+    { kind: 'watercolor', seconds: 4.5, props: { image: 'samples/photos/sushi.jpg', title: '季節のおまかせ', sub: '十二貫' } },
     { kind: 'chalkboard', seconds: 5, props: { title: '本日のおすすめ', lines: [{ text: '寒ぶり', value: '680' }, { text: 'あん肝', value: '520' }, { text: '白子ポン酢', value: '880' }] } },
     { kind: 'whiteboard', seconds: 6, props: { title: 'ご予約の流れ', steps: ['LINEで日時', '席を確保', '当日ご来店'] } },
     { kind: 'washiSeal', seconds: 4, props: { title: '鮨 楓', sub: '神楽坂', seal: '楓', since: '創業 昭和四十二年' } },

@@ -4,7 +4,7 @@
 import React from 'react';
 import { AbsoluteFill, Img, useCurrentFrame, useVideoConfig } from 'remotion';
 import { fonts } from '../lib/fonts';
-import { E, k, lin, mix, rand, springX } from './kit';
+import { E, asset, k, lin, mix, rand, springX } from './kit';
 import { useLook } from './theme';
 
 const Paper: React.FC<{ color: string; id: string }> = ({ color, id }) => (
@@ -257,7 +257,7 @@ export const Watercolor: React.FC<WatercolorProps> = (p) => {
         {/* a tinted wash spreads first, the photo follows inside it */}
         <g mask="url(#wcm)">
           <rect width={1080} height={1920} fill={tint} opacity={0.55 * (1 - lin(f, t(1.0), t(2.4)))} />
-          <image href={p.image} x={0} y={170} width={1080} height={1260} preserveAspectRatio="xMidYMid slice" opacity={lin(f, t(0.5), t(2.0))} />
+          <image href={asset(p.image)} x={0} y={170} width={1080} height={1260} preserveAspectRatio="xMidYMid slice" opacity={lin(f, t(0.5), t(2.0))} />
         </g>
       </svg>
       <div style={{ position: 'absolute', bottom: 190, width: '100%', textAlign: 'center', opacity: k(f, t(1.6), t(2.2)) }}>

@@ -1,5 +1,5 @@
 // Small helpers shared by the motion-graphics scenes: eases, springs and deterministic noise.
-import { interpolate } from 'remotion';
+import { interpolate, staticFile } from 'remotion';
 
 export const clamp01 = (x: number) => Math.min(1, Math.max(0, x));
 /** 0→1 between frames a and b, clamped. */
@@ -32,3 +32,6 @@ export const range = (f: number, input: number[], output: number[]) =>
 /** Formats a count with thousands separators and the given decimals. */
 export const fmtNum = (n: number, decimals = 0) =>
   n.toLocaleString('en-US', { minimumFractionDigits: decimals, maximumFractionDigits: decimals });
+
+/** An image/video prop: full URLs pass through; a bare path like "samples/photos/x.jpg" is a file in public/. */
+export const asset = (u: string) => (/^(https?:|data:|blob:)/.test(u) ? u : staticFile(u.replace(/^\/+/, '')));
