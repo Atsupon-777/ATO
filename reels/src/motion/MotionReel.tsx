@@ -6,6 +6,8 @@ import { z } from 'zod';
 import { cjkVars, loadFonts } from '../lib/fonts';
 import { Headline, type HeadlineProps } from './Headline';
 import { InkWash, type InkWashProps } from './InkWash';
+import { GlobeZoom, MapRoute, type GlobeZoomProps, type MapRouteProps } from './MapScenes';
+import { CursorDemo, KpiTiles, LogoLine, type CursorDemoProps, type KpiTilesProps, type LogoLineProps } from './MoreScenes';
 import { PaperDesk, type PaperDeskProps } from './PaperDesk';
 import { StatChart, type StatChartProps } from './StatChart';
 import { Teardown, type TeardownProps } from './Teardown';
@@ -23,6 +25,11 @@ export const motionScenes = {
   pricing: Pricing as React.FC<any>,
   timeline: Timeline as React.FC<any>,
   logoReveal: LogoReveal as React.FC<any>,
+  mapRoute: MapRoute as React.FC<any>,
+  globeZoom: GlobeZoom as React.FC<any>,
+  cursorDemo: CursorDemo as React.FC<any>,
+  kpiTiles: KpiTiles as React.FC<any>,
+  logoLine: LogoLine as React.FC<any>,
 } as const;
 export type MotionSceneId = keyof typeof motionScenes;
 export const motionSceneIds = Object.keys(motionScenes) as MotionSceneId[];
@@ -37,6 +44,11 @@ export const motionSceneSchema = z.discriminatedUnion('kind', [
   z.object({ kind: z.literal('pricing'), seconds: z.number().min(2).max(12).default(4), props: z.custom<PricingProps>() }),
   z.object({ kind: z.literal('timeline'), seconds: z.number().min(2).max(12).default(5), props: z.custom<TimelineProps>() }),
   z.object({ kind: z.literal('logoReveal'), seconds: z.number().min(2).max(8).default(3.5), props: z.custom<LogoRevealProps>() }),
+  z.object({ kind: z.literal('mapRoute'), seconds: z.number().min(3).max(12).default(5.5), props: z.custom<MapRouteProps>() }),
+  z.object({ kind: z.literal('globeZoom'), seconds: z.number().min(3).max(12).default(5), props: z.custom<GlobeZoomProps>() }),
+  z.object({ kind: z.literal('cursorDemo'), seconds: z.number().min(3).max(12).default(6), props: z.custom<CursorDemoProps>() }),
+  z.object({ kind: z.literal('kpiTiles'), seconds: z.number().min(2).max(10).default(4), props: z.custom<KpiTilesProps>() }),
+  z.object({ kind: z.literal('logoLine'), seconds: z.number().min(2).max(8).default(3), props: z.custom<LogoLineProps>() }),
 ]);
 export type MotionScene = z.infer<typeof motionSceneSchema>;
 
@@ -181,5 +193,40 @@ export const motionSample2: MotionReelProps = {
       },
     },
     { kind: 'logoReveal', seconds: 3.5, props: { name: 'Hoshi', tagline: '電話のいらない予約', cta: '無料ではじめる' } },
+  ],
+};
+
+/** Third sample: a made-up cafe chain (Tsumugi), for the map, globe, demo and KPI styles. */
+export const motionSample3: MotionReelProps = {
+  lang: 'ja',
+  scenes: [
+    { kind: 'globeZoom', seconds: 5, props: { lat: 35.0, lon: 135.77, place: '京都・三条', note: '世界中から、この一杯を飲みに' } },
+    { kind: 'mapRoute', seconds: 5.5, props: { from: '三条駅から', to: 'つむぎ珈琲 三条店', eta: '徒歩6分' } },
+    {
+      kind: 'cursorDemo',
+      seconds: 6,
+      props: {
+        app: 'つむぎ珈琲 モバイルオーダー',
+        steps: [
+          { button: 'ほうじ茶ラテを選ぶ', result: 'ほうじ茶ラテ（M）' },
+          { button: '受け取り時間を選ぶ', result: '10:30に受け取り' },
+          { button: '注文する', result: '注文しました' },
+        ],
+      },
+    },
+    {
+      kind: 'kpiTiles',
+      seconds: 4,
+      props: {
+        title: 'オープンから1年',
+        tiles: [
+          { label: '来店', value: 48200, unit: '人' },
+          { label: 'リピート率', value: 62, unit: '%' },
+          { label: 'モバイル注文', value: 35, unit: '%' },
+          { label: '平均待ち時間', value: 2.4, unit: '分', decimals: 1 },
+        ],
+      },
+    },
+    { kind: 'logoLine', seconds: 3, props: { name: 'TSUMUGI', tagline: 'つむぎ珈琲' } },
   ],
 };
