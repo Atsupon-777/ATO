@@ -995,5 +995,10 @@
  "初回の1本は短い版が無料": "El primero gratis (versión corta)",
  "「商品を魅せる」「体験を映画のように」の最初の1本は、短い版を0トークンで作れます。": "Tu primer vídeo de «Luce tu producto» o «Película de experiencia» es gratis en su versión corta (0 tokens).",
  "リールを1本作るときに使う単位です。自分の素材だけなら2、話す動画に字幕やエフェクトを付けると3、モーショングラフィックスは4、AI動画のフィルムは30使います。書き出しは1回1です。足りないときは、必要な分だけいつでも買い足せます。": "La unidad para crear un reel: 2 solo con tu propio material, 3 para añadir subtítulos y efectos a un video hablado, 4 para motion graphics, 30 para una película de video con IA. Cada exportación cuesta 1. Si te faltan, recarga cuando quieras solo lo que necesites.",
- "消費トークン: 自分の素材だけ 2 ／ 話す動画 3 ／ モーション 4 ／ AI写真 5 ／ AI動画フィルム 30 ／ 書き出し 1": "Tokens usados: solo material propio 2 / video hablado 3 / motion 4 / foto IA 5 / película de video IA 30 / exportar 1"
+ "消費トークン: 自分の素材だけ 2 ／ 話す動画 3 ／ モーション 4 ／ AI写真 5 ／ AI動画フィルム 30 ／ 書き出し 1": "Tokens usados: solo material propio 2 / video hablado 3 / motion 4 / foto IA 5 / película de video IA 30 / exportar 1",
+ "広告の構成を考える": "Planeando el anuncio",
+ "各カットの写真を作成": "Creando una foto para cada toma",
+ "各カットを動かし、音楽を作成（2〜3分）": "Animando cada toma y creando la música (2–3 min)",
+ "アプリを閉じても作成は続きます。できあがったら通知でお知らせします。": "La creación sigue aunque cierres la app. Te avisaremos cuando esté lista.",
+ "できあがったカット": "Tomas terminadas"
 }

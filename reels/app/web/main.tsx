@@ -305,6 +305,7 @@ type Job = {
   createdAt: string;
   status: 'generating' | 'ready' | 'rendering' | 'done' | 'error';
   step?: { n: number; total: number; label: string; at?: string };
+  previews?: string[];
   renderProgress?: number;
   renderStartedAt?: string;
   props?: any;
@@ -387,6 +388,9 @@ const STEP_LABELS: Record<string, string> = {
   matte: tr("人物を切り抜き（数分かかります）"),
   'plan effects': tr("話に合わせてエフェクトを選ぶ"),
   'scene stills': tr("各シーンの絵を作成"),
+  plan: tr("広告の構成を考える"),
+  keyframes: tr("各カットの写真を作成"),
+  'motion (Omni) and music': tr("各カットを動かし、音楽を作成（2〜3分）"),
 };
 
 // ---------- small UI pieces ----------
@@ -999,6 +1003,10 @@ const STEP_SECONDS: Record<string, number> = {
   matte: 150,
   'plan effects': 20,
   'scene stills': 45,
+  // the photo ad film (server/photoad.ts): 5 keyframes in three rounds, then all clips at once (Kling takes about 2 minutes)
+  plan: 20,
+  keyframes: 75,
+  'motion (Omni) and music': 150,
 };
 
 /** Re-renders every second while something is running, so bars and countdowns move. */
@@ -1060,8 +1068,15 @@ const Generating: React.FC<{ job: Job }> = ({ job }) => {
     <div className="genwrap">
       <BackButton fallback="#/reels" />
       <h1>{tr("AIが作成しています")}</h1>
-      <p className="sub">{tr("このページを閉じても作成は続きます。履歴からいつでも開けます。")}</p>
+      <p className="sub">{isNative ? tr("アプリを閉じても作成は続きます。できあがったら通知でお知らせします。") : tr("このページを閉じても作成は続きます。履歴からいつでも開けます。")}</p>
       <ProgressBar fraction={elapsed / (elapsed + left)} label={STEP_LABELS[steps[curIdx]] ?? tr("準備中")} left={left} />
+      {job.previews?.length ? (
+        <div className="genpreviews" aria-label={tr("できあがったカット")}>
+          {job.previews.map((p) => (
+            <img key={p} src={media(p)} alt="" />
+          ))}
+        </div>
+      ) : null}
       <div className="steps">
         {steps.map((s, i) => (
           <div key={s} className={i < curIdx ? 'done' : i === curIdx ? 'cur' : ''}>

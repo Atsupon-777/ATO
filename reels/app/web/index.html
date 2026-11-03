@@ -806,6 +806,9 @@
   .backbtn:hover { border-color: var(--accent-line); }
   .genwrap { max-width: 520px; margin: 0 auto; padding-top: 8px; display: grid; gap: 6px; }
   .genwrap .backbtn { justify-self: start; margin-bottom: 18px; }
+  .genpreviews { display: flex; gap: 8px; overflow-x: auto; margin-top: 14px; padding-bottom: 4px; }
+  .genpreviews img { flex: 0 0 auto; width: 84px; aspect-ratio: 9 / 16; object-fit: cover; border-radius: 10px; animation: genpop .5s ease-out both; }
+  @keyframes genpop { from { opacity: 0; transform: translateY(8px) scale(.96); } to { opacity: 1; transform: none; } }
 
   /* sheets: a close button that is always there */
   .sheetbox { position: relative; }

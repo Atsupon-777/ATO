@@ -995,5 +995,10 @@
  "初回の1本は短い版が無料": "First one free (short version)",
  "「商品を魅せる」「体験を映画のように」の最初の1本は、短い版を0トークンで作れます。": "Your first “Showcase a product” or “Experience film” video is free in its short version (0 tokens).",
  "リールを1本作るときに使う単位です。自分の素材だけなら2、話す動画に字幕やエフェクトを付けると3、モーショングラフィックスは4、AI動画のフィルムは30使います。書き出しは1回1です。足りないときは、必要な分だけいつでも買い足せます。": "The unit you use to make a reel: 2 for your own footage only, 3 to add captions and effects to a talking video, 4 for motion graphics, 30 for an AI video film. Each export is 1. If you run short, top up any time with just what you need.",
- "消費トークン: 自分の素材だけ 2 ／ 話す動画 3 ／ モーション 4 ／ AI写真 5 ／ AI動画フィルム 30 ／ 書き出し 1": "Tokens used: own footage only 2 / talking video 3 / motion 4 / AI photo 5 / AI video film 30 / export 1"
+ "消費トークン: 自分の素材だけ 2 ／ 話す動画 3 ／ モーション 4 ／ AI写真 5 ／ AI動画フィルム 30 ／ 書き出し 1": "Tokens used: own footage only 2 / talking video 3 / motion 4 / AI photo 5 / AI video film 30 / export 1",
+ "広告の構成を考える": "Planning the ad",
+ "各カットの写真を作成": "Making a photo for each cut",
+ "各カットを動かし、音楽を作成（2〜3分）": "Animating each cut and making the music (2–3 min)",
+ "アプリを閉じても作成は続きます。できあがったら通知でお知らせします。": "Creation keeps going even if you close the app. We'll notify you when it's ready.",
+ "できあがったカット": "Finished cuts"
 }

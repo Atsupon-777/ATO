@@ -70,6 +70,8 @@ type Job = {
   status: 'generating' | 'ready' | 'rendering' | 'done' | 'error';
   /** Current generation step; `at` is when it started, so the browser can estimate time left. */
   step?: { n: number; total: number; label: string; at?: string };
+  /** Stills made so far while generating (paths under public/), shown on the waiting screen. */
+  previews?: string[];
   renderProgress?: number;
   renderStartedAt?: string;
   props?: Record<string, unknown>;
@@ -204,6 +206,12 @@ async function startJob(template: Template, input: Record<string, any>, user: Us
     job.step = { n, total, label, at: new Date().toISOString() };
     save(job);
   };
+  const onPreview = (file: string) => {
+    const rel = `jobs/${id}/${path.basename(file)}`;
+    if (job.previews?.includes(rel)) return;
+    job.previews = [...(job.previews ?? []), rel];
+    save(job);
+  };
   const lang: Lang = isLang(input.lang) ? input.lang : 'ja';
   (async () => {
     try {
@@ -271,6 +279,7 @@ async function startJob(template: Template, input: Record<string, any>, user: Us
           short: freeFirst,
           jobId: id,
           onStep,
+          onPreview,
           until: 'props',
         });
         job.props = res.props!;

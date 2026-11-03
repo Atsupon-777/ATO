@@ -87,6 +87,8 @@ export type PhotoAdBrief = {
   lang?: Lang;
   jobId?: string;
   onStep?: (step: number, total: number, label: string) => void;
+  /** Called with each keyframe as soon as it exists, so the waiting screen can show the film taking shape. */
+  onPreview?: (file: string) => void;
   /** Stop after this stage: 'stills' to check keyframes before paying for video, 'props' to skip the render. */
   until?: 'stills' | 'props';
   /** The free first film: only splash → ritual → pack, with shorter clips (16 s of video instead of 32 s). */
@@ -164,9 +166,9 @@ export async function buildPhotoAd(brief: PhotoAdBrief) {
   const look = 'Vertical 9:16, photorealistic high-end beauty commercial still, shot on a cinema camera, natural skin texture, crisp detail, soft film grade. ' + NO_TEXT;
   const still = (beat: Beat, input: string[], lines: string[]) => {
     const out = path.join(dir, `${beat}.png`);
-    return exists(out).then((ok) =>
-      ok ? out : editImage({ input, out, prompt: [...lines, world, look].join('\n'), usage, step: `keyframe ${beat}` }),
-    );
+    return exists(out)
+      .then((ok) => (ok ? out : editImage({ input, out, prompt: [...lines, world, look].join('\n'), usage, step: `keyframe ${beat}` })))
+      .then((f) => (brief.onPreview?.(f), f));
   };
   const S = Object.fromEntries(shots.map((s) => [s.beat, s])) as Record<Beat, (typeof shots)[number]>;
   // The pack shot fixes the product in the ad's world; every product shot after it takes it as a reference.
