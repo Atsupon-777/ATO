@@ -10,6 +10,7 @@ import { BeforeAfter, GoldLine, ProgressRing, ScrollPage, Versus, VerticalCopy, 
 import { BrushText, Chalkboard, UkiyoWave, WashiSeal, Watercolor, Whiteboard, type BrushTextProps, type ChalkboardProps, type UkiyoWaveProps, type WashiSealProps, type WatercolorProps, type WhiteboardProps } from './Batch7Scenes';
 import { Photo25d, PhotoWall, Collage, Polaroids, TextMask, SplitScreen, type Photo25dProps, type PhotoWallProps, type CollageProps, type PolaroidsProps, type TextMaskProps, type SplitScreenProps } from './Batch8Scenes';
 import { Ingredients, PriceTag, SizeCompare, Colorways, Turntable, LogoShine, type IngredientsProps, type PriceTagProps, type SizeCompareProps, type ColorwaysProps, type TurntableProps, type LogoShineProps } from './Batch9Scenes';
+import { FloatIcons, Liquid, GlassCards, Text3d, Clay, Handwriting, type FloatIconsProps, type LiquidProps, type GlassCardsProps, type Text3dProps, type ClayProps, type HandwritingProps } from './Batch10Scenes';
 import { Headline, type HeadlineProps } from './Headline';
 import { InkWash, type InkWashProps } from './InkWash';
 import { GlobeZoom, MapRoute, type GlobeZoomProps, type MapRouteProps } from './MapScenes';
@@ -72,6 +73,12 @@ export const motionScenes = {
   colorways: Colorways as React.FC<any>,
   turntable: Turntable as React.FC<any>,
   logoShine: LogoShine as React.FC<any>,
+  floatIcons: FloatIcons as React.FC<any>,
+  liquid: Liquid as React.FC<any>,
+  glassCards: GlassCards as React.FC<any>,
+  text3d: Text3d as React.FC<any>,
+  clay: Clay as React.FC<any>,
+  handwriting: Handwriting as React.FC<any>,
 } as const;
 export type MotionSceneId = keyof typeof motionScenes;
 export const motionSceneIds = Object.keys(motionScenes) as MotionSceneId[];
@@ -129,6 +136,12 @@ export const motionSceneSchema = z.discriminatedUnion('kind', [
   z.object({ kind: z.literal('colorways'), seconds: z.number().min(2.5).max(10).default(5), ...shotFields, props: z.custom<ColorwaysProps>() }),
   z.object({ kind: z.literal('turntable'), seconds: z.number().min(2.5).max(10).default(4.5), ...shotFields, props: z.custom<TurntableProps>() }),
   z.object({ kind: z.literal('logoShine'), seconds: z.number().min(2.5).max(10).default(3.5), ...shotFields, props: z.custom<LogoShineProps>() }),
+  z.object({ kind: z.literal('floatIcons'), seconds: z.number().min(2.5).max(10).default(4.5), ...shotFields, props: z.custom<FloatIconsProps>() }),
+  z.object({ kind: z.literal('liquid'), seconds: z.number().min(2.5).max(10).default(4.5), ...shotFields, props: z.custom<LiquidProps>() }),
+  z.object({ kind: z.literal('glassCards'), seconds: z.number().min(2.5).max(10).default(4.5), ...shotFields, props: z.custom<GlassCardsProps>() }),
+  z.object({ kind: z.literal('text3d'), seconds: z.number().min(2.5).max(10).default(3.5), ...shotFields, props: z.custom<Text3dProps>() }),
+  z.object({ kind: z.literal('clay'), seconds: z.number().min(2.5).max(10).default(3.5), ...shotFields, props: z.custom<ClayProps>() }),
+  z.object({ kind: z.literal('handwriting'), seconds: z.number().min(2.5).max(10).default(4.5), ...shotFields, props: z.custom<HandwritingProps>() }),
 ]);
 export type MotionScene = z.infer<typeof motionSceneSchema>;
 
@@ -430,5 +443,18 @@ export const motionSample9: MotionReelProps = {
     { kind: 'colorways', seconds: 5, props: { product: 'samples/photos/sneaker.jpg', name: '全4色', colors: [{ name: 'ホワイト', swatch: '#e9e6e0', hue: 0 }, { name: 'サンセット', swatch: '#ff7a3d', hue: 40 }, { name: 'ミント', swatch: '#5ed1b0', hue: 140 }, { name: 'ラベンダー', swatch: '#a68cff', hue: 240 }] } },
     { kind: 'priceTag', seconds: 4, props: { product: 'samples/photos/sneaker.jpg', label: '週末だけの', before: '12,800円', price: '8,980円', badge: '30%\nOFF', until: '11月10日まで' } },
     { kind: 'logoShine', seconds: 3.5, props: { name: 'HIKARI', tagline: '時を、身につける' } },
+  ],
+};
+
+/** Tenth sample: 3D and material styles (a made-up kids' class, Pocco, and a fintech app). */
+export const motionSample10: MotionReelProps = {
+  lang: 'ja',
+  scenes: [
+    { kind: 'clay', seconds: 3.5, props: { title: 'ぽっこ教室', sub: 'ねんど・お絵かき・こうさく' } },
+    { kind: 'handwriting', seconds: 4.5, props: { lines: ['手を動かすと、', '頭も動く。'], underline: true } },
+    { kind: 'floatIcons', seconds: 4.5, props: { title: 'できること', items: [{ icon: 'calendar', label: '予約' }, { icon: 'chat', label: '先生に相談' }, { icon: 'star', label: 'ごほうび' }, { icon: 'bell', label: 'お知らせ' }, { icon: 'chart', label: '成長記録' }, { icon: 'lock', label: '安心' }] } },
+    { kind: 'liquid', seconds: 4.5, props: { title: 'とろける保湿', sub: 'Lumina ジェル' } },
+    { kind: 'glassCards', seconds: 4.5, props: { title: '今月のお金', cards: [{ label: '残高', value: '¥482,300' }, { label: '今月の支出', value: '¥96,120' }, { label: '貯金ペース', value: '+12%' }] } },
+    { kind: 'text3d', seconds: 3.5, props: { text: 'SALE', sub: '週末だけ 最大50%OFF' } },
   ],
 };

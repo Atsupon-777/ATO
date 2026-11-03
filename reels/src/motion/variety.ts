@@ -55,6 +55,12 @@ export const STYLE_FAMILY: Record<MotionSceneId, 'type' | 'data' | 'ui' | 'place
   colorways: 'product',
   turntable: 'product',
   logoShine: 'brand',
+  floatIcons: 'ui',
+  liquid: 'craft',
+  glassCards: 'data',
+  text3d: 'type',
+  clay: 'craft',
+  handwriting: 'type',
 };
 
 /** How many of an account's recent reels count as "recent" when ranking styles. */
