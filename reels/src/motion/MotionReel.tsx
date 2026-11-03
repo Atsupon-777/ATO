@@ -1,12 +1,13 @@
 // A reel made only of motion-graphics scenes (no footage): each scene is one style from src/motion,
 // played back to back. The AI planner picks the styles and writes their text; the person only picks.
 import React from 'react';
-import { AbsoluteFill, Audio, Sequence } from 'remotion';
+import { AbsoluteFill, Audio, Sequence, staticFile } from 'remotion';
 import { z } from 'zod';
 import { cjkVars, loadFonts } from '../lib/fonts';
 import { Bars3d, CompareTable, KineticType, PhoneStack, ReviewStars, type Bars3dProps, type CompareTableProps, type KineticTypeProps, type PhoneStackProps, type ReviewStarsProps } from './Batch4Scenes';
 import { Donut, FlapBoard, PinDrop, RankingRace, SearchFind, Typewriter, type DonutProps, type FlapBoardProps, type PinDropProps, type RankingRaceProps, type SearchFindProps, type TypewriterProps } from './Batch5Scenes';
 import { BeforeAfter, GoldLine, ProgressRing, ScrollPage, Versus, VerticalCopy, type BeforeAfterProps, type GoldLineProps, type ProgressRingProps, type ScrollPageProps, type VersusProps, type VerticalCopyProps } from './Batch6Scenes';
+import { BrushText, Chalkboard, UkiyoWave, WashiSeal, Watercolor, Whiteboard, type BrushTextProps, type ChalkboardProps, type UkiyoWaveProps, type WashiSealProps, type WatercolorProps, type WhiteboardProps } from './Batch7Scenes';
 import { Headline, type HeadlineProps } from './Headline';
 import { InkWash, type InkWashProps } from './InkWash';
 import { GlobeZoom, MapRoute, type GlobeZoomProps, type MapRouteProps } from './MapScenes';
@@ -51,6 +52,12 @@ export const motionScenes = {
   scrollPage: ScrollPage as React.FC<any>,
   verticalCopy: VerticalCopy as React.FC<any>,
   goldLine: GoldLine as React.FC<any>,
+  washiSeal: WashiSeal as React.FC<any>,
+  brushText: BrushText as React.FC<any>,
+  ukiyoWave: UkiyoWave as React.FC<any>,
+  watercolor: Watercolor as React.FC<any>,
+  chalkboard: Chalkboard as React.FC<any>,
+  whiteboard: Whiteboard as React.FC<any>,
 } as const;
 export type MotionSceneId = keyof typeof motionScenes;
 export const motionSceneIds = Object.keys(motionScenes) as MotionSceneId[];
@@ -90,6 +97,12 @@ export const motionSceneSchema = z.discriminatedUnion('kind', [
   z.object({ kind: z.literal('scrollPage'), seconds: z.number().min(3).max(10).default(5), ...shotFields, props: z.custom<ScrollPageProps>() }),
   z.object({ kind: z.literal('verticalCopy'), seconds: z.number().min(3).max(10).default(5), ...shotFields, props: z.custom<VerticalCopyProps>() }),
   z.object({ kind: z.literal('goldLine'), seconds: z.number().min(2.5).max(8).default(3.5), ...shotFields, props: z.custom<GoldLineProps>() }),
+  z.object({ kind: z.literal('washiSeal'), seconds: z.number().min(3).max(8).default(4), ...shotFields, props: z.custom<WashiSealProps>() }),
+  z.object({ kind: z.literal('brushText'), seconds: z.number().min(3).max(8).default(4), ...shotFields, props: z.custom<BrushTextProps>() }),
+  z.object({ kind: z.literal('ukiyoWave'), seconds: z.number().min(3).max(8).default(4.5), ...shotFields, props: z.custom<UkiyoWaveProps>() }),
+  z.object({ kind: z.literal('watercolor'), seconds: z.number().min(3).max(8).default(4.5), ...shotFields, props: z.custom<WatercolorProps>() }),
+  z.object({ kind: z.literal('chalkboard'), seconds: z.number().min(3).max(10).default(5), ...shotFields, props: z.custom<ChalkboardProps>() }),
+  z.object({ kind: z.literal('whiteboard'), seconds: z.number().min(3).max(10).default(6), ...shotFields, props: z.custom<WhiteboardProps>() }),
 ]);
 export type MotionScene = z.infer<typeof motionSceneSchema>;
 
@@ -352,5 +365,18 @@ export const motionSample6: MotionReelProps = {
     { kind: 'versus', seconds: 4, props: { title: '予約にかかる時間', before: { label: '電話', value: 12, unit: '分' }, after: { label: 'Web', value: 1, unit: '分' }, verdict: '12分 → 1分' } },
     { kind: 'progressRing', seconds: 4, props: { value: 96, label: 'また泊まりたい', sub: '宿泊者アンケート 2026' } },
     { kind: 'goldLine', seconds: 3.5, props: { title: '宿 雫', sub: 'SHIZUKU' } },
+  ],
+};
+
+/** Seventh sample: Japanese and hand-made materials (a made-up sushi bar, Kaede). */
+export const motionSample7: MotionReelProps = {
+  lang: 'ja',
+  scenes: [
+    { kind: 'brushText', seconds: 4, props: { text: '旬', sub: '鮨 楓' } },
+    { kind: 'ukiyoWave', seconds: 4.5, props: { title: '海から、今朝', sub: '朝どれの魚だけ' } },
+    { kind: 'watercolor', seconds: 4.5, props: { image: staticFile('samples/photos/sushi.jpg'), title: '季節のおまかせ', sub: '十二貫' } },
+    { kind: 'chalkboard', seconds: 5, props: { title: '本日のおすすめ', lines: [{ text: '寒ぶり', value: '680' }, { text: 'あん肝', value: '520' }, { text: '白子ポン酢', value: '880' }] } },
+    { kind: 'whiteboard', seconds: 6, props: { title: 'ご予約の流れ', steps: ['LINEで日時', '席を確保', '当日ご来店'] } },
+    { kind: 'washiSeal', seconds: 4, props: { title: '鮨 楓', sub: '神楽坂', seal: '楓', since: '創業 昭和四十二年' } },
   ],
 };

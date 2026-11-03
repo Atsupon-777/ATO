@@ -5,7 +5,7 @@ import type { MotionSceneId } from './MotionReel';
 import { cameraIds, enterIds, type CameraId, type EnterId } from './shot';
 
 /** Visual family of each style: neighbours from one family read as a repeat even when the style differs. */
-export const STYLE_FAMILY: Record<MotionSceneId, 'type' | 'data' | 'ui' | 'place' | 'craft' | 'brand' | 'proof'> = {
+export const STYLE_FAMILY: Record<MotionSceneId, 'type' | 'data' | 'ui' | 'place' | 'craft' | 'brand' | 'proof' | 'photo' | 'product'> = {
   headline: 'type',
   inkWash: 'craft',
   paperDesk: 'craft',
@@ -37,6 +37,12 @@ export const STYLE_FAMILY: Record<MotionSceneId, 'type' | 'data' | 'ui' | 'place
   scrollPage: 'ui',
   verticalCopy: 'craft',
   goldLine: 'brand',
+  washiSeal: 'brand',
+  brushText: 'craft',
+  ukiyoWave: 'craft',
+  watercolor: 'photo',
+  chalkboard: 'craft',
+  whiteboard: 'craft',
 };
 
 /** How many of an account's recent reels count as "recent" when ranking styles. */
