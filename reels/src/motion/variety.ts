@@ -43,6 +43,12 @@ export const STYLE_FAMILY: Record<MotionSceneId, 'type' | 'data' | 'ui' | 'place
   watercolor: 'photo',
   chalkboard: 'craft',
   whiteboard: 'craft',
+  photo25d: 'photo',
+  photoWall: 'photo',
+  collage: 'craft',
+  polaroids: 'photo',
+  textMask: 'type',
+  splitScreen: 'photo',
 };
 
 /** How many of an account's recent reels count as "recent" when ranking styles. */

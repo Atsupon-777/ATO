@@ -8,6 +8,7 @@ import { Bars3d, CompareTable, KineticType, PhoneStack, ReviewStars, type Bars3d
 import { Donut, FlapBoard, PinDrop, RankingRace, SearchFind, Typewriter, type DonutProps, type FlapBoardProps, type PinDropProps, type RankingRaceProps, type SearchFindProps, type TypewriterProps } from './Batch5Scenes';
 import { BeforeAfter, GoldLine, ProgressRing, ScrollPage, Versus, VerticalCopy, type BeforeAfterProps, type GoldLineProps, type ProgressRingProps, type ScrollPageProps, type VersusProps, type VerticalCopyProps } from './Batch6Scenes';
 import { BrushText, Chalkboard, UkiyoWave, WashiSeal, Watercolor, Whiteboard, type BrushTextProps, type ChalkboardProps, type UkiyoWaveProps, type WashiSealProps, type WatercolorProps, type WhiteboardProps } from './Batch7Scenes';
+import { Photo25d, PhotoWall, Collage, Polaroids, TextMask, SplitScreen, type Photo25dProps, type PhotoWallProps, type CollageProps, type PolaroidsProps, type TextMaskProps, type SplitScreenProps } from './Batch8Scenes';
 import { Headline, type HeadlineProps } from './Headline';
 import { InkWash, type InkWashProps } from './InkWash';
 import { GlobeZoom, MapRoute, type GlobeZoomProps, type MapRouteProps } from './MapScenes';
@@ -58,6 +59,12 @@ export const motionScenes = {
   watercolor: Watercolor as React.FC<any>,
   chalkboard: Chalkboard as React.FC<any>,
   whiteboard: Whiteboard as React.FC<any>,
+  photo25d: Photo25d as React.FC<any>,
+  photoWall: PhotoWall as React.FC<any>,
+  collage: Collage as React.FC<any>,
+  polaroids: Polaroids as React.FC<any>,
+  textMask: TextMask as React.FC<any>,
+  splitScreen: SplitScreen as React.FC<any>,
 } as const;
 export type MotionSceneId = keyof typeof motionScenes;
 export const motionSceneIds = Object.keys(motionScenes) as MotionSceneId[];
@@ -103,6 +110,12 @@ export const motionSceneSchema = z.discriminatedUnion('kind', [
   z.object({ kind: z.literal('watercolor'), seconds: z.number().min(3).max(8).default(4.5), ...shotFields, props: z.custom<WatercolorProps>() }),
   z.object({ kind: z.literal('chalkboard'), seconds: z.number().min(3).max(10).default(5), ...shotFields, props: z.custom<ChalkboardProps>() }),
   z.object({ kind: z.literal('whiteboard'), seconds: z.number().min(3).max(10).default(6), ...shotFields, props: z.custom<WhiteboardProps>() }),
+  z.object({ kind: z.literal('photo25d'), seconds: z.number().min(2.5).max(10).default(4.5), ...shotFields, props: z.custom<Photo25dProps>() }),
+  z.object({ kind: z.literal('photoWall'), seconds: z.number().min(2.5).max(10).default(4.5), ...shotFields, props: z.custom<PhotoWallProps>() }),
+  z.object({ kind: z.literal('collage'), seconds: z.number().min(2.5).max(10).default(5), ...shotFields, props: z.custom<CollageProps>() }),
+  z.object({ kind: z.literal('polaroids'), seconds: z.number().min(2.5).max(10).default(5.5), ...shotFields, props: z.custom<PolaroidsProps>() }),
+  z.object({ kind: z.literal('textMask'), seconds: z.number().min(2.5).max(10).default(4), ...shotFields, props: z.custom<TextMaskProps>() }),
+  z.object({ kind: z.literal('splitScreen'), seconds: z.number().min(2.5).max(10).default(4), ...shotFields, props: z.custom<SplitScreenProps>() }),
 ]);
 export type MotionScene = z.infer<typeof motionSceneSchema>;
 
@@ -378,5 +391,18 @@ export const motionSample7: MotionReelProps = {
     { kind: 'chalkboard', seconds: 5, props: { title: '本日のおすすめ', lines: [{ text: '寒ぶり', value: '680' }, { text: 'あん肝', value: '520' }, { text: '白子ポン酢', value: '880' }] } },
     { kind: 'whiteboard', seconds: 6, props: { title: 'ご予約の流れ', steps: ['LINEで日時', '席を確保', '当日ご来店'] } },
     { kind: 'washiSeal', seconds: 4, props: { title: '鮨 楓', sub: '神楽坂', seal: '楓', since: '創業 昭和四十二年' } },
+  ],
+};
+
+/** Eighth sample: photo-based styles, using the sample photos in public/samples/photos (a made-up travel brand, Tabi). */
+export const motionSample8: MotionReelProps = {
+  lang: 'ja',
+  scenes: [
+    { kind: 'textMask', seconds: 4, props: { text: 'TABI', image: 'samples/photos/travel.jpg', sub: '週末の小さな旅' } },
+    { kind: 'photo25d', seconds: 4.5, props: { image: 'samples/photos/cafe.jpg', title: '路地裏のカフェ', sub: '地元の人だけが知る朝ごはん', focus: { x: 0.5, y: 0.45 } } },
+    { kind: 'polaroids', seconds: 5.5, props: { images: ['samples/photos/matcha.jpg', 'samples/photos/sushi.jpg', 'samples/photos/florist.jpg', 'samples/photos/ramen.jpg'], captions: ['抹茶', '寿司', '花屋', 'ラーメン'], title: '1日で、4つの寄り道' } },
+    { kind: 'collage', seconds: 5, props: { images: ['samples/photos/fashion.jpg', 'samples/photos/sneaker.jpg', 'samples/photos/interior.jpg', 'samples/photos/cat.jpg'], words: ['自由', 'に', '旅'] } },
+    { kind: 'splitScreen', seconds: 4, props: { panels: [{ image: 'samples/photos/travel.jpg', label: '見る' }, { image: 'samples/photos/ramen.jpg', label: '食べる' }, { image: 'samples/photos/interior.jpg', label: '泊まる' }] } },
+    { kind: 'photoWall', seconds: 4.5, props: { images: ['samples/photos/travel.jpg', 'samples/photos/cafe.jpg', 'samples/photos/matcha.jpg', 'samples/photos/sushi.jpg', 'samples/photos/florist.jpg', 'samples/photos/ramen.jpg', 'samples/photos/interior.jpg', 'samples/photos/fashion.jpg', 'samples/photos/cat.jpg', 'samples/photos/puppy.jpg'], title: 'あなたの次の週末へ' } },
   ],
 };
