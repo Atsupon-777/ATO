@@ -106,6 +106,8 @@ export type ProductBrief = {
   lang?: Lang;
   /** Cosmetics: generate an on-skin model shot and animate that instead of the product shot. */
   onSkin: boolean;
+  /** The free first film: two story scenes instead of three and 6 s clips instead of 8 s. */
+  short?: boolean;
   /** What the reel is for (server/goals.ts), picked on the home screen. */
   goal?: string;
   jobId?: string;
@@ -195,7 +197,8 @@ export async function buildProductReel(brief: ProductBrief) {
     // Story scenes: a still per scene (Nano Banana, the client photo as the colour and product reference),
     // then all Veo shots at once. Files already made are reused when a job is re-run.
     step(4, 'story scenes');
-    const scenes = plan.story.slice(0, 3);
+    // the free first film (short) has two story scenes and 6 s clips: 18 s of video instead of 32 s
+    const scenes = plan.story.slice(0, brief.short ? 2 : 3);
     const stills = await Promise.all(
       scenes.map(async (s, i) => {
         const out = path.join(dir, `story-${i + 1}.png`);
@@ -215,7 +218,7 @@ export async function buildProductReel(brief: ProductBrief) {
       }),
     );
     const shot = async (image: string, file: string, prompt: string, label: string) => {
-      if (!(await exists(path.join(dir, file)))) await imageToVideo({ image, out: path.join(dir, file), prompt, usage, step: label });
+      if (!(await exists(path.join(dir, file)))) await imageToVideo({ image, out: path.join(dir, file), prompt, usage, step: label, ...(brief.short ? { seconds: 6 as const } : {}) });
       return rel(file);
     };
     const storyClips = scenes.map((s, i) =>

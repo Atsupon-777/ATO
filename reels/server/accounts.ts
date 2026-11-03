@@ -10,7 +10,7 @@ import { dataDir } from './paths.ts';
 export type PlanId = 'free' | 'starter' | 'standard' | 'pro';
 
 /**
- * Unit of `tokens` and `extra`. A reel takes 2 / 5 / 12 tokens. From 2026-10-18 to 2026-10-21 counts were kept
+ * Unit of `tokens` and `extra`. A reel takes 2 / 5 / 30 tokens (12 until 2026-11-03). From 2026-10-18 to 2026-10-21 counts were kept
  * 1000 times larger (tokenScale 1000); accounts saved in another scale are converted once when the file is loaded.
  */
 export const TOKEN_SCALE = 1;

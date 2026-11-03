@@ -966,7 +966,7 @@
  "「商品を魅せる」「体験を映画のように」の最初の1本は0トークンで作れます。": "Votre première vidéo « Mettre un produit en valeur » ou « Film d'expérience » coûte 0 jeton.",
  "電話番号を確認すると、「商品を魅せる」「体験を映画のように」の最初の1本を0トークンで作れます。": "Confirmez votre numéro et votre première vidéo « Mettre un produit en valeur » ou « Film d'expérience » coûtera 0 jeton.",
  "無料でできることは？": "Qu'est-ce qui est gratuit ?",
- "BGMの作り直しや音楽の種類の変更、投稿文（キャプション・ハッシュタグ）の作成は無料です。電話番号を確認したアカウントは、最初の商品動画（商品を魅せる・体験を映画のように）も1本無料で作れます。": "Refaire la musique, changer de style musical et rédiger le texte de publication (légende et hashtags) sont gratuits. Les comptes avec un numéro confirmé ont aussi leur première vidéo produit (Mettre un produit en valeur ou Film d'expérience) offerte.",
+ "BGMの作り直しや音楽の種類の変更、投稿文（キャプション・ハッシュタグ）の作成は無料です。電話番号を確認したアカウントは、最初の商品動画（商品を魅せる・体験を映画のように）も短い版を1本無料で作れます。": "Refaire la musique, changer de style musical et rédiger le texte de publication (légende et hashtags) sont gratuits. Les comptes avec un numéro confirmé ont aussi leur première vidéo produit (Mettre un produit en valeur ou Film d'expérience) offerte (version courte).",
  "初回無料の商品動画": "Premières vidéos produit offertes",
  "{0}本": "{0}",
  "写真1枚で広告動画": "Une photo, un film pub",
@@ -993,5 +993,7 @@
  "字幕の色を落ち着いた金と白にしました": "Sous-titres en blanc et or sobres",
  "字幕を明るい色にして、背景を付けました": "Sous-titres plus vifs avec un fond",
  "一度に出す字幕を短くしました": "Moins de texte à l'écran à la fois",
- "字幕を個別に直しているため、区切りは変えていません": "Certains sous-titres ont été modifiés à la main : les coupures restent inchangées"
+ "字幕を個別に直しているため、区切りは変えていません": "Certains sous-titres ont été modifiés à la main : les coupures restent inchangées",
+ "初回の1本は短い版が無料": "Le premier offert (version courte)",
+ "「商品を魅せる」「体験を映画のように」の最初の1本は、短い版を0トークンで作れます。": "Votre première vidéo « Mettre un produit en valeur » ou « Film d'expérience » est offerte en version courte (0 jeton)."
 }

@@ -92,7 +92,11 @@ export type ExperienceBrief = {
   onStep?: (step: number, total: number, label: string) => void;
   /** false: stop after building props, so the editor can preview and tweak before rendering. */
   render?: boolean;
+  /** The free first film: only hook → activity → peak, each a 6 s clip (18 s of video instead of 38 s). */
+  short?: boolean;
 };
+
+const SHORT_BEATS: readonly string[] = ['hook', 'activity', 'peak'];
 
 /** Seconds on screen, playback rate and trim per beat: Veo's calm middle, a little slow motion. */
 const TIMING: Record<(typeof experienceBeats)[number], { seconds: number; rate: number; trim: number; kind: 'hook' | 'mood' | 'moment' | 'craft' | 'hero' }> = {
@@ -190,7 +194,9 @@ export async function buildExperienceFilm(brief: ExperienceBrief) {
       });
   const plan: Plan = planSchema.parse(raw);
   // exactly one scene per beat, in story order
-  const scenes = experienceBeats.map((b, i) => plan.scenes.find((s) => s.beat === b) ?? { ...plan.scenes[i % plan.scenes.length], beat: b });
+  const scenes = experienceBeats
+    .map((b, i) => plan.scenes.find((s) => s.beat === b) ?? { ...plan.scenes[i % plan.scenes.length], beat: b })
+    .filter((s) => !brief.short || SHORT_BEATS.includes(s.beat));
   await writeFile(planFile, JSON.stringify(plan, null, 2));
   const look = LOOKS[plan.look] ?? LOOKS.golden;
 
@@ -267,7 +273,7 @@ export async function buildExperienceFilm(brief: ExperienceBrief) {
       const file = `scene-${i + 1}.mp4`;
       if (!(await exists(path.join(dir, file)))) {
         // the sensory detail is short on screen: a 6 s clip (720p) is plenty and costs less
-        const seconds = s.beat === 'sensory' ? 6 : 8;
+        const seconds = s.beat === 'sensory' || brief.short ? 6 : 8;
         await imageToVideo({
           image: stills[i]!,
           out: path.join(dir, file),

@@ -361,7 +361,7 @@ const uploadFile = async (f: File) => {
 
 // Tokens per reel, the same table as the server (A: own material 2, B: AI photo or effects 5, C: AI video 12).
 const tokensFor = (t: TemplateId, input: Record<string, any>) =>
-  t === 'ExperienceFilm' || t === 'PhotoAdFilm' ? 12 : t === 'ProductShine' ? (input.video ? 12 : 5) : t === 'EffectsReel' || t === 'FivePass' || t === 'SaaSPromo' || t === 'ServiceReel' ? 5 : 2;
+  t === 'ExperienceFilm' || t === 'PhotoAdFilm' ? 30 : t === 'ProductShine' ? (input.video ? 30 : 5) : t === 'EffectsReel' || t === 'FivePass' || t === 'SaaSPromo' || t === 'ServiceReel' ? 5 : 2;
 /** Product ad films: an account's first one is free (the server's PRODUCT_AD). */
 const PRODUCT_AD = new Set<string>(['ProductShine', 'ExperienceFilm', 'PhotoAdFilm', 'PhotoAd']);
 /** Tokens to export a finished reel (each time), and extra for the premium edit (stickers, captions added by hand). */
@@ -749,7 +749,7 @@ const NewJob: React.FC<{ template: TemplateId; fx?: EffectId; mixArg?: string; t
     <span className="cost">
       {freeFirst === 'available' ? (
         <>
-          {tr("消費:")} <s>{fmtN(tokensFor(template, input))}</s> <b>0{tr("トークン")}</b> <span className="freefirst">{tr("初回の商品動画は無料")}</span>
+          {tr("消費:")} <s>{fmtN(tokensFor(template, input))}</s> <b>0{tr("トークン")}</b> <span className="freefirst">{tr("初回の1本は短い版が無料")}</span>
         </>
       ) : (
         <>
@@ -5259,7 +5259,7 @@ const FAQ = [
   { q: tr("同じテンプレートでも毎回ちがう動画になりますか？"), a: tr("はい。ミックスはカットごとにエフェクト・字幕・カメラ・切り替えを組み合わせるので、シャッフルするたびに別の組み合わせになります。") },
   { q: tr("書き出した動画は商用で使えますか？"), a: tr("使えます。インスタのリール、TikTok、YouTubeショート、広告にそのまま使える縦型MP4です。") },
   { q: tr("書き出した後でも直せますか？"), a: tr("直せます。字幕・色・カットの演出を変えて、何度でも書き出し直せます。書き出しは1回につき1トークンです。") },
-  { q: tr("無料でできることは？"), a: tr("BGMの作り直しや音楽の種類の変更、投稿文（キャプション・ハッシュタグ）の作成は無料です。電話番号を確認したアカウントは、最初の商品動画（商品を魅せる・体験を映画のように）も1本無料で作れます。") },
+  { q: tr("無料でできることは？"), a: tr("BGMの作り直しや音楽の種類の変更、投稿文（キャプション・ハッシュタグ）の作成は無料です。電話番号を確認したアカウントは、最初の商品動画（商品を魅せる・体験を映画のように）も短い版を1本無料で作れます。") },
   { q: tr("解約はいつでもできますか？"), a: tr("できます。アカウントの「お支払い・解約の管理」から、いつでも手続きできます。") },
 ];
 
@@ -5541,9 +5541,9 @@ const Account: React.FC<{ go: (h: string) => void }> = ({ go }) => {
       <h2>{tr("プラン")}</h2>
       {me && me.freeFirst && me.freeFirst !== 'used' ? (
         <div className="okmsg freefirstmsg">
-          <b>{tr("初回の商品動画は無料")}</b>
+          <b>{tr("初回の1本は短い版が無料")}</b>
           <div className="cost" style={{ margin: '2px 0 0' }}>
-            {me.freeFirst === 'available' ? tr("「商品を魅せる」「体験を映画のように」の最初の1本は0トークンで作れます。") : tr("電話番号を確認すると、「商品を魅せる」「体験を映画のように」の最初の1本を0トークンで作れます。")}
+            {me.freeFirst === 'available' ? tr("「商品を魅せる」「体験を映画のように」の最初の1本は、短い版を0トークンで作れます。") : tr("電話番号を確認すると、「商品を魅せる」「体験を映画のように」の最初の1本を0トークンで作れます。")}
           </div>
         </div>
       ) : null}

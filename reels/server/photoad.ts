@@ -88,7 +88,15 @@ export type PhotoAdBrief = {
   onStep?: (step: number, total: number, label: string) => void;
   /** Stop after this stage: 'stills' to check keyframes before paying for video, 'props' to skip the render. */
   until?: 'stills' | 'props';
+  /** The free first film: only splash → ritual → pack, with shorter clips (16 s of video instead of 32 s). */
+  short?: boolean;
 };
+
+/** The three beats of the short version and their clip lengths. */
+const SHORT_BEATS: readonly Beat[] = ['splash', 'ritual', 'pack'];
+const SHORT_CLIP: Partial<Record<Beat, 4 | 6 | 8>> = { splash: 4, ritual: 6, pack: 6 };
+/** Seconds on screen in the short version, where they differ (each slice must fit its shorter clip). */
+const SHORT_SECONDS: Partial<Record<Beat, number>> = { ritual: 4.5, pack: 5.5 };
 
 const exists = (f: string) => access(f).then(() => true, () => false);
 const run = promisify(execFile);
@@ -146,6 +154,9 @@ export async function buildPhotoAd(brief: PhotoAdBrief) {
   );
   await writeFile(planFile, JSON.stringify(plan, null, 2));
   const shots = photoAdBeats.map((b, i) => plan.shots.find((s) => s.beat === b) ?? { ...plan.shots[i % plan.shots.length], beat: b });
+  const beats: readonly Beat[] = brief.short ? SHORT_BEATS : photoAdBeats;
+  const onScreen = (beat: Beat) => (brief.short ? SHORT_SECONDS[beat] : undefined) ?? TIMING[beat].seconds;
+  const clipSeconds = (beat: Beat) => (brief.short ? SHORT_CLIP[beat] : undefined) ?? TIMING[beat].clipSeconds;
 
   step(2, 'keyframes');
   const world = `The set: ${plan.world}.`;
@@ -163,19 +174,20 @@ export async function buildPhotoAd(brief: PhotoAdBrief) {
     KEEP_PRODUCT,
   ]);
   // The ritual still sets the person; the skin macro takes her as a reference.
+  const skip = (beat: Beat) => !beats.includes(beat);
   const [splash, texture, ritual] = await Promise.all([
     still('splash', [original, pack], [
       `Image 1 is the product (${plan.product}), image 2 is the ad's pack shot. A high-speed beauty-commercial frame: ${S.splash.imagePrompt}`,
       KEEP_PRODUCT,
       `The substance: ${plan.texture}.`,
     ]),
-    still('texture', [pack], [`Same commercial as the reference, colour world and light. Extreme macro of the product's substance alone, no bottle: ${S.texture.imagePrompt}`, `The substance: ${plan.texture}.`]),
+    skip('texture') ? '' : still('texture', [pack], [`Same commercial as the reference, colour world and light. Extreme macro of the product's substance alone, no bottle: ${S.texture.imagePrompt}`, `The substance: ${plan.texture}.`]),
     still('ritual', [pack], [
       `Same commercial as the reference: use it only for the set, colours and light. The bottle is NOT in this shot. ${S.ritual.imagePrompt}`,
       `The model: ${plan.model}. Bare shoulders, a simple strapless top or towel wrap below the frame edge, nothing on her arms. Real skin with pores and fine texture, natural hands with five fingers each, relaxed.`,
     ]),
   ]);
-  const bridge = await still('bridge', [ritual, pack], [
+  const bridge = skip('bridge') ? '' : await still('bridge', [ritual, pack], [
     `Same commercial, same woman as image 1 (same skin tone), same light as image 2. Macro: ${S.bridge.imagePrompt}`,
     `The substance: ${plan.texture}. Real skin texture, natural hands with five fingers.`,
   ]);
@@ -203,20 +215,20 @@ export async function buildPhotoAd(brief: PhotoAdBrief) {
     pack: 'The bottle stays perfectly still and rigid with its label sharp and unchanged; fine droplets slide slowly down the glass, a few drops fall into the shallow water at its base making small ripples, soft light glides across the glass. Very slow, subtle camera push.',
   };
   const clips = await Promise.all(
-    photoAdBeats.map(async (beat) => {
+    beats.map(async (beat) => {
       const file = `${beat}.mp4`;
       const t = TIMING[beat];
       if (!(await exists(path.join(dir, file))))
         await imageToVideo({
           image: stills[beat],
           out: path.join(dir, file),
-          seconds: t.clipSeconds,
+          seconds: clipSeconds(beat),
           prompt: `${S[beat].motionPrompt}\n${physics[beat]}\nOne continuous shot, no cuts, nothing appears that is not physically there.`,
           negativePrompt: NEGATIVE,
           usage,
           step: `clip ${beat}`,
         });
-      const { jumps, duration } = await jumpsOf(path.join(dir, file)).catch(() => ({ jumps: [] as number[], duration: t.clipSeconds }));
+      const { jumps, duration } = await jumpsOf(path.join(dir, file)).catch(() => ({ jumps: [] as number[], duration: clipSeconds(beat) }));
       if (jumps.length) console.log(`${beat}: cut at ${jumps.map((j) => j.toFixed(2)).join(', ')}s`);
       // the macro ends on the falling drop (the matched cut into the skin shot), so it plays its last seconds
       const want = beat === 'texture' ? Math.max(0, duration - t.seconds * t.rate - 0.25) : t.trim;
@@ -224,7 +236,7 @@ export async function buildPhotoAd(brief: PhotoAdBrief) {
       // with the person keep it in the lower third
       const [top, bottom] = await Promise.all([busy(stills[beat], 0.1, 0.3), busy(stills[beat], 0.62, 0.82)]);
       const person = beat === 'bridge' || beat === 'ritual';
-      return { src: rel(file), trim: calmTrim(want, t.seconds * t.rate, jumps, duration), place: !person && top < bottom * 0.8 ? ('top' as const) : ('bottom' as const) };
+      return { src: rel(file), trim: calmTrim(want, onScreen(beat) * t.rate, jumps, duration), place: !person && top < bottom * 0.8 ? ('top' as const) : ('bottom' as const) };
     }),
   );
   const musicFile = await music;
@@ -237,10 +249,10 @@ export async function buildPhotoAd(brief: PhotoAdBrief) {
     cta: (brief.cta || plan.cta).slice(0, 24),
     handle: (brief.handle ?? '').slice(0, 30),
     lang,
-    shots: photoAdBeats.map((beat, i) => ({
+    shots: beats.map((beat, i) => ({
       src: clips[i].src,
       beat,
-      seconds: TIMING[beat].seconds,
+      seconds: onScreen(beat),
       trimStart: Math.round(clips[i].trim * 100) / 100,
       rate: TIMING[beat].rate,
       enter: TIMING[beat].enter,

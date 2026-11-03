@@ -102,10 +102,12 @@ const premiumDue = (job: Job) => Boolean((job.props as { overlays?: unknown[] } 
 const HQ_TOKENS = 2;
 const exportCost = (job: Job, hq = false) => EXPORT_TOKENS + (premiumDue(job) ? PREMIUM_TOKENS : 0) + (hq ? HQ_TOKENS : 0);
 
-/** Tokens each kind of reel takes: own footage only 2, AI photo or effects 5, with AI video 12 (experience films and photo ads are all AI video). */
+/** Tokens each kind of reel takes: own footage only 2, AI photo or effects 5, with AI video 30 (experience films and photo ads are all AI video).
+ * 30 since 2026-11-03: one AI video film costs about 530 yen to make, so at about 48 yen a token 12 left almost nothing. */
 /** Product ad films: an account's first one is free (accounts.ts freeFirstState). Names of templates still to come are listed too. */
 const PRODUCT_AD = new Set<string>(['ProductShine', 'ExperienceFilm', 'PhotoAdFilm', 'PhotoAd']);
-const tokensFor = (t: Template, input: Record<string, any>) => (t === 'ExperienceFilm' || t === 'PhotoAdFilm' ? 12 : t === 'ProductShine' ? (input.video ? 12 : 5) : t === 'EffectsReel' || t === 'FivePass' || t === 'SaaSPromo' || t === 'ServiceReel' ? 5 : 2);
+const AI_FILM_TOKENS = 30;
+const tokensFor = (t: Template, input: Record<string, any>) => (t === 'ExperienceFilm' || t === 'PhotoAdFilm' ? AI_FILM_TOKENS : t === 'ProductShine' ? (input.video ? AI_FILM_TOKENS : 5) : t === 'EffectsReel' || t === 'FivePass' || t === 'SaaSPromo' || t === 'ServiceReel' ? 5 : 2);
 
 const jobs = new Map<string, Job>();
 
@@ -173,7 +175,8 @@ const keepOriginalMusic = (job: Job, next?: unknown) => {
 
 async function startJob(template: Template, input: Record<string, any>, user: User) {
   const id = `job-${Date.now().toString(36)}${Math.random().toString(36).slice(2, 6)}`;
-  // The account's first product ad film costs nothing (once; it comes back if the film fails).
+  // The account's first product ad film costs nothing (once, phone-verified accounts only; it comes back if the film fails).
+  // That free film is the short version: fewer AI video shots, shorter clips (about 40% of the full film's cost).
   const freeFirst = PRODUCT_AD.has(template) && (await takeFreeFirst(user.uid, id));
   const cost = freeFirst ? 0 : tokensFor(template, input);
   await charge(user.uid, cost);
@@ -215,7 +218,8 @@ async function startJob(template: Template, input: Record<string, any>, user: Us
           cta: String(input.cta || '詳しくはプロフィールへ').slice(0, 16),
           handle: String(input.handle || '').slice(0, 30),
           video: Boolean(input.video),
-          onSkin: Boolean(input.onSkin),
+          onSkin: Boolean(input.onSkin) && !freeFirst,
+          short: freeFirst,
           goal,
           lang,
           jobId: id,
@@ -240,6 +244,7 @@ async function startJob(template: Template, input: Record<string, any>, user: Us
           handle: String(input.handle || '').slice(0, 30),
           lang,
           goal,
+          short: freeFirst,
           jobId: id,
           onStep,
           render: false,
@@ -259,6 +264,7 @@ async function startJob(template: Template, input: Record<string, any>, user: Us
           handle: String(input.handle || '').slice(0, 30),
           goal,
           lang,
+          short: freeFirst,
           jobId: id,
           onStep,
           until: 'props',

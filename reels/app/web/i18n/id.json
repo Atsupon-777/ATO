@@ -966,7 +966,7 @@
  "「商品を魅せる」「体験を映画のように」の最初の1本は0トークンで作れます。": "Video pertama “Tonjolkan produk” atau “Film pengalaman” Anda 0 token.",
  "電話番号を確認すると、「商品を魅せる」「体験を映画のように」の最初の1本を0トークンで作れます。": "Konfirmasi nomor telepon Anda, dan video pertama “Tonjolkan produk” atau “Film pengalaman” jadi 0 token.",
  "無料でできることは？": "Apa saja yang gratis?",
- "BGMの作り直しや音楽の種類の変更、投稿文（キャプション・ハッシュタグ）の作成は無料です。電話番号を確認したアカウントは、最初の商品動画（商品を魅せる・体験を映画のように）も1本無料で作れます。": "Membuat ulang musik latar, mengganti jenis musik, dan membuat teks postingan (caption dan hashtag) gratis. Akun dengan nomor telepon terkonfirmasi juga mendapat video produk pertama (Tonjolkan produk atau Film pengalaman) gratis.",
+ "BGMの作り直しや音楽の種類の変更、投稿文（キャプション・ハッシュタグ）の作成は無料です。電話番号を確認したアカウントは、最初の商品動画（商品を魅せる・体験を映画のように）も短い版を1本無料で作れます。": "Membuat ulang musik latar, mengganti jenis musik, dan membuat teks postingan (caption dan hashtag) gratis. Akun dengan nomor telepon terkonfirmasi juga mendapat video produk pertama (Tonjolkan produk atau Film pengalaman) gratis (versi pendek).",
  "初回無料の商品動画": "Video produk pertama gratis",
  "{0}本": "{0}",
  "写真1枚で広告動画": "Satu foto jadi video iklan",
@@ -993,5 +993,7 @@
  "字幕の色を落ち着いた金と白にしました": "Teks dalam warna putih dan emas yang tenang",
  "字幕を明るい色にして、背景を付けました": "Teks lebih cerah dengan latar di belakangnya",
  "一度に出す字幕を短くしました": "Lebih sedikit teks di layar sekaligus",
- "字幕を個別に直しているため、区切りは変えていません": "Beberapa teks diedit manual, jadi pemisahnya tidak diubah"
+ "字幕を個別に直しているため、区切りは変えていません": "Beberapa teks diedit manual, jadi pemisahnya tidak diubah",
+ "初回の1本は短い版が無料": "Yang pertama gratis (versi pendek)",
+ "「商品を魅せる」「体験を映画のように」の最初の1本は、短い版を0トークンで作れます。": "Video pertama \"Tonjolkan produk\" atau \"Film pengalaman\" gratis dalam versi pendek (0 token)."
 }

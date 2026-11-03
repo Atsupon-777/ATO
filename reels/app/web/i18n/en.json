@@ -966,7 +966,7 @@
  "「商品を魅せる」「体験を映画のように」の最初の1本は0トークンで作れます。": "Your first “Showcase a product” or “Experience film” video costs 0 tokens.",
  "電話番号を確認すると、「商品を魅せる」「体験を映画のように」の最初の1本を0トークンで作れます。": "Confirm your phone number and your first “Showcase a product” or “Experience film” video costs 0 tokens.",
  "無料でできることは？": "What's free?",
- "BGMの作り直しや音楽の種類の変更、投稿文（キャプション・ハッシュタグ）の作成は無料です。電話番号を確認したアカウントは、最初の商品動画（商品を魅せる・体験を映画のように）も1本無料で作れます。": "Remaking the background music, changing the kind of music and writing the post text (caption and hashtags) are free. Accounts with a confirmed phone number also get their first product video (Showcase a product or Experience film) free.",
+ "BGMの作り直しや音楽の種類の変更、投稿文（キャプション・ハッシュタグ）の作成は無料です。電話番号を確認したアカウントは、最初の商品動画（商品を魅せる・体験を映画のように）も短い版を1本無料で作れます。": "Remaking the background music, changing the kind of music and writing the post text (caption and hashtags) are free. Accounts with a confirmed phone number also get their first product video (Showcase a product or Experience film) free (short version).",
  "初回無料の商品動画": "Free first product videos",
  "{0}本": "{0}",
  "写真1枚で広告動画": "One photo to an ad film",
@@ -993,5 +993,7 @@
  "字幕の色を落ち着いた金と白にしました": "Captions in calm white and gold",
  "字幕を明るい色にして、背景を付けました": "Brighter captions with a box behind them",
  "一度に出す字幕を短くしました": "Fewer characters on screen at a time",
- "字幕を個別に直しているため、区切りは変えていません": "Some captions were edited by hand, so the breaks were left as they are"
+ "字幕を個別に直しているため、区切りは変えていません": "Some captions were edited by hand, so the breaks were left as they are",
+ "初回の1本は短い版が無料": "First one free (short version)",
+ "「商品を魅せる」「体験を映画のように」の最初の1本は、短い版を0トークンで作れます。": "Your first “Showcase a product” or “Experience film” video is free in its short version (0 tokens)."
 }
