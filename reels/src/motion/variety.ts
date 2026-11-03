@@ -25,6 +25,12 @@ export const STYLE_FAMILY: Record<MotionSceneId, 'type' | 'data' | 'ui' | 'place
   compareTable: 'data',
   phoneStack: 'ui',
   bars3d: 'data',
+  donut: 'data',
+  rankingRace: 'data',
+  flapBoard: 'type',
+  typewriter: 'type',
+  pinDrop: 'place',
+  searchFind: 'ui',
 };
 
 /** How many of an account's recent reels count as "recent" when ranking styles. */
@@ -111,6 +117,7 @@ export const STYLE_LAYOUTS: Partial<Record<MotionSceneId, { prop: string; ids: r
   pricing: { prop: 'layout', ids: ['list', 'columns'] },
   timeline: { prop: 'layout', ids: ['rail', 'zigzag'] },
   logoReveal: { prop: 'intro', ids: ['shards', 'rings', 'split'] },
+  typewriter: { prop: 'terminal', ids: ['', 'yes'] },
 };
 
 /** The layout prop for one style in one reel, e.g. { layout: 'hero' }; empty when the style has one layout. */

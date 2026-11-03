@@ -5,6 +5,7 @@ import { AbsoluteFill, Audio, Sequence } from 'remotion';
 import { z } from 'zod';
 import { cjkVars, loadFonts } from '../lib/fonts';
 import { Bars3d, CompareTable, KineticType, PhoneStack, ReviewStars, type Bars3dProps, type CompareTableProps, type KineticTypeProps, type PhoneStackProps, type ReviewStarsProps } from './Batch4Scenes';
+import { Donut, FlapBoard, PinDrop, RankingRace, SearchFind, Typewriter, type DonutProps, type FlapBoardProps, type PinDropProps, type RankingRaceProps, type SearchFindProps, type TypewriterProps } from './Batch5Scenes';
 import { Headline, type HeadlineProps } from './Headline';
 import { InkWash, type InkWashProps } from './InkWash';
 import { GlobeZoom, MapRoute, type GlobeZoomProps, type MapRouteProps } from './MapScenes';
@@ -37,6 +38,12 @@ export const motionScenes = {
   compareTable: CompareTable as React.FC<any>,
   phoneStack: PhoneStack as React.FC<any>,
   bars3d: Bars3d as React.FC<any>,
+  donut: Donut as React.FC<any>,
+  rankingRace: RankingRace as React.FC<any>,
+  flapBoard: FlapBoard as React.FC<any>,
+  typewriter: Typewriter as React.FC<any>,
+  pinDrop: PinDrop as React.FC<any>,
+  searchFind: SearchFind as React.FC<any>,
 } as const;
 export type MotionSceneId = keyof typeof motionScenes;
 export const motionSceneIds = Object.keys(motionScenes) as MotionSceneId[];
@@ -64,6 +71,12 @@ export const motionSceneSchema = z.discriminatedUnion('kind', [
   z.object({ kind: z.literal('compareTable'), seconds: z.number().min(3).max(10).default(5), ...shotFields, props: z.custom<CompareTableProps>() }),
   z.object({ kind: z.literal('phoneStack'), seconds: z.number().min(3).max(10).default(6), ...shotFields, props: z.custom<PhoneStackProps>() }),
   z.object({ kind: z.literal('bars3d'), seconds: z.number().min(3).max(10).default(4.5), ...shotFields, props: z.custom<Bars3dProps>() }),
+  z.object({ kind: z.literal('donut'), seconds: z.number().min(3).max(10).default(4.5), ...shotFields, props: z.custom<DonutProps>() }),
+  z.object({ kind: z.literal('rankingRace'), seconds: z.number().min(3).max(12).default(6), ...shotFields, props: z.custom<RankingRaceProps>() }),
+  z.object({ kind: z.literal('flapBoard'), seconds: z.number().min(2).max(8).default(3.5), ...shotFields, props: z.custom<FlapBoardProps>() }),
+  z.object({ kind: z.literal('typewriter'), seconds: z.number().min(2).max(10).default(4.5), ...shotFields, props: z.custom<TypewriterProps>() }),
+  z.object({ kind: z.literal('pinDrop'), seconds: z.number().min(3).max(10).default(5), ...shotFields, props: z.custom<PinDropProps>() }),
+  z.object({ kind: z.literal('searchFind'), seconds: z.number().min(3).max(10).default(4.5), ...shotFields, props: z.custom<SearchFindProps>() }),
 ]);
 export type MotionScene = z.infer<typeof motionSceneSchema>;
 
@@ -284,5 +297,34 @@ export const motionSample4: MotionReelProps = {
       props: { rating: 4.8, source: 'App Store', count: '2,300件', quotes: [{ text: '朝の5分が習慣になりました', who: '30代・会社員' }, { text: 'ジムより続いてます', who: '40代・主婦' }] },
     },
     { kind: 'logoReveal', seconds: 3.5, props: { name: 'Kumo Fit', tagline: '家で、5分だけ。', cta: '7日間無料' } },
+  ],
+};
+
+/** Fifth sample: a made-up ramen chain (Menya Sora), for donut, ranking race, flap board, typewriter, pins and search. */
+export const motionSample5: MotionReelProps = {
+  lang: 'ja',
+  scenes: [
+    { kind: 'searchFind', seconds: 4.5, props: { query: '渋谷 ラーメン 深夜', result: { name: '麺屋 そら 渋谷店', text: '朝4時まで。鶏白湯が自慢です。', tag: '営業中' }, others: ['ほかのお店 A', 'ほかのお店 B'] } },
+    { kind: 'typewriter', seconds: 4.5, props: { lines: ['スープは12時間。', '麺は毎朝、店で打つ。', 'だから、また来たくなる。'] } },
+    { kind: 'donut', seconds: 4.5, props: { title: 'お客さまの声', slices: [{ label: 'また来たい', value: 87 }, { label: 'ふつう', value: 10 }, { label: 'その他', value: 3 }] } },
+    {
+      kind: 'rankingRace',
+      seconds: 6,
+      props: {
+        title: '渋谷の人気ラーメン',
+        periods: ['2023', '2024', '2025', '2026'],
+        highlight: '麺屋 そら',
+        unit: '票',
+        items: [
+          { label: '麺屋 そら', values: [120, 480, 1300, 2600] },
+          { label: 'お店 A', values: [900, 1100, 1250, 1400] },
+          { label: 'お店 B', values: [700, 900, 1500, 1700] },
+          { label: 'お店 C', values: [1000, 1050, 1100, 1150] },
+          { label: 'お店 D', values: [400, 800, 900, 1000] },
+        ],
+      },
+    },
+    { kind: 'pinDrop', seconds: 5, props: { title: '東京に広がっています', count: 24, label: '店舗' } },
+    { kind: 'flapBoard', seconds: 3.5, props: { label: 'NEW SHOP OPEN', lines: ['SHIBUYA', 'OPEN 11:00', '2026-12-01'] } },
   ],
 };
