@@ -2,6 +2,7 @@
 // family, and styles this account saw recently are picked last. The AI planner proposes candidates per
 // beat; this file makes the final choice deterministically so it can be tested.
 import type { MotionSceneId } from './MotionReel';
+import { cameraIds, enterIds, type CameraId, type EnterId } from './shot';
 
 /** Visual family of each style: neighbours from one family read as a repeat even when the style differs. */
 export const STYLE_FAMILY: Record<MotionSceneId, 'type' | 'data' | 'ui' | 'place' | 'craft' | 'brand'> = {
@@ -62,4 +63,53 @@ export const variantSeed = (accountId: string, reelIndex: number) => {
   let h = 2166136261;
   for (const ch of `${accountId}:${reelIndex}`) h = Math.imul(h ^ ch.charCodeAt(0), 16777619);
   return (h >>> 0) % 1000;
+};
+
+/**
+ * Entrance + camera for each scene: deterministic from the seed, never the same entrance or camera move
+ * twice in a row, and every entrance used once before any repeats within a reel.
+ */
+export const pickShots = (count: number, seed: number): { enter: EnterId; camera: CameraId }[] => {
+  const rnd = mulberry(seed + 1);
+  const deck = <T,>(ids: readonly T[]) => {
+    let pool: T[] = [];
+    let last: T | undefined;
+    return () => {
+      if (!pool.length) pool = shuffle([...ids], rnd);
+      if (pool[0] === last && pool.length > 1) pool.push(pool.shift()!);
+      last = pool.shift()!;
+      return last;
+    };
+  };
+  const nextEnter = deck(enterIds.filter((e) => e !== 'cut'));
+  const nextCam = deck(cameraIds);
+  return Array.from({ length: count }, () => ({ enter: nextEnter(), camera: nextCam() }));
+};
+
+const mulberry = (a: number) => () => {
+  a |= 0; a = (a + 0x6d2b79f5) | 0;
+  let t = Math.imul(a ^ (a >>> 15), 1 | a);
+  t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
+  return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+};
+const shuffle = <T,>(xs: T[], rnd: () => number) => {
+  for (let i = xs.length - 1; i > 0; i--) {
+    const j = Math.floor(rnd() * (i + 1));
+    [xs[i], xs[j]] = [xs[j], xs[i]];
+  }
+  return xs;
+};
+
+/** Layout options inside a style (prop name + ids). Styles not listed have one layout so far. */
+export const STYLE_LAYOUTS: Partial<Record<MotionSceneId, { prop: string; ids: readonly string[] }>> = {
+  kpiTiles: { prop: 'layout', ids: ['grid', 'stack', 'hero'] },
+  pricing: { prop: 'layout', ids: ['list', 'columns'] },
+  timeline: { prop: 'layout', ids: ['rail', 'zigzag'] },
+  logoReveal: { prop: 'intro', ids: ['shards', 'rings', 'split'] },
+};
+
+/** The layout prop for one style in one reel, e.g. { layout: 'hero' }; empty when the style has one layout. */
+export const pickLayout = (style: MotionSceneId, seed: number): Record<string, string> => {
+  const l = STYLE_LAYOUTS[style];
+  return l ? { [l.prop]: l.ids[Math.floor(mulberry(seed * 31 + style.length)() * l.ids.length)] } : {};
 };

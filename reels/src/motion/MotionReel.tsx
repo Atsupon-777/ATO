@@ -11,6 +11,7 @@ import { CursorDemo, KpiTiles, LogoLine, type CursorDemoProps, type KpiTilesProp
 import { PaperDesk, type PaperDeskProps } from './PaperDesk';
 import { StatChart, type StatChartProps } from './StatChart';
 import { Teardown, type TeardownProps } from './Teardown';
+import { Shot, cameraIds, enterIds } from './shot';
 import { MotionThemeContext, PACE, lookOf, motionThemeSchema } from './theme';
 import { ChatThread, LogoReveal, Pricing, Timeline, type ChatProps, type LogoRevealProps, type PricingProps, type TimelineProps } from './UiScenes';
 
@@ -34,21 +35,24 @@ export const motionScenes = {
 export type MotionSceneId = keyof typeof motionScenes;
 export const motionSceneIds = Object.keys(motionScenes) as MotionSceneId[];
 
+/** Optional entrance and camera move; the planner fills them from variety.ts so reels differ. */
+const shotFields = { enter: z.enum(enterIds).optional(), camera: z.enum(cameraIds).optional() };
+
 export const motionSceneSchema = z.discriminatedUnion('kind', [
-  z.object({ kind: z.literal('statChart'), seconds: z.number().min(2).max(12).default(5.7), props: z.custom<StatChartProps>() }),
-  z.object({ kind: z.literal('headline'), seconds: z.number().min(2).max(12).default(5), props: z.custom<HeadlineProps>() }),
-  z.object({ kind: z.literal('inkWash'), seconds: z.number().min(2).max(12).default(5), props: z.custom<InkWashProps>() }),
-  z.object({ kind: z.literal('teardown'), seconds: z.number().min(3).max(12).default(7.4), props: z.custom<TeardownProps>() }),
-  z.object({ kind: z.literal('paperDesk'), seconds: z.number().min(3).max(12).default(7.9), props: z.custom<PaperDeskProps>() }),
-  z.object({ kind: z.literal('chat'), seconds: z.number().min(2).max(12).default(5), props: z.custom<ChatProps>() }),
-  z.object({ kind: z.literal('pricing'), seconds: z.number().min(2).max(12).default(4), props: z.custom<PricingProps>() }),
-  z.object({ kind: z.literal('timeline'), seconds: z.number().min(2).max(12).default(5), props: z.custom<TimelineProps>() }),
-  z.object({ kind: z.literal('logoReveal'), seconds: z.number().min(2).max(8).default(3.5), props: z.custom<LogoRevealProps>() }),
-  z.object({ kind: z.literal('mapRoute'), seconds: z.number().min(3).max(12).default(5.5), props: z.custom<MapRouteProps>() }),
-  z.object({ kind: z.literal('globeZoom'), seconds: z.number().min(3).max(12).default(5), props: z.custom<GlobeZoomProps>() }),
-  z.object({ kind: z.literal('cursorDemo'), seconds: z.number().min(3).max(12).default(6), props: z.custom<CursorDemoProps>() }),
-  z.object({ kind: z.literal('kpiTiles'), seconds: z.number().min(2).max(10).default(4), props: z.custom<KpiTilesProps>() }),
-  z.object({ kind: z.literal('logoLine'), seconds: z.number().min(2).max(8).default(3), props: z.custom<LogoLineProps>() }),
+  z.object({ kind: z.literal('statChart'), seconds: z.number().min(2).max(12).default(5.7), ...shotFields, props: z.custom<StatChartProps>() }),
+  z.object({ kind: z.literal('headline'), seconds: z.number().min(2).max(12).default(5), ...shotFields, props: z.custom<HeadlineProps>() }),
+  z.object({ kind: z.literal('inkWash'), seconds: z.number().min(2).max(12).default(5), ...shotFields, props: z.custom<InkWashProps>() }),
+  z.object({ kind: z.literal('teardown'), seconds: z.number().min(3).max(12).default(7.4), ...shotFields, props: z.custom<TeardownProps>() }),
+  z.object({ kind: z.literal('paperDesk'), seconds: z.number().min(3).max(12).default(7.9), ...shotFields, props: z.custom<PaperDeskProps>() }),
+  z.object({ kind: z.literal('chat'), seconds: z.number().min(2).max(12).default(5), ...shotFields, props: z.custom<ChatProps>() }),
+  z.object({ kind: z.literal('pricing'), seconds: z.number().min(2).max(12).default(4), ...shotFields, props: z.custom<PricingProps>() }),
+  z.object({ kind: z.literal('timeline'), seconds: z.number().min(2).max(12).default(5), ...shotFields, props: z.custom<TimelineProps>() }),
+  z.object({ kind: z.literal('logoReveal'), seconds: z.number().min(2).max(8).default(3.5), ...shotFields, props: z.custom<LogoRevealProps>() }),
+  z.object({ kind: z.literal('mapRoute'), seconds: z.number().min(3).max(12).default(5.5), ...shotFields, props: z.custom<MapRouteProps>() }),
+  z.object({ kind: z.literal('globeZoom'), seconds: z.number().min(3).max(12).default(5), ...shotFields, props: z.custom<GlobeZoomProps>() }),
+  z.object({ kind: z.literal('cursorDemo'), seconds: z.number().min(3).max(12).default(6), ...shotFields, props: z.custom<CursorDemoProps>() }),
+  z.object({ kind: z.literal('kpiTiles'), seconds: z.number().min(2).max(10).default(4), ...shotFields, props: z.custom<KpiTilesProps>() }),
+  z.object({ kind: z.literal('logoLine'), seconds: z.number().min(2).max(8).default(3), ...shotFields, props: z.custom<LogoLineProps>() }),
 ]);
 export type MotionScene = z.infer<typeof motionSceneSchema>;
 
@@ -79,7 +83,9 @@ export const MotionReel: React.FC<MotionReelProps> = ({ scenes, lang, music, the
         at += len;
         return (
           <Sequence key={i} from={from} durationInFrames={len}>
-            <C {...(s.props as object)} />
+            <Shot enter={s.enter} camera={s.camera}>
+              <C {...(s.props as object)} />
+            </Shot>
           </Sequence>
         );
       })}

@@ -115,6 +115,8 @@ export type PricingProps = {
   title?: string;
   plans: { name: string; price: string; per?: string; points: string[]; best?: boolean }[];
   accent?: string;
+  /** list: wide rows from the sides · columns: tall cards side by side, the best one raised. */
+  layout?: 'list' | 'columns';
 };
 
 export const Pricing: React.FC<PricingProps> = (p) => {
@@ -126,12 +128,13 @@ export const Pricing: React.FC<PricingProps> = (p) => {
   const plans = p.plans.slice(0, 3);
   const best = Math.max(0, plans.findIndex((x) => x.best));
   const glow = k(f, t(1.7), t(2.2));
+  const cols = p.layout === 'columns';
   return (
     <AbsoluteFill style={{ background: U.bg, alignItems: 'center' }}>
       {p.title ? (
         <div style={{ marginTop: 230, fontFamily: U.head, fontWeight: U.L?.headWeight ?? 900, fontSize: 64, color: U.ink, opacity: k(f, 0, t(0.4)), transform: `translateY(${(1 - k(f, 0, t(0.5), E.outExpo)) * 40}px)` }}>{p.title}</div>
       ) : null}
-      <div style={{ position: 'absolute', top: 420, left: 70, right: 70, display: 'grid', gap: 34 }}>
+      <div style={{ position: 'absolute', top: cols ? 560 : 420, left: cols ? 40 : 70, right: cols ? 40 : 70, display: 'grid', gap: cols ? 20 : 34, gridTemplateColumns: cols ? `repeat(${plans.length}, 1fr)` : undefined, alignItems: 'end' }}>
         {plans.map((pl, i) => {
           const s = springX(lin(f, t(0.35) + i * t(0.18), t(1.1) + i * t(0.18)), 1.1, 6);
           const isBest = i === best && plans.some((x) => x.best);
@@ -140,28 +143,35 @@ export const Pricing: React.FC<PricingProps> = (p) => {
               key={i}
               style={{
                 position: 'relative',
-                padding: '40px 48px',
+                padding: cols ? '56px 28px' : '40px 48px',
+                minHeight: cols ? (isBest ? 760 : 660) : undefined,
                 borderRadius: 40,
                 background: isBest ? (U.L ? accent : INK) : U.card,
                 color: isBest ? (U.L ? U.L.onAccent : '#fff') : U.ink,
                 boxShadow: isBest ? `0 0 0 ${4 * glow}px ${accent}, 0 30px ${80 * glow + 40}px color-mix(in srgb, ${accent} ${Math.round(15 + 25 * glow)}%, transparent)` : '0 20px 50px rgba(30,40,80,.1)',
-                transform: `translateX(${(1 - s) * (i % 2 ? 700 : -700)}px) scale(${isBest ? 1 + 0.03 * glow : 1})`,
+                transform: cols
+                  ? `translateY(${(1 - s) * 900}px) scale(${isBest ? 1 + 0.03 * glow : 1})`
+                  : `translateX(${(1 - s) * (i % 2 ? 700 : -700)}px) scale(${isBest ? 1 + 0.03 * glow : 1})`,
                 display: 'grid',
-                gridTemplateColumns: '1fr auto',
+                gridTemplateColumns: cols ? '1fr' : '1fr auto',
+                alignContent: cols ? 'space-between' : undefined,
+                boxSizing: 'border-box',
                 alignItems: 'center',
                 fontFamily: U.body,
               }}
             >
               <div>
-                <div style={{ fontWeight: 900, fontSize: 44 }}>{pl.name}</div>
-                <div style={{ marginTop: 12, fontSize: 28, opacity: 0.7, lineHeight: 1.5 }}>{pl.points.slice(0, 2).join(' ・ ')}</div>
+                <div style={{ fontWeight: 900, fontSize: cols ? 40 : 44 }}>{pl.name}</div>
+                <div style={{ marginTop: 12, fontSize: cols ? 26 : 28, opacity: 0.7, lineHeight: 1.5 }}>
+                  {cols ? pl.points.slice(0, 3).map((x, j) => <div key={j}>・{x}</div>) : pl.points.slice(0, 2).join(' ・ ')}
+                </div>
               </div>
-              <div style={{ textAlign: 'right' }}>
-                <span style={{ fontFamily: fonts.display, fontWeight: 800, fontSize: 64 }}>{pl.price}</span>
-                {pl.per ? <span style={{ fontSize: 26, opacity: 0.6 }}> {pl.per}</span> : null}
+              <div style={{ textAlign: cols ? 'left' : 'right' }}>
+                <span style={{ fontFamily: fonts.display, fontWeight: 800, fontSize: cols ? 58 : 64 }}>{pl.price}</span>
+                {pl.per ? <span style={{ fontSize: 26, opacity: 0.6, display: cols ? 'block' : 'inline' }}> {pl.per}</span> : null}
               </div>
               {isBest ? (
-                <div style={{ position: 'absolute', top: -22, right: 48, padding: '8px 22px', borderRadius: 99, background: U.L ? U.ink : accent, color: U.L ? U.card : '#fff', fontWeight: 900, fontSize: 24, transform: `scale(${springX(glow, 1.3, 6)})` }}>おすすめ</div>
+                <div style={{ position: 'absolute', top: -22, right: cols ? 24 : 48, padding: '8px 22px', borderRadius: 99, background: U.L ? U.ink : accent, color: U.L ? U.card : '#fff', fontWeight: 900, fontSize: 24, transform: `scale(${springX(glow, 1.3, 6)})` }}>おすすめ</div>
               ) : null}
             </div>
           );
@@ -177,6 +187,8 @@ export type TimelineProps = {
   title?: string;
   events: { year: string; text: string }[];
   accent?: string;
+  /** rail: a line down the left · zigzag: a centre line with events alternating sides. */
+  layout?: 'rail' | 'zigzag';
 };
 
 export const Timeline: React.FC<TimelineProps> = (p) => {
@@ -188,24 +200,39 @@ export const Timeline: React.FC<TimelineProps> = (p) => {
   const bg = L?.bg ?? '#0f1115', ink = L?.ink ?? '#fff', head = L?.head ?? fonts.sansJP;
   const ev = p.events.slice(0, 6);
   const run = k(f, t(0.4), D - t(0.8), E.inOutCubic);
-  const gap = 230;
+  const zig = p.layout === 'zigzag';
+  const gap = zig ? 210 : 230;
   const y0 = 480;
+  const lineX = zig ? 538 : 150;
   return (
     <AbsoluteFill style={{ background: bg }}>
       {p.title ? <div style={{ position: 'absolute', left: 90, top: 200, right: 90, fontFamily: head, fontWeight: L?.headWeight ?? 900, fontSize: 60, color: ink, lineHeight: 1.2 }}>{p.title}</div> : null}
-      <div style={{ position: 'absolute', left: 150, top: y0, width: 4, height: (ev.length - 1) * gap * run, background: `linear-gradient(${accent}, ${L?.accent2 ?? '#ffb36b'})`, borderRadius: 2 }} />
+      <div style={{ position: 'absolute', left: lineX, top: y0, width: 4, height: (ev.length - 1) * gap * run, background: `linear-gradient(${accent}, ${L?.accent2 ?? '#ffb36b'})`, borderRadius: 2 }} />
       {ev.map((e, i) => {
         const reach = (i / Math.max(1, ev.length - 1)) ;
         const on = lin(f, t(0.4) + (D - t(1.2)) * reach, t(0.4) + (D - t(1.2)) * reach + t(0.4));
         const s = springX(on, 1.2, 6);
         return (
-          <div key={i} style={{ position: 'absolute', left: 120, top: y0 + i * gap - 32, display: 'flex', alignItems: 'center', gap: 44, opacity: Math.min(1, on * 2) }}>
+          <div
+            key={i}
+            style={{
+              position: 'absolute',
+              ...(zig ? (i % 2 ? { left: 508 } : { right: 1080 - 572 }) : { left: 120 }),
+              top: y0 + i * gap - 32,
+              display: 'flex',
+              flexDirection: zig && i % 2 === 0 ? 'row-reverse' : 'row',
+              textAlign: zig && i % 2 === 0 ? 'right' : 'left',
+              alignItems: 'center',
+              gap: zig ? 30 : 44,
+              opacity: Math.min(1, on * 2),
+            }}
+          >
             <div style={{ width: 64, height: 64, borderRadius: 32, background: bg, boxShadow: `inset 0 0 0 6px ${accent}`, transform: `scale(${s})`, display: 'grid', placeItems: 'center' }}>
               <div style={{ width: 22, height: 22, borderRadius: 11, background: accent }} />
             </div>
-            <div style={{ transform: `translateX(${(1 - s) * 60}px)` }}>
+            <div style={{ transform: `translateX(${(1 - s) * (zig && i % 2 === 0 ? -60 : 60)}px)` }}>
               <div style={{ fontFamily: fonts.display, fontWeight: 800, fontSize: 40, color: accent }}>{e.year}</div>
-              <div style={{ fontFamily: L?.body ?? fonts.sansJP, fontWeight: 700, fontSize: 40, color: ink, marginTop: 6, maxWidth: 760 }}>{e.text}</div>
+              <div style={{ fontFamily: L?.body ?? fonts.sansJP, fontWeight: 700, fontSize: zig ? 34 : 40, color: ink, marginTop: 6, maxWidth: zig ? 400 : 760 }}>{e.text}</div>
             </div>
           </div>
         );
@@ -224,6 +251,8 @@ export type LogoRevealProps = {
   cta?: string;
   accent?: string;
   dark?: boolean;
+  /** How the mark arrives: shards gather · rings close in · split letters slide in from both sides. */
+  intro?: 'shards' | 'rings' | 'split';
 };
 
 export const LogoReveal: React.FC<LogoRevealProps> = (p) => {
@@ -235,6 +264,7 @@ export const LogoReveal: React.FC<LogoRevealProps> = (p) => {
   const bg = L?.bg ?? (p.dark === false ? '#f6f4ef' : '#0a0a0b');
   const fg = L?.ink ?? (p.dark === false ? INK : '#fff');
   const letters = [...p.name];
+  const intro = p.intro ?? 'shards';
   // shards gather into the mark, then a light sweep crosses it
   const gather = k(f, 0, t(1.1), E.outExpo);
   const sweep = lin(f, t(1.3), t(2.0));
@@ -242,7 +272,13 @@ export const LogoReveal: React.FC<LogoRevealProps> = (p) => {
   const btn = springX(lin(f, t(2.0), t(2.7)), 1.2, 6);
   return (
     <AbsoluteFill style={{ background: bg, alignItems: 'center', justifyContent: 'center' }}>
-      {Array.from({ length: 26 }, (_, i) => {
+      {intro === 'rings'
+        ? [0, 1, 2].map((i) => {
+            const r = mix(1400 + i * 300, 0, k(f, i * 3, t(1.0) + i * 3, E.inOutCubic));
+            return <div key={i} style={{ position: 'absolute', left: 540 - r / 2, top: 840 - r / 2, width: r, height: r, borderRadius: '50%', border: `${6 - i * 1.5}px solid ${accent}`, opacity: 0.9 * (1 - k(f, t(0.85) + i * 3, t(1.15) + i * 3)) }} />;
+          })
+        : null}
+      {(intro === 'shards' ? Array.from({ length: 26 }) : []).map((_, i) => {
         const a = rand(i) * Math.PI * 2, r = 500 + rand(i + 50) * 500;
         return (
           <div
@@ -261,13 +297,22 @@ export const LogoReveal: React.FC<LogoRevealProps> = (p) => {
           />
         );
       })}
-      <div style={{ position: 'relative', marginTop: -120, opacity: gather, transform: `scale(${mix(0.86, 1, gather)})`, filter: `blur(${(1 - gather) * 10}px)` }}>
+      <div style={{ position: 'relative', marginTop: -120, opacity: intro === 'split' ? 1 : gather, transform: `scale(${intro === 'split' ? 1 : mix(0.86, 1, gather)})`, filter: intro === 'split' ? undefined : `blur(${(1 - gather) * 10}px)` }}>
         {p.logo ? (
           <Img src={p.logo} style={{ width: 360, height: 360, objectFit: 'contain' }} />
         ) : (
           <div style={{ display: 'flex', fontFamily: L && L.head !== fonts.sansJP ? L.head : fonts.display, fontWeight: 800, fontSize: Math.min(170, 1500 / Math.max(4, letters.length)), letterSpacing: '-0.03em', color: fg }}>
             {letters.map((c, i) => (
-              <span key={i} style={{ display: 'inline-block', transform: `translateY(${(1 - k(f, i * 2, t(0.7) + i * 2, E.outExpo)) * 60}px)` }}>
+              <span
+                key={i}
+                style={{
+                  display: 'inline-block',
+                  transform:
+                    intro === 'split'
+                      ? `translateX(${(1 - k(f, 0, t(0.9), E.outExpo)) * (i < letters.length / 2 ? -700 : 700)}px)`
+                      : `translateY(${(1 - k(f, i * 2, t(0.7) + i * 2, E.outExpo)) * 60}px)`,
+                }}
+              >
                 {c}
               </span>
             ))}

@@ -114,6 +114,8 @@ export type KpiTilesProps = {
   title?: string;
   tiles: { label: string; value: number; unit?: string; decimals?: number }[];
   accent?: string;
+  /** grid: 2x2 · stack: one wide row each · hero: the first number huge, the rest small below. */
+  layout?: 'grid' | 'stack' | 'hero';
 };
 
 export const KpiTiles: React.FC<KpiTilesProps> = (p) => {
@@ -124,33 +126,54 @@ export const KpiTiles: React.FC<KpiTilesProps> = (p) => {
   const accent = p.accent ?? L?.accent ?? '#22c55e';
   const ink = L?.ink ?? '#f5f7fb';
   const tiles = p.tiles.slice(0, 4);
+  const layout = p.layout ?? 'grid';
   return (
     <AbsoluteFill style={{ background: L?.bg ?? '#0b0d12' }}>
       {p.title ? <div style={{ position: 'absolute', left: 80, right: 80, top: 220, fontFamily: L?.head ?? fonts.sansJP, fontWeight: L?.headWeight ?? 900, fontSize: 62, color: ink, opacity: k(f, 0, t(0.4)) }}>{p.title}</div> : null}
-      <div style={{ position: 'absolute', left: 70, right: 70, top: 440, display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 30 }}>
+      <div
+        style={{
+          position: 'absolute',
+          left: 70,
+          right: 70,
+          top: layout === 'stack' ? 400 : 440,
+          display: 'grid',
+          gridTemplateColumns: layout === 'stack' ? '1fr' : layout === 'hero' ? '1fr 1fr 1fr' : '1fr 1fr',
+          gap: 30,
+        }}
+      >
         {tiles.map((tile, i) => {
           const s = springX(lin(f, t(0.3) + i * t(0.12), t(1.0) + i * t(0.12)), 1.1, 6);
           const c = E.outCubic(lin(f, t(0.5) + i * t(0.12), D * 0.7));
+          const big = layout === 'hero' && i === 0;
+          const wide = layout === 'stack';
+          const numSize = big ? 220 : layout === 'hero' ? 64 : wide ? 110 : 92;
           return (
             <div
               key={i}
               style={{
-                padding: '42px 36px',
+                gridColumn: big ? '1 / -1' : undefined,
+                padding: big ? '70px 56px' : layout === 'hero' ? '30px 26px' : '42px 36px',
                 borderRadius: 34,
-                background: L?.surface ?? '#151923',
+                background: big ? accent : L?.surface ?? '#151923',
+                color: big ? L?.onAccent ?? '#0b0d12' : ink,
                 boxShadow: `inset 0 0 0 2px ${L ? `color-mix(in srgb, ${ink} 8%, transparent)` : 'rgba(255,255,255,.06)'}`,
-                transform: `translateY(${(1 - s) * 120}px)`,
+                transform: wide ? `translateX(${(1 - s) * (i % 2 ? 600 : -600)}px)` : `translateY(${(1 - s) * 120}px)`,
                 opacity: Math.min(1, s * 1.5),
+                display: wide ? 'flex' : 'block',
+                alignItems: 'center',
+                justifyContent: 'space-between',
               }}
             >
-              <div style={{ fontFamily: L?.body ?? fonts.sansJP, fontWeight: 700, fontSize: 28, color: L?.muted ?? 'rgba(245,247,251,.6)' }}>{tile.label}</div>
-              <div style={{ marginTop: 18, display: 'flex', alignItems: 'baseline', gap: 8 }}>
-                <span style={{ fontFamily: fonts.display, fontWeight: 800, fontSize: 92, color: ink, fontVariantNumeric: 'tabular-nums', letterSpacing: '-0.03em' }}>{fmtNum(tile.value * c, tile.decimals ?? 0)}</span>
-                {tile.unit ? <span style={{ fontFamily: L?.body ?? fonts.sansJP, fontWeight: 700, fontSize: 32, color: accent }}>{tile.unit}</span> : null}
+              <div style={{ fontFamily: L?.body ?? fonts.sansJP, fontWeight: 700, fontSize: big ? 38 : layout === 'hero' ? 24 : 28, color: big ? 'inherit' : L?.muted ?? 'rgba(245,247,251,.6)', opacity: big ? 0.75 : 1 }}>{tile.label}</div>
+              <div style={{ marginTop: wide ? 0 : 18, display: 'flex', alignItems: 'baseline', gap: 8 }}>
+                <span style={{ fontFamily: fonts.display, fontWeight: 800, fontSize: numSize, color: big ? 'inherit' : ink, fontVariantNumeric: 'tabular-nums', letterSpacing: '-0.03em', lineHeight: 1 }}>{fmtNum(tile.value * c, tile.decimals ?? 0)}</span>
+                {tile.unit ? <span style={{ fontFamily: L?.body ?? fonts.sansJP, fontWeight: 700, fontSize: big ? 60 : 32, color: big ? 'inherit' : accent }}>{tile.unit}</span> : null}
               </div>
-              <div style={{ marginTop: 22, height: 8, borderRadius: 4, background: L ? `color-mix(in srgb, ${ink} 10%, transparent)` : 'rgba(255,255,255,.08)' }}>
-                <div style={{ width: `${c * 100}%`, height: '100%', borderRadius: 4, background: accent }} />
-              </div>
+              {wide || big ? null : (
+                <div style={{ marginTop: 22, height: 8, borderRadius: 4, background: L ? `color-mix(in srgb, ${ink} 10%, transparent)` : 'rgba(255,255,255,.08)' }}>
+                  <div style={{ width: `${c * 100}%`, height: '100%', borderRadius: 4, background: accent }} />
+                </div>
+              )}
             </div>
           );
         })}
