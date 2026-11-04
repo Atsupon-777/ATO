@@ -6288,7 +6288,7 @@ const Icon: React.FC<{ name: 'home' | 'reels' | 'plus' | 'search' | 'me' | 'grid
 
 // ---------- 作る: two ways in (写真から / 動画から), and シーン案 cards for a photo ----------
 
-type SceneIdea = { title: string; prompt: string; colors: string[] };
+type SceneIdea = { title: string; prompt: string; shot?: string; colors: string[] };
 /** Scene titles already shown for this photo, so ほかの案 never repeats them (kept on this device). */
 const seenScenes = (photo: string): string[] => {
   try {
@@ -6329,7 +6329,7 @@ const SceneFlow: React.FC<{ go: (h: string) => void }> = ({ go }) => {
     const r = ++round.current;
     setShots({});
     list.forEach((s, i) =>
-      api<{ file: string; url: string }>('/api/scene-preview', { method: 'POST', body: JSON.stringify({ photo: file, scene: `${s.title}: ${s.prompt}` }) }).then(
+      api<{ file: string; url: string }>('/api/scene-preview', { method: 'POST', body: JSON.stringify({ photo: file, scene: `${s.title}: ${s.prompt}`, shot: s.shot }) }).then(
         (x) => r === round.current && setShots((m) => ({ ...m, [i]: x })),
         () => r === round.current && setShots((m) => ({ ...m, [i]: 'fail' })),
       ),

@@ -774,17 +774,17 @@ const server = http.createServer(async (req, res) => {
     }
     // One picture per scene card: this product in that scene. Same photo + same sentence = the same file, free.
     if (p === '/api/scene-preview' && req.method === 'POST') {
-      const { photo, scene } = await readBody(req);
+      const { photo, scene, shot } = await readBody(req);
       const file = uploadOf(user!)(photo);
       const text = typeof scene === 'string' ? scene.trim().slice(0, 300) : '';
       if (!file || !text || !(await stat(file).then(() => true, () => false))) return json(res, 400, { error: '商品の写真とシーンを選んでください' });
-      const name = `scene-${createHash('sha256').update(path.basename(file) + '\n' + text).digest('hex').slice(0, 16)}.png`;
+      const name = `scene-${createHash('sha256').update(path.basename(file) + '\n' + text + '\n' + String(shot ?? '')).digest('hex').slice(0, 16)}.png`;
       const out = path.join(uploadsDir, userDir(user!), name);
       const url = `/uploads/${userDir(user!)}/${name}`;
       if (await stat(out).then(() => true, () => false)) return json(res, 200, { file: name, url });
       if (!takePreviewTurn(user!.uid)) return json(res, 429, { error: '今日はここまでです。明日また見られます' });
       try {
-        const usage = await previewScene({ photo: file, scene: text, out });
+        const usage = await previewScene({ photo: file, scene: text, shot: typeof shot === 'string' ? shot.slice(0, 300) : undefined, out });
         recordAi({ jobId: '', uid: user!.uid, template: 'PhotoAdFilm', step: 'scene preview', usd: usage.totalUsd });
         return json(res, 200, { file: name, url });
       } catch (e) {

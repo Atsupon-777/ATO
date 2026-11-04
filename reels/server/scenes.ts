@@ -18,6 +18,11 @@ const scenesSchema = z.object({
         prompt: z
           .string()
           .describe('one or two plain sentences in the target language that the customer can read and edit, describing the place, light and mood around the product (max 70 characters), e.g. 白いタイルの洗面台に朝日が差し込む。水滴の付いたボトルと、白いタオル。'),
+        shot: z
+          .string()
+          .describe(
+            'English art direction for ONE still that sells this scene at a glance (max 220 characters): framing, what else is in the picture and what the product is doing. Every scene uses a DIFFERENT kind of shot: e.g. a person using it, a hand holding it close-up, a flat lay with ingredients or props, a wide shot of the place with the product small, a macro of its texture or liquid, the product in motion (splash, pour, falling).',
+          ),
         colors: z.array(z.string()).describe('two colours that represent the scene, as #rrggbb hex codes, for the card background'),
       }),
     )
@@ -47,6 +52,7 @@ async function askOnce(opts: Parameters<typeof suggestScenes>[0], usage: Usage) 
       `You plan short premium ad films for Instagram Reels. Look at this product photo${opts.brand ? ` (brand: ${opts.brand})` : ''}${opts.description ? ` (${opts.description})` : ''}.`,
       `Propose EXACTLY ${SCENE_COUNT} clearly different worlds to film it in. Each is one place with its own light and mood where this kind of product naturally belongs:`,
       'mix everyday (a washstand, a kitchen, a desk), nature (sea, forest, garden, snow), premium (hotel, gallery, stone), and one unexpected but fitting idea.',
+      'Make the six look nothing alike: vary the kind of shot (people, hands, props, ingredients, wide place, macro texture, motion) and the colours, not only the place. People and props are welcome; the product just has to stay the same product.',
       'Every scene must be easy for a video model to render cleanly: one product, a simple set, real light. No celebrities, no other brands, no text in the picture, no medical or before/after claims.',
       opts.avoid?.length ? `Do NOT repeat or closely resemble these scenes the customer already saw: ${opts.avoid.slice(0, 30).join(' / ')}.` : '',
       goalLine(opts.goal),
@@ -57,14 +63,14 @@ async function askOnce(opts: Parameters<typeof suggestScenes>[0], usage: Usage) 
   });
   const scenes = z.object({ scenes: z.array(scenesSchema.shape.scenes.element) }).parse(raw).scenes;
   const hex = (c: string | undefined, fallback: string) => (c && /^#[0-9a-fA-F]{6}$/.test(c.trim()) ? c.trim() : fallback);
-  return scenes.slice(0, SCENE_COUNT).map((s) => ({ title: s.title.slice(0, 16), prompt: s.prompt.slice(0, 140), colors: [hex(s.colors[0], '#6b5b73'), hex(s.colors[1], '#2a2430')] }));
+  return scenes.slice(0, SCENE_COUNT).map((s) => ({ title: s.title.slice(0, 16), prompt: s.prompt.slice(0, 140), shot: s.shot.slice(0, 300), colors: [hex(s.colors[0], '#6b5b73'), hex(s.colors[1], '#2a2430')] }));
 }
 
 /**
  * One picture per scene card, so the cards differ at a glance: this product, re-shot in that scene, as a 1K
  * vertical still (Nano Banana, about $0.03). The picked one is passed on to the film as a look reference.
  */
-export async function previewScene(opts: { photo: string; scene: string; out: string }) {
+export async function previewScene(opts: { photo: string; scene: string; shot?: string; out: string }) {
   const { editImage } = await import('./gemini.ts');
   const usage = new Usage();
   await editImage({
@@ -77,8 +83,9 @@ export async function previewScene(opts: { photo: string; scene: string; out: st
     prompt: [
       'Reference: a phone photo of a product. Re-shoot exactly this product as one still from its premium vertical ad film, set in this scene (the customer wrote it, maybe in Japanese):',
       opts.scene,
-      'Keep the product exactly as photographed: same shape, colour, cap and label. Build the place, light and mood around it so the scene is obvious at a glance, product clearly visible and in focus.',
-      'Photorealistic commercial photography, natural light, shallow depth of field. No people, no hands, no text, letters or logos added to the image.',
+      opts.shot ? `Shot: ${opts.shot}` : 'Shot: the product in its place, framed so the scene is obvious at a glance.',
+      'Keep the product exactly as photographed: same shape, colour, cap and label, and recognisable in the frame. People, hands, props and ingredients are welcome when the shot asks for them (adults, natural and real-looking, no celebrities).',
+      'Photorealistic commercial photography, real light, crisp detail. No text, letters or logos added to the image.',
     ].join('\n'),
   });
   return usage;
