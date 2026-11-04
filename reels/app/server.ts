@@ -163,13 +163,20 @@ const takeSceneTurn = (uid: string) => {
   return true;
 };
 const PREVIEWS_PER_DAY = 60;
+/** Accounts with no phone check and no paid plan: enough for two sets of cards, so new sign-ups can't be farmed. */
+const PREVIEWS_PER_DAY_NEW = 12;
+/** All accounts together, a hard ceiling on what free pictures can cost in a day (about 5円 each). */
+const PREVIEWS_PER_DAY_ALL = Number(process.env.PREVIEWS_PER_DAY_ALL ?? 3000);
 const previewsMade = new Map<string, number[]>();
-/** Scene pictures cost real money (about 5円 each) but are free to the person: PREVIEWS_PER_DAY a day per owner. */
-const takePreviewTurn = (uid: string) => {
+let previewsAll: number[] = [];
+/** Scene pictures cost real money but are free to the person, within these daily limits. */
+const takePreviewTurn = (uid: string, trusted: boolean) => {
   const now = Date.now();
+  previewsAll = previewsAll.filter((t) => now - t < 86400_000);
   const list = (previewsMade.get(uid) ?? []).filter((t) => now - t < 86400_000);
-  if (list.length >= PREVIEWS_PER_DAY) return false;
+  if (list.length >= (trusted ? PREVIEWS_PER_DAY : PREVIEWS_PER_DAY_NEW) || previewsAll.length >= PREVIEWS_PER_DAY_ALL) return false;
   list.push(now);
+  previewsAll.push(now);
   previewsMade.set(uid, list);
   return true;
 };
@@ -782,7 +789,8 @@ const server = http.createServer(async (req, res) => {
       const out = path.join(uploadsDir, userDir(user!), name);
       const url = `/uploads/${userDir(user!)}/${name}`;
       if (await stat(out).then(() => true, () => false)) return json(res, 200, { file: name, url });
-      if (!takePreviewTurn(user!.uid)) return json(res, 429, { error: '今日はここまでです。明日また見られます' });
+      const trusted = !!user!.phone || (await getAccount(user!.uid, user!.email)).plan !== 'free';
+      if (!takePreviewTurn(user!.uid, trusted)) return json(res, 429, { error: '今日はここまでです。明日また見られます' });
       try {
         const usage = await previewScene({ photo: file, scene: text, shot: typeof shot === 'string' ? shot.slice(0, 300) : undefined, out });
         recordAi({ jobId: '', uid: user!.uid, template: 'PhotoAdFilm', step: 'scene preview', usd: usage.totalUsd });
