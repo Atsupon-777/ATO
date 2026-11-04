@@ -23,7 +23,7 @@ import { buildEffectsProps } from '../server/effects.ts';
 import { buildProductReel, STYLES, type Style } from '../server/product.ts';
 import { buildExperienceFilm } from '../server/experience.ts';
 import { buildPhotoAd } from '../server/photoad.ts';
-import { suggestScenes } from '../server/scenes.ts';
+import { previewScene, suggestScenes } from '../server/scenes.ts';
 import { renderTemplate } from '../server/render.ts';
 import { buildSaasProps } from '../server/saas.ts';
 import { buildTalkProps } from '../server/talk.ts';
@@ -162,6 +162,17 @@ const takeSceneTurn = (uid: string) => {
   scenesAsked.set(uid, list);
   return true;
 };
+const PREVIEWS_PER_DAY = 60;
+const previewsMade = new Map<string, number[]>();
+/** Scene pictures cost real money (about 5円 each) but are free to the person: PREVIEWS_PER_DAY a day per owner. */
+const takePreviewTurn = (uid: string) => {
+  const now = Date.now();
+  const list = (previewsMade.get(uid) ?? []).filter((t) => now - t < 86400_000);
+  if (list.length >= PREVIEWS_PER_DAY) return false;
+  list.push(now);
+  previewsMade.set(uid, list);
+  return true;
+};
 const MUSIC_PER_HOUR = 8;
 const MUSIC_PER_DAY = 30;
 const musicMade = new Map<string, number[]>();
@@ -288,6 +299,7 @@ async function startJob(template: Template, input: Record<string, any>, user: Us
           handle: String(input.handle || '').slice(0, 30),
           goal,
           scene: String(input.scene || '').slice(0, 300) || undefined,
+          sceneImage: /^scene-[0-9a-f]{16}\.png$/.test(String(input.sceneImage || '')) ? upload(String(input.sceneImage)) : undefined,
           lang,
           short: freeFirst,
           jobId: id,
@@ -758,6 +770,26 @@ const server = http.createServer(async (req, res) => {
       } catch (e) {
         console.error('scenes', e);
         return json(res, 500, { error: 'シーン案を作れませんでした。もう一度お試しください' });
+      }
+    }
+    // One picture per scene card: this product in that scene. Same photo + same sentence = the same file, free.
+    if (p === '/api/scene-preview' && req.method === 'POST') {
+      const { photo, scene } = await readBody(req);
+      const file = uploadOf(user!)(photo);
+      const text = typeof scene === 'string' ? scene.trim().slice(0, 300) : '';
+      if (!file || !text || !(await stat(file).then(() => true, () => false))) return json(res, 400, { error: '商品の写真とシーンを選んでください' });
+      const name = `scene-${createHash('sha256').update(path.basename(file) + '\n' + text).digest('hex').slice(0, 16)}.png`;
+      const out = path.join(uploadsDir, userDir(user!), name);
+      const url = `/uploads/${userDir(user!)}/${name}`;
+      if (await stat(out).then(() => true, () => false)) return json(res, 200, { file: name, url });
+      if (!takePreviewTurn(user!.uid)) return json(res, 429, { error: '今日はここまでです。明日また見られます' });
+      try {
+        const usage = await previewScene({ photo: file, scene: text, out });
+        recordAi({ jobId: '', uid: user!.uid, template: 'PhotoAdFilm', step: 'scene preview', usd: usage.totalUsd });
+        return json(res, 200, { file: name, url });
+      } catch (e) {
+        console.error('scene preview', e);
+        return json(res, 500, { error: '絵を作れませんでした' });
       }
     }
     if (p === '/api/media-key' && req.method === 'GET') return json(res, 200, { key: await mediaKey(user!), hours: MEDIA_KEY_HOURS });

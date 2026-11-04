@@ -6322,6 +6322,19 @@ const SceneFlow: React.FC<{ go: (h: string) => void }> = ({ go }) => {
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState('');
   const [freeFirst, setFreeFirst] = useState<Me['freeFirst']>();
+  // One picture per card (this product in that scene), so the cards differ at a glance. Filled in as each arrives.
+  const [shots, setShots] = useState<Record<string, { file: string; url: string } | 'fail'>>({});
+  const round = useRef(0);
+  const drawScenes = (file: string, list: SceneIdea[]) => {
+    const r = ++round.current;
+    setShots({});
+    list.forEach((s, i) =>
+      api<{ file: string; url: string }>('/api/scene-preview', { method: 'POST', body: JSON.stringify({ photo: file, scene: `${s.title}: ${s.prompt}` }) }).then(
+        (x) => r === round.current && setShots((m) => ({ ...m, [i]: x })),
+        () => r === round.current && setShots((m) => ({ ...m, [i]: 'fail' })),
+      ),
+    );
+  };
   useEffect(() => {
     loadBrand().then((b: Brand | null) => b?.name && setBrandName((v) => v || b.name!), () => null);
     if (!DEMO) api<Me>('/api/me').then((m) => setFreeFirst(m.freeFirst), () => null);
@@ -6337,6 +6350,7 @@ const SceneFlow: React.FC<{ go: (h: string) => void }> = ({ go }) => {
       });
       rememberScenes(photo.file, s.map((x) => x.title));
       setScenes(s);
+      drawScenes(photo.file, s);
       setPick(null);
       setTexts({});
     } catch (e: any) {
@@ -6353,7 +6367,7 @@ const SceneFlow: React.FC<{ go: (h: string) => void }> = ({ go }) => {
     try {
       const j = await api<Job>('/api/jobs', {
         method: 'POST',
-        body: JSON.stringify({ template: 'PhotoAdFilm', input: { photo: photo.file, brand: brandName.trim().slice(0, 24) || 'BRAND', description: what, scene: chosen, lang, goal, cta: '' } }),
+        body: JSON.stringify({ template: 'PhotoAdFilm', input: { photo: photo.file, brand: brandName.trim().slice(0, 24) || 'BRAND', description: what, scene: chosen, sceneImage: typeof pick === 'number' && texts[String(pick)] === undefined && shots[pick] && shots[pick] !== 'fail' ? (shots[pick] as { file: string }).file : undefined, lang, goal, cta: '' } }),
       });
       enablePush(registerPushToken);
       go(`#/job/${j.id}`);
@@ -6388,13 +6402,17 @@ const SceneFlow: React.FC<{ go: (h: string) => void }> = ({ go }) => {
         <>
           <p className="sub">{tr("どのシーンで撮りますか？文章は書きかえても大丈夫です。")}</p>
           <div className="scenegrid">
-            {scenes.map((s, i) => (
-              <button key={`${s.title}-${i}`} className={`scenecard ${pick === i ? 'on' : ''}`} style={{ '--c1': s.colors[0] ?? '#555', '--c2': s.colors[1] ?? s.colors[0] ?? '#222', '--i': i } as React.CSSProperties} onClick={() => setPick(i)} aria-pressed={pick === i}>
-                {photo ? <img src={photo.url} alt="" /> : null}
+            {scenes.map((s, i) => {
+              const shot = shots[i];
+              return (
+              <button key={`${s.title}-${i}`} className={`scenecard ${pick === i ? 'on' : ''} ${shot && shot !== 'fail' ? 'shot' : 'drawing'}`} style={{ '--c1': s.colors[0] ?? '#555', '--c2': s.colors[1] ?? s.colors[0] ?? '#222', '--i': i } as React.CSSProperties} onClick={() => setPick(i)} aria-pressed={pick === i}>
+                {shot && shot !== 'fail' ? <img className="full" src={shot.url} alt="" /> : photo ? <img src={photo.url} alt="" /> : null}
+                {!shot ? <i className="drawnote">{tr("絵を作っています…")}</i> : null}
                 <b>{s.title}</b>
                 <small>{textOf(i)}</small>
               </button>
-            ))}
+              );
+            })}
             <button className={`scenecard own ${pick === 'own' ? 'on' : ''}`} onClick={() => setPick('own')} aria-pressed={pick === 'own'}>
               <Glyph d="M4 20h4L19 9l-4-4L4 16zM14 6l4 4" size={30} />
               <b>{tr("自分で書く")}</b>

@@ -618,6 +618,12 @@
   .scenecard b { font-size: 17px; }
   .scenecard small { font-size: 12px; line-height: 1.45; opacity: .85; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
   .scenecard.on { border-color: var(--accent-line); transform: translateY(-3px) scale(1.02); box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent) 35%, transparent), 0 18px 36px rgba(0,0,0,.3); }
+  .scenecard img.full { left: 0; top: 0; width: 100%; height: 100%; aspect-ratio: auto; border-radius: 0; transform: none; box-shadow: none; animation: shotin .6s ease both; }
+  @keyframes shotin { from { opacity: 0; transform: scale(1.06); } to { opacity: 1; transform: none; } }
+  .scenecard.shot::after { background: linear-gradient(180deg, transparent 40%, rgba(0,0,0,.72)); }
+  .scenecard.drawing img { animation: drawpulse 1.6s ease-in-out infinite; }
+  @keyframes drawpulse { 50% { opacity: .55; } }
+  .scenecard .drawnote { position: absolute; z-index: 1; top: 10px; left: 10px; font-style: normal; font-size: 11px; padding: 3px 8px; border-radius: 999px; background: rgba(0,0,0,.35); backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px); }
   .scenecard.own { background: var(--panel); color: var(--ink); border: 2px dashed var(--line); align-content: center; justify-items: center; text-align: center; }
   .scenecard.own::after { display: none; }
   .scenecard.own.on { border-style: solid; border-color: var(--accent-line); }

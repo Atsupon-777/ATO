@@ -86,6 +86,8 @@ export type PhotoAdBrief = {
   goal?: string;
   /** The scene card the person picked or wrote (server/scenes.ts): the place, light and mood of the whole film. */
   scene?: string;
+  /** The scene card's picture the customer picked: the pack shot follows its set, light and mood. */
+  sceneImage?: string;
   lang?: Lang;
   jobId?: string;
   onStep?: (step: number, total: number, label: string) => void;
@@ -177,8 +179,10 @@ export async function buildPhotoAd(brief: PhotoAdBrief) {
   };
   const S = Object.fromEntries(shots.map((s) => [s.beat, s])) as Record<Beat, (typeof shots)[number]>;
   // The pack shot fixes the product in the ad's world; every product shot after it takes it as a reference.
-  const pack = await still('pack', [original], [
+  const lookRef = brief.sceneImage && (await exists(brief.sceneImage)) ? brief.sceneImage : undefined;
+  const pack = await still('pack', lookRef ? [original, lookRef] : [original], [
     `Reference: a phone photo of ${plan.product} by ${brief.brand}. Re-shoot exactly this product as the closing pack shot of its TV commercial: ${S.pack.imagePrompt}`,
+    lookRef ? 'Second reference: the look the customer picked. Match its set, light and mood, but take the product itself from the first photo.' : '',
     KEEP_PRODUCT,
   ]);
   // The ritual still sets the person; the skin macro takes her as a reference.
